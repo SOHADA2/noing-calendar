@@ -1395,7 +1395,8 @@
     }
 
     @media (max-width: 900px) {
-      .layout { flex-direction: column; }
+      .layout, .orders-layout { flex-direction: column; }
+      .orders-layout { padding: 0 12px; margin: 16px auto; gap: 14px; }
       .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; margin-top: 14px; }
       .stat-card { flex: 1; min-width: 200px; }
       .header, .filter-bar { padding: 12px 16px; }
@@ -1465,6 +1466,15 @@
       /* ── 사이드바 ── */
       .sidebar { flex-direction: column; margin-top: 16px; }
       .stat-card { min-width: 100%; flex: 1 1 100%; }
+
+      /* ── 광고수주 레이아웃: 세로 정렬 (orders-main 위, 사이드바 아래) ── */
+      .orders-layout { padding: 0 10px; margin: 12px auto; gap: 12px; }
+      .orders-main { width: 100%; }
+      .orders-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+      .orders-toolbar-left { display: flex; gap: 8px; align-items: baseline; }
+      .orders-title { font-size: 16px; }
+      .orders-search { width: 100%; }
+      .orders-search input { width: 100%; }
 
       /* ── 광고수주 표 → 카드 형태로 완전 변환 ── */
       .orders-table-wrap {
@@ -2238,7 +2248,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.1.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.1.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
