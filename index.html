@@ -2176,7 +2176,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.0.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.0.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2588,30 +2588,39 @@ async function init() {
     const total = 3;
     let done = 0;
     let anyFailed = false;
-    let targetPct = 5;        // 목표 퍼센트 (각 fetch 끝나면 점프)
-    let displayedPct = 0;     // 화면에 보이는 값 (부드럽게 추격)
+    let targetPct = 5;
+    let displayedPct = 0;
     let finished = false;
+    let finalSet = false;  // 최종 상태 설정 1회만
 
-    // 부드러운 카운터: 매 프레임 1씩 증가하면서 목표까지 추격
+    const setFinalStatus = () => {
+      if (finalSet) return;
+      finalSet = true;
+      setStatus(anyFailed ? '일부 동기화 실패' : '구글 시트 연결됨', anyFailed ? 'err' : 'ok');
+    };
+
+    // 부드러운 카운터: 매 프레임 목표까지 추격, 끝나면 빠르게 100%로 마무리
     const animate = () => {
-      if (finished && displayedPct >= 100) return;
-      // 끝나기 전엔 95%에서 자연스럽게 멈춤 (네트워크가 길어져도 답답하지 않게)
+      if (finalSet) return;  // 이미 최종 메시지 떴으면 중단
       const cap = finished ? 100 : Math.min(targetPct, 95);
       if (displayedPct < cap) {
-        // 남은 거리에 비례해 빠르게/느리게
         const gap = cap - displayedPct;
-        const step = Math.max(0.3, gap * 0.05);
+        // finished면 큰 step으로 빠르게 100 도달 (~150ms)
+        const step = finished ? Math.max(3, gap * 0.25) : Math.max(0.3, gap * 0.05);
         displayedPct = Math.min(cap, displayedPct + step);
-        setStatus(`연결 중... ${Math.floor(displayedPct)}% (${done}/${total})`, 'busy');
       }
+      if (finished && displayedPct >= 100) {
+        setFinalStatus();
+        return;
+      }
+      setStatus(`연결 중... ${Math.floor(displayedPct)}% (${done}/${total})`, 'busy');
       requestAnimationFrame(animate);
     };
     animate();
 
-    // 각 fetch 끝날 때 → 목표 퍼센트 점프 (실제 진행에 따라 추격됨)
     const tick = () => {
       done++;
-      targetPct = Math.round((done / total) * 95) + 5;  // 5~95% 구간 매핑
+      targetPct = Math.round((done / total) * 95) + 5;
     };
 
     const pContents = fetchFromSheet()
@@ -2629,10 +2638,8 @@ async function init() {
     Promise.all([pContents, pOrders, pQuotes]).finally(() => {
       finished = true;
       targetPct = 100;
-      // 100% 도달 후 최종 메시지 (애니메이션 잠깐 더 진행되니 살짝 딜레이)
-      setTimeout(() => {
-        setStatus(anyFailed ? '일부 동기화 실패' : '구글 시트 연결됨', anyFailed ? 'err' : 'ok');
-      }, 300);
+      // 안전망: 1초 후에도 animate가 100% 못 찍으면 강제로 최종 상태
+      setTimeout(setFinalStatus, 1000);
     });
   }
   // 마지막으로 보고 있던 탭 복원
