@@ -1657,17 +1657,21 @@
 
       /* ── 터치 타깃 ── */
       .icon-btn { width: 36px; height: 36px; }
+      /* 세그먼트: 한 줄에 모든 옵션 보이도록 (취소까지) */
       .seg {
-        flex-wrap: wrap;      /* 옵션이 한 줄에 안 들어가면 다음 줄로 */
-        gap: 3px;
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 2px;
       }
       .seg-opt {
-        flex: 1 0 calc(33.333% - 4px);  /* 한 줄 3개 기본 */
+        flex: 1 1 0;
         min-width: 0;
-        padding: 8px 6px;
-        min-height: 40px;
-        font-size: 12px;
+        padding: 8px 2px;
+        min-height: 38px;
+        font-size: 10.5px;
+        gap: 3px;
       }
+      .seg-opt .pill-dot { width: 5px; height: 5px; flex-shrink: 0; }
       input, select, textarea { font-size: 16px !important; }  /* iOS 자동 줌 방지 */
 
       #toast { bottom: 16px !important; }
@@ -2398,7 +2402,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
