@@ -2426,7 +2426,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.8';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4802,6 +4802,24 @@ function goToday() {
   currentYear = now.getFullYear();
   currentMonth = now.getMonth();
   render();
+  // 목록 뷰: 오늘 날짜 카드로 스크롤 (없으면 오늘 이후 가장 가까운 카드)
+  if (calMode === 'list') {
+    setTimeout(() => {
+      const todayStr = fmtDate(new Date());
+      // 오늘 자체가 있으면 그쪽으로
+      let target = document.querySelector('.cal-list-day[data-date="' + todayStr + '"]');
+      if (!target) {
+        // 오늘 이후 가장 가까운 카드
+        const all = document.querySelectorAll('.cal-list-day[data-date]');
+        for (const d of all) {
+          if (d.dataset.date >= todayStr) { target = d; break; }
+        }
+      }
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }
 }
 
 // ── Filters ──
@@ -5022,7 +5040,7 @@ function renderCalList() {
     const isToday = dateStr === today;
     const holiday = (typeof HOLIDAYS_2026 !== 'undefined' && HOLIDAYS_2026[dateStr]) ? HOLIDAYS_2026[dateStr] : '';
     html.push(`
-      <div class="cal-list-day">
+      <div class="cal-list-day" data-date="${dateStr}">
         <div class="cal-list-day-header${isToday ? ' today' : ''}">
           <span class="cal-list-day-num">${day}</span>
           <span class="cal-list-day-weekday">${wd}요일</span>
