@@ -1459,11 +1459,22 @@
     .cal-list-item-body { flex: 1; min-width: 0; }
     .cal-list-item-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; word-break: break-word; }
     .cal-list-item-meta { font-size: 11.5px; color: var(--text-3); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .cal-list-item-meta .chip-channel,
-    .cal-list-item-meta .chip-type,
-    .cal-list-item-meta .chip-status {
+    .cal-list-meta-chip {
       padding: 2px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 4px;
+      white-space: nowrap;
     }
+    .cal-list-meta-chip.is-channel { background: var(--bg-3); color: var(--text-2); }
+    .cal-list-meta-chip.is-channel.ch-life  { background: rgba(122,155,118,.22); color: #9fbf9b; }
+    .cal-list-meta-chip.is-channel.ch-guide { background: rgba(120,150,180,.22); color: #a8c4dc; }
+    .cal-list-meta-chip.is-channel.ch-mag   { background: rgba(212,160,78,.22); color: #e0b56b; }
+    .cal-list-meta-chip.is-type { background: var(--bg-3); color: var(--text-2); }
+    .cal-list-meta-chip.is-status { color: #fff; }
+    .cal-list-meta-chip.is-status.s-draft { background: var(--st-draft); }
+    .cal-list-meta-chip.is-status.s-ready { background: var(--st-ready); }
+    .cal-list-meta-chip.is-status.s-done  { background: var(--st-done); }
+    .cal-list-meta-chip.is-status.s-moved { background: var(--st-moved); }
+    .cal-list-meta-chip.is-status.s-cancel { background: var(--err); }
     .cal-empty-day { padding: 14px; color: var(--text-4); font-size: 12px; text-align: center; }
 
     /* 로고 제목 짧/긴 전환 */
@@ -1563,9 +1574,7 @@
         align-items: center;
       }
       .cal-list-item-meta > span { white-space: nowrap; }
-      .cal-list-item-meta .chip-channel,
-      .cal-list-item-meta .chip-type,
-      .cal-list-item-meta .chip-status { font-size: 10px; padding: 1.5px 5px; }
+      .cal-list-meta-chip { font-size: 10px; padding: 1.5px 5px; }
 
       /* ── 광고수주 레이아웃: 세로 정렬 (orders-main 위, 사이드바 아래) ── */
       .orders-layout { padding: 0 10px; margin: 12px auto; gap: 12px; }
@@ -2370,7 +2379,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4975,9 +4984,8 @@ function renderCalList() {
         </div>
         <div class="cal-list-day-body">
           ${items.map(c => {
-            const cls = `chip-channel ch-${c.channel}`;
-            const tCls = `chip-type ${(TYPE_CLASS && TYPE_CLASS[c.type]) || ''}`;
-            const sCls = `chip-status st-${c.status || '제작중'}`;
+            const statusMap = { '제작중':'s-draft', '예약완료':'s-ready', '발행완료':'s-done', '일자변경':'s-moved', '취소':'s-cancel' };
+            const sCls = statusMap[c.status] || 's-draft';
             return `
               <div class="cal-list-item" data-id="${c.id}" onclick="(${c.status === '발행완료' ? `openContentView('${c.id}')` : `openModal('${c.date}','${c.id}')`})">
                 <div class="cal-list-item-time">${c.time || ''}</div>
@@ -4985,9 +4993,9 @@ function renderCalList() {
                   <div class="cal-list-item-title">${escapeHtml(c.title || '(제목 없음)')}</div>
                   <div class="cal-list-item-meta">
                     ${c.company ? `<span>${escapeHtml(c.company)}</span>` : ''}
-                    <span class="${cls}">${escapeHtml(c.channel)}</span>
-                    <span class="${tCls}">${escapeHtml(c.type || '')}</span>
-                    <span class="${sCls}">${escapeHtml(c.status || '')}</span>
+                    <span class="cal-list-meta-chip is-channel ch-${c.channel}">${escapeHtml(c.channel)}</span>
+                    ${c.type ? `<span class="cal-list-meta-chip is-type">${escapeHtml(c.type)}</span>` : ''}
+                    <span class="cal-list-meta-chip is-status ${sCls}">${escapeHtml(c.status || '')}</span>
                     ${c.owner ? `<span>· ${escapeHtml(c.owner)}</span>` : ''}
                   </div>
                 </div>
