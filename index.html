@@ -2332,7 +2332,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2941,8 +2941,18 @@ let ORDER_COLUMNS = [
   { key: 'channels', label: '발행 채널', sortable: false, render: (o) => {
       const chans = String(o.channels || '').split(/[,\/]/).map(s => s.trim()).filter(Boolean);
       if (!chans.length) return '<span style="color:var(--text-4);font-size:11px">-</span>';
-      return `<div style="display:flex;gap:3px;flex-wrap:wrap;max-width:120px">
-        ${chans.map(ch => `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:2px 6px;border-radius:8px;background:var(--bg-3);color:var(--text-3);white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:var(--ch-${ch}, var(--muted))"></span>${escapeHtml(ch)}</span>`).join('')}
+      // 채널별로 연결된 콘텐츠 상태 확인 (모두 취소면 그 채널은 취소된 것)
+      const linked = contents.filter(c => String(c.order_id) === String(o.id));
+      return `<div style="display:flex;gap:3px;flex-wrap:wrap;max-width:160px">
+        ${chans.map(ch => {
+          const chItems = linked.filter(c => c.channel === ch);
+          const isCanceled = chItems.length > 0 && chItems.every(c => c.status === '취소');
+          const extra = isCanceled
+            ? 'text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:var(--err);opacity:.55'
+            : '';
+          const tip = isCanceled ? ` title="${escapeHtml(ch)} 채널 발행 취소됨"` : '';
+          return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:2px 6px;border-radius:8px;background:var(--bg-3);color:var(--text-3);white-space:nowrap;${extra}"${tip}><span style="width:6px;height:6px;border-radius:50%;background:var(--ch-${ch}, var(--muted))"></span>${escapeHtml(ch)}</span>`;
+        }).join('')}
       </div>`;
   } },
 ];
