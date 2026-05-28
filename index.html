@@ -1476,6 +1476,14 @@
       .orders-search { width: 100%; }
       .orders-search input { width: 100%; }
 
+      /* 모바일 필터 헤더 토글 강조 */
+      .filter-toggle {
+        width: 100%;
+        justify-content: space-between;
+        padding: 10px 4px !important;
+        font-size: 12px;
+      }
+
       /* ── 광고수주 표 → 카드 형태로 완전 변환 ── */
       .orders-table-wrap {
         border: none;
@@ -1726,21 +1734,29 @@
         </div>
       </div>
 
-      <div class="filter-row" style="margin-bottom: 12px; padding: 0;">
-        <div class="filter-group">
-          <span class="filter-label">콘텐츠 진행</span>
-          <span class="pill active" data-ofilter="cp" data-value="제작중">제작중</span>
-          <span class="pill active" data-ofilter="cp" data-value="예약완료">예약완료</span>
-          <span class="pill active" data-ofilter="cp" data-value="발행완료">발행완료</span>
-          <span class="pill active" data-ofilter="cp" data-value="일자변경">일자변경</span>
-          <span class="pill active" data-ofilter="cp" data-value="취소">취소</span>
-          <span class="pill active" data-ofilter="cp" data-value="미연결">미연결</span>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">세금계산서</span>
-          <span class="pill active" data-ofilter="inv" data-value="미발행">미발행</span>
-          <span class="pill active" data-ofilter="inv" data-value="요청됨">요청됨</span>
-          <span class="pill active" data-ofilter="inv" data-value="발행완료">발행완료</span>
+      <div class="filter-bar" id="ordersFilterBar" style="margin-bottom: 12px; padding: 0 4px;">
+        <button class="filter-toggle" onclick="toggleOrdersFilters()" id="ordersFilterToggle">
+          <span>필터</span>
+          <span class="filter-toggle-arrow">▾</span>
+        </button>
+        <div class="filter-body">
+          <div class="filter-row" style="padding: 0;">
+            <div class="filter-group">
+              <span class="filter-label">콘텐츠 진행</span>
+              <span class="pill active" data-ofilter="cp" data-value="제작중">제작중</span>
+              <span class="pill active" data-ofilter="cp" data-value="예약완료">예약완료</span>
+              <span class="pill active" data-ofilter="cp" data-value="발행완료">발행완료</span>
+              <span class="pill active" data-ofilter="cp" data-value="일자변경">일자변경</span>
+              <span class="pill active" data-ofilter="cp" data-value="취소">취소</span>
+              <span class="pill active" data-ofilter="cp" data-value="미연결">미연결</span>
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">세금계산서</span>
+              <span class="pill active" data-ofilter="inv" data-value="미발행">미발행</span>
+              <span class="pill active" data-ofilter="inv" data-value="요청됨">요청됨</span>
+              <span class="pill active" data-ofilter="inv" data-value="발행완료">발행완료</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2248,7 +2264,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.1.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.1.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -5318,6 +5334,21 @@ function loadCollapsedState() {
 loadCollapsedState();
 
 // ── Filter bar toggle ──
+const ORDERS_FILTER_COLLAPSED_KEY = 'cc-orders-filter-collapsed';
+function toggleOrdersFilters() {
+  const bar = document.getElementById('ordersFilterBar');
+  bar.classList.toggle('collapsed');
+  localStorage.setItem(ORDERS_FILTER_COLLAPSED_KEY, bar.classList.contains('collapsed') ? '1' : '0');
+}
+(function loadOrdersFilterCollapsed() {
+  // 모바일에선 기본 접힘, 데스크톱에선 기본 펼침
+  const saved = localStorage.getItem(ORDERS_FILTER_COLLAPSED_KEY);
+  if (saved === '1' || (saved === null && window.innerWidth <= 640)) {
+    const bar = document.getElementById('ordersFilterBar');
+    if (bar) bar.classList.add('collapsed');
+  }
+})();
+
 const FILTER_COLLAPSED_KEY = 'cc-filter-collapsed';
 function toggleFilters() {
   const bar = document.getElementById('filterBar');
