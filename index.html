@@ -1403,6 +1403,69 @@
       .main { padding: 0 12px; }
     }
 
+    /* 달력 모드 토글 (그리드 ↔ 목록) */
+    .cal-mode-toggle {
+      display: inline-flex;
+      border: 1px solid var(--border-2);
+      border-radius: 7px;
+      overflow: hidden;
+      margin-right: 8px;
+    }
+    .cal-mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .cal-mode-btn.active { background: var(--accent); color: #fff; }
+    .cal-mode-btn:hover:not(.active) { background: var(--bg-3); color: var(--text); }
+
+    /* 달력 목록(아젠다) 뷰 */
+    .cal-list { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+    .cal-list-day {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .cal-list-day-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg-3);
+      border-bottom: 1px solid var(--border);
+    }
+    .cal-list-day-header.today { background: rgba(245,130,90,.12); border-bottom-color: var(--accent); }
+    .cal-list-day-num { font-size: 18px; font-weight: 700; color: var(--text); }
+    .cal-list-day-weekday { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .cal-list-day-holiday { font-size: 11px; color: var(--err); margin-left: auto; }
+    .cal-list-day-body { display: flex; flex-direction: column; gap: 1px; background: var(--border); }
+    .cal-list-item {
+      background: var(--bg-2);
+      padding: 10px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .cal-list-item:hover, .cal-list-item:active { background: var(--bg-3); }
+    .cal-list-item-time { font-size: 12px; color: var(--muted); min-width: 44px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+    .cal-list-item-body { flex: 1; min-width: 0; }
+    .cal-list-item-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; word-break: break-word; }
+    .cal-list-item-meta { font-size: 11.5px; color: var(--text-3); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .cal-list-item-meta .chip-channel,
+    .cal-list-item-meta .chip-type,
+    .cal-list-item-meta .chip-status {
+      padding: 2px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600;
+    }
+    .cal-empty-day { padding: 14px; color: var(--text-4); font-size: 12px; text-align: center; }
+
     /* 폰 사이즈 (≤640px) — 모바일 최적화 */
     @media (max-width: 640px) {
       body { font-size: 13px; }
@@ -1632,6 +1695,10 @@
           <button class="nav-btn" onclick="changeMonth(1)">›</button>
         </div>
         <div class="nav-right">
+          <div class="cal-mode-toggle" id="calModeToggle">
+            <button type="button" class="cal-mode-btn active" data-mode="grid" onclick="setCalMode('grid')" title="달력 보기">📅</button>
+            <button type="button" class="cal-mode-btn" data-mode="list" onclick="setCalMode('list')" title="목록 보기">≡</button>
+          </div>
           <button class="alert-pill" id="alertPill" onclick="toggleAlertPopover(event)">
             <span class="alert-icon"></span>
             <span id="alertText">임박 콘텐츠</span>
@@ -1644,7 +1711,7 @@
         </div>
       </div>
 
-      <div class="calendar">
+      <div class="calendar" id="calendarGridView">
         <div class="cal-weekdays">
           <div class="cal-weekday">SUN</div><div class="cal-weekday">MON</div><div class="cal-weekday">TUE</div>
           <div class="cal-weekday">WED</div><div class="cal-weekday">THU</div><div class="cal-weekday">FRI</div>
@@ -1652,6 +1719,7 @@
         </div>
         <div class="cal-grid" id="calGrid"></div>
       </div>
+      <div class="cal-list" id="calendarListView" style="display:none"></div>
     </div>
 
     <div class="sidebar">
@@ -2264,7 +2332,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.1.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2312,6 +2380,18 @@ let contents = [];
 let orders = [];
 const VIEW_KEY = 'cc-current-view';
 let currentView = localStorage.getItem(VIEW_KEY) || 'calendar';
+
+const CAL_MODE_KEY = 'cc-cal-mode';
+// 모바일(≤640)에선 기본 list, 데스크톱에선 기본 grid
+let calMode = localStorage.getItem(CAL_MODE_KEY) || (window.innerWidth <= 640 ? 'list' : 'grid');
+function setCalMode(mode) {
+  calMode = mode;
+  localStorage.setItem(CAL_MODE_KEY, mode);
+  document.querySelectorAll('.cal-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('calendarGridView').style.display = mode === 'grid' ? '' : 'none';
+  document.getElementById('calendarListView').style.display = mode === 'list' ? '' : 'none';
+  render();
+}
 // 다중 컬럼 정렬: [{key, dir}, ...] 순서대로 우선순위 적용
 let orderSort = [
   { key: 'content_progress', dir: 'asc' },
@@ -2729,6 +2809,14 @@ async function init() {
       // 안전망: 1초 후에도 animate가 100% 못 찍으면 강제로 최종 상태
       setTimeout(setFinalStatus, 1000);
     });
+  }
+  // 초기 달력 모드 적용 (UI 버튼 + 표시 토글)
+  document.querySelectorAll('.cal-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === calMode));
+  const gridView = document.getElementById('calendarGridView');
+  const listView = document.getElementById('calendarListView');
+  if (gridView && listView) {
+    gridView.style.display = calMode === 'grid' ? '' : 'none';
+    listView.style.display = calMode === 'list' ? '' : 'none';
   }
   // 마지막으로 보고 있던 탭 복원
   if (currentView !== 'calendar') switchView(currentView);
@@ -4725,6 +4813,12 @@ function render() {
   const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('calTitle').innerHTML = `${currentYear}년 ${MONTHS_KO[currentMonth]}<span class="cal-title-en">${MONTHS_EN[currentMonth]}</span>`;
 
+  // 모드에 따라 분기
+  if (calMode === 'list') {
+    renderCalList();
+    return;
+  }
+
   const grid = document.getElementById('calGrid');
   grid.innerHTML = '';
 
@@ -4791,6 +4885,77 @@ function render() {
       chip.onclick = () => (c.status === '발행완료') ? openContentView(c.id) : openModal(c.date, c.id);
       container.appendChild(chip);
     });
+
+  renderSidebar();
+}
+
+function renderCalList() {
+  const container = document.getElementById('calendarListView');
+  if (!container) return;
+  const monthStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+  const monthItems = contents
+    .filter(c => String(c.date).startsWith(monthStr) && passesFilter(c))
+    .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+
+  // 날짜별 그룹핑
+  const byDate = {};
+  monthItems.forEach(c => {
+    if (!byDate[c.date]) byDate[c.date] = [];
+    byDate[c.date].push(c);
+  });
+
+  const today = fmtDate(new Date());
+  const weekdayKO = ['일','월','화','수','목','금','토'];
+  const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
+  const html = [];
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const items = byDate[dateStr] || [];
+    if (items.length === 0) continue;  // 콘텐츠 없는 날 스킵
+    const d = new Date(dateStr);
+    const wd = weekdayKO[d.getDay()];
+    const isToday = dateStr === today;
+    const holiday = (typeof HOLIDAYS_2026 !== 'undefined' && HOLIDAYS_2026[dateStr]) ? HOLIDAYS_2026[dateStr] : '';
+    html.push(`
+      <div class="cal-list-day">
+        <div class="cal-list-day-header${isToday ? ' today' : ''}">
+          <span class="cal-list-day-num">${day}</span>
+          <span class="cal-list-day-weekday">${wd}요일</span>
+          ${holiday ? `<span class="cal-list-day-holiday">${escapeHtml(holiday)}</span>` : ''}
+          <button class="add-btn" style="margin-left:auto" onclick="event.stopPropagation();openModal('${dateStr}')" title="이 날에 콘텐츠 추가">+</button>
+        </div>
+        <div class="cal-list-day-body">
+          ${items.map(c => {
+            const cls = `chip-channel ch-${c.channel}`;
+            const tCls = `chip-type ${(TYPE_CLASS && TYPE_CLASS[c.type]) || ''}`;
+            const sCls = `chip-status st-${c.status || '제작중'}`;
+            return `
+              <div class="cal-list-item" data-id="${c.id}" onclick="(${c.status === '발행완료' ? `openContentView('${c.id}')` : `openModal('${c.date}','${c.id}')`})">
+                <div class="cal-list-item-time">${c.time || ''}</div>
+                <div class="cal-list-item-body">
+                  <div class="cal-list-item-title">${escapeHtml(c.title || '(제목 없음)')}</div>
+                  <div class="cal-list-item-meta">
+                    ${c.company ? `<span>${escapeHtml(c.company)}</span>` : ''}
+                    <span class="${cls}">${escapeHtml(c.channel)}</span>
+                    <span class="${tCls}">${escapeHtml(c.type || '')}</span>
+                    <span class="${sCls}">${escapeHtml(c.status || '')}</span>
+                    ${c.owner ? `<span>· ${escapeHtml(c.owner)}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `);
+  }
+
+  if (html.length === 0) {
+    container.innerHTML = '<div class="cal-empty-day">이 달엔 콘텐츠가 없습니다.</div>';
+  } else {
+    container.innerHTML = html.join('');
+  }
 
   renderSidebar();
 }
