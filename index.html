@@ -1531,20 +1531,29 @@
       .add-btn { width: 16px; height: 16px; font-size: 11px; }
       .cal-head { font-size: 10.5px; padding: 5px 0; }
 
-      /* ── 모달: 폰에서 풀스크린 시트 스타일 ── */
+      /* ── 모달: 폰에서 하단 시트 (풀스크린 X, 위쪽 여유 둠) ── */
       .modal-overlay { padding: 0; align-items: flex-end; }
       .modal, .modal.lg {
         width: 100%;
         max-width: 100%;
-        max-height: 95vh;
-        padding: 16px;
+        max-height: 85vh;
+        padding: 14px 16px 16px;
         border-radius: 14px 14px 0 0;
       }
-      .modal-head { margin-bottom: 12px; }
+      .modal-head { margin-bottom: 10px; padding-top: 4px; }
       .modal-head h3 { font-size: 14px; }
-      .form-group { margin-bottom: 12px; }
+      .form-group { margin-bottom: 11px; }
       .form-group label { font-size: 11px; }
       .form-row { flex-direction: column; gap: 10px; }
+      /* 모달 상단에 손잡이 표시 (스와이프 닫기 어포던스) */
+      .modal::before {
+        content: '';
+        display: block;
+        width: 36px; height: 4px;
+        background: var(--border-2);
+        border-radius: 2px;
+        margin: -6px auto 8px;
+      }
 
       /* ── 사이드바 ── */
       .sidebar { flex-direction: column; margin-top: 16px; }
@@ -1648,7 +1657,17 @@
 
       /* ── 터치 타깃 ── */
       .icon-btn { width: 36px; height: 36px; }
-      .seg-opt { padding: 8px 12px; min-height: 40px; }
+      .seg {
+        flex-wrap: wrap;      /* 옵션이 한 줄에 안 들어가면 다음 줄로 */
+        gap: 3px;
+      }
+      .seg-opt {
+        flex: 1 0 calc(33.333% - 4px);  /* 한 줄 3개 기본 */
+        min-width: 0;
+        padding: 8px 6px;
+        min-height: 40px;
+        font-size: 12px;
+      }
       input, select, textarea { font-size: 16px !important; }  /* iOS 자동 줌 방지 */
 
       #toast { bottom: 16px !important; }
@@ -2379,7 +2398,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
