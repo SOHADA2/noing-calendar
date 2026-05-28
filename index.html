@@ -1403,8 +1403,8 @@
       .main { padding: 0 12px; }
     }
 
-    /* 달력 모드 토글 (그리드 ↔ 목록) — 필터 위쪽 우측에 위치 */
-    .cal-mode-bar { display: flex; justify-content: flex-end; padding: 4px 4px 6px; }
+    /* 달력 모드 토글 (그리드 ↔ 목록) — nav-right 안에 인라인 배치 */
+    .mode-icon-cal { filter: grayscale(1) opacity(.75); }  /* 📅 색상 제거 */
     .cal-mode-toggle {
       display: inline-flex;
       border: 1px solid var(--border);
@@ -1587,8 +1587,8 @@
       .alert-pill #alertText { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; display: inline-block; }
       .alert-pill .alert-icon { width: 5px; height: 5px; }
       /* 모드 토글 */
-      .cal-mode-btn { padding: 4px 8px; font-size: 12px; }
-      .cal-mode-bar { padding: 2px 4px 6px; }
+      .cal-mode-btn { padding: 4px 7px; font-size: 11.5px; }
+      .cal-mode-toggle { flex-shrink: 0; }
       /* 임박 알림 팝오버: 화면 폭에 맞춰 자동 조정 */
       .alert-popover {
         min-width: 240px;
@@ -1782,13 +1782,6 @@
 <div class="main">
   <div class="layout">
     <div class="cal-wrap">
-      <!-- 모바일에선 필터 위에 그리드/리스트 토글 노출 -->
-      <div class="cal-mode-bar">
-        <div class="cal-mode-toggle" id="calModeToggle">
-          <button type="button" class="cal-mode-btn active" data-mode="grid" onclick="setCalMode('grid')" title="달력 보기">📅</button>
-          <button type="button" class="cal-mode-btn" data-mode="list" onclick="setCalMode('list')" title="목록 보기">≡</button>
-        </div>
-      </div>
       <div class="cal-nav">
         <div class="nav-left">
           <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
@@ -1801,6 +1794,10 @@
             <span class="alert-icon"></span>
             <span id="alertText">임박 콘텐츠</span>
           </button>
+          <div class="cal-mode-toggle" id="calModeToggle">
+            <button type="button" class="cal-mode-btn active" data-mode="grid" onclick="setCalMode('grid')" title="달력 보기"><span class="mode-icon-cal">📅</span></button>
+            <button type="button" class="cal-mode-btn" data-mode="list" onclick="setCalMode('list')" title="목록 보기">≡</button>
+          </div>
           <div class="alert-popover" id="alertPopover">
             <h5>곧 발행될 콘텐츠</h5>
             <div id="alertList"></div>
@@ -2429,7 +2426,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.2.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
