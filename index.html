@@ -2426,7 +2426,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.2.9';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.3.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2942,6 +2942,17 @@ function fmtMoney(n) {
 }
 function parseMoney(s) {
   return Number(String(s || '').replace(/[^0-9.-]/g, '')) || 0;
+}
+
+// 제목 뒤에 채널을 (life) 형태로 자동 부착 (중복 방지)
+// 견적서 견적명 / 카카오톡 진행내용에 사용
+function titleWithChannels(title, channelsStr) {
+  let t = String(title || '').trim();
+  const chans = String(channelsStr || '').split(/[,\/]/).map(s => s.trim()).filter(Boolean);
+  if (!chans.length) return t;
+  // 이미 끝에 (life) 또는 (life, guide) 같은 채널 괄호가 있으면 제거 후 다시 부착 (중복 방지)
+  t = t.replace(/\s*\((?:\s*(?:life|guide|mag)\s*)(?:,\s*(?:life|guide|mag)\s*)*\)\s*$/i, '').trim();
+  return `${t} (${chans.join(', ')})`;
 }
 
 // 부가세 포함 금액 입력 시 → VAT 별도 금액 자동 계산
@@ -3847,7 +3858,7 @@ function generateQuote() {
   document.getElementById('qValidity').value = '발행일 +30일';
   document.getElementById('qRecipient').value = o.company || '';
   document.getElementById('qRecipientOwner').value = o.owner || '';
-  document.getElementById('qSubject').value = o.title || '';
+  document.getElementById('qSubject').value = titleWithChannels(o.title, o.channels);
   document.getElementById('qContentType').value = o.ad_type || '';
   document.getElementById('qPubDate').value = '';
 
@@ -4456,7 +4467,7 @@ function openInvoiceModal(orderId) {
   document.getElementById('iOwner').value = o.inv_owner || o.owner || '';
   document.getElementById('iEmail').value = o.inv_email || '';
   document.getElementById('iEmailCc').value = o.inv_email_cc || '';
-  document.getElementById('iContent').value = o.inv_content || o.title || '';
+  document.getElementById('iContent').value = o.inv_content || titleWithChannels(o.title, o.channels);
   document.getElementById('iAmount').value = o.inv_amount ? fmtMoney(o.inv_amount) : (o.amount ? fmtMoney(o.amount) : '');
   document.getElementById('iIssueDate').value = o.inv_issue_date || '';
   document.getElementById('iPaymentDue').value = o.inv_payment_due || '';
