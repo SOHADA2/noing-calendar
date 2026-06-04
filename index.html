@@ -2426,7 +2426,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.3.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.3.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4565,8 +4565,9 @@ async function shareInvoiceToKakao() {
     emailCc && `· 참조: ${emailCc}`,
     `· 진행내용: ${content}`,
     `· 진행금액: ${fmtMoney(amount)}원 (VAT 별도)`,
-    `· 부가세 (10%): ${fmtMoney(vat)}원`,
-    `· 합계 (VAT 포함): ${fmtMoney(total)}원`,
+    // 부가세 포함 금액으로 입력한 특수 케이스(재료비/방문비 등 포함)일 때만 부가세/합계 분해 표기
+    incVat > 0 && `· 부가세 (10%): ${fmtMoney(vat)}원`,
+    incVat > 0 && `· 합계 (VAT 포함): ${fmtMoney(total)}원`,
     incVat > 0 && `   ※ 재료비/방문비 등 부가세 포함 금액 ${fmtMoney(incVat)}원을 분해하여 산출`,
     issueDate && `· 발행일자: ${issueDate}`,
     paymentDue && `· 결제예정일: ${paymentDue}`,
