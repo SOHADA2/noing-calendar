@@ -2471,7 +2471,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.4.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.4.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4549,23 +4549,26 @@ function openInvoiceModal(orderId) {
   invoiceOrderId = orderId;
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) return;
-  // 기존 invoice 정보가 있으면 그것을, 없으면 수주 데이터로 기본값 채우기
-  document.getElementById('iCompany').value = o.inv_company || o.company || '';
-  document.getElementById('iOwner').value = o.inv_owner || o.owner || '';
-  document.getElementById('iEmail').value = o.inv_email || '';
-  document.getElementById('iEmailCc').value = o.inv_email_cc || '';
+  // 같은 회사의 다른 수주에서 세금계산서 정보 자동 조회 (가장 최근 수주 우선)
+  const sameCompany = orders
+    .filter(x => String(x.id) !== String(orderId) && (x.company || '').trim() === (o.company || '').trim())
+    .sort((a, b) => String(b.order_date || '').localeCompare(String(a.order_date || '')));
+  const lookup = (field) => {
+    const m = sameCompany.find(x => x[field] && String(x[field]).trim());
+    return m ? m[field] : '';
+  };
+  // 우선순위: 이 수주에 저장된 값 > 같은 회사 최근 수주 값 > 수주 기본값
+  document.getElementById('iCompany').value = o.inv_company || lookup('inv_company') || o.company || '';
+  document.getElementById('iOwner').value = o.inv_owner || o.owner || lookup('inv_owner') || '';
+  document.getElementById('iEmail').value = o.inv_email || lookup('inv_email') || '';
+  document.getElementById('iEmailCc').value = o.inv_email_cc || lookup('inv_email_cc') || '';
   document.getElementById('iContent').value = o.inv_content || titleWithChannels(o.title, o.channels);
   document.getElementById('iAmount').value = o.inv_amount ? fmtMoney(o.inv_amount) : (o.amount ? fmtMoney(o.amount) : '');
   document.getElementById('iIssueDate').value = o.inv_issue_date || '';
   document.getElementById('iPaymentDue').value = o.inv_payment_due || '';
   document.getElementById('iStatus').value = o.invoice_status || '미발행';
   // 사업자등록증 URL: 현재 수주에 있으면 그것, 없으면 같은 회사의 다른 수주에서 자동 조회
-  let bizUrl = o.biz_cert_url || '';
-  if (!bizUrl) {
-    const match = orders.find(x => x.company === o.company && x.biz_cert_url);
-    if (match) bizUrl = match.biz_cert_url;
-  }
-  document.getElementById('iBizCertUrl').value = bizUrl;
+  document.getElementById('iBizCertUrl').value = o.biz_cert_url || lookup('biz_cert_url') || '';
   document.getElementById('invoiceModalOverlay').classList.add('open');
   initBizCertDropZone();
 }
