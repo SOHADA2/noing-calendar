@@ -2471,7 +2471,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.4.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.4.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4646,6 +4646,16 @@ async function shareInvoiceToKakao() {
   const linkedOrder = orders.find(x => String(x.id) === String(invoiceOrderId));
   const incVat = linkedOrder && linkedOrder.amount_inc_vat ? Number(linkedOrder.amount_inc_vat) : 0;
 
+  // 사업자등록증 링크 (입력칸에 있으면 그것, 없으면 같은 회사 다른 수주에서 자동 조회)
+  let bizCertUrl = document.getElementById('iBizCertUrl').value.trim();
+  if (!bizCertUrl && linkedOrder) {
+    const match = orders.find(x =>
+      String(x.id) !== String(invoiceOrderId) &&
+      (x.company || '').trim() === (linkedOrder.company || '').trim() &&
+      x.biz_cert_url && String(x.biz_cert_url).trim());
+    if (match) bizCertUrl = String(match.biz_cert_url).trim();
+  }
+
   const lines = [
     '📄 세금계산서 발행 요청',
     '',
@@ -4661,6 +4671,7 @@ async function shareInvoiceToKakao() {
     incVat > 0 && `   ※ 재료비/방문비 등 부가세 포함 금액 ${fmtMoney(incVat)}원을 분해하여 산출`,
     issueDate && `· 발행일자: ${issueDate}`,
     paymentDue && `· 결제예정일: ${paymentDue}`,
+    bizCertUrl && `· 사업자등록증: ${bizCertUrl}`,
   ].filter(Boolean);
 
   const text = lines.join('\n');
