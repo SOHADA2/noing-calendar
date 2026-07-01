@@ -2471,7 +2471,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.4.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.5.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4549,26 +4549,41 @@ function openInvoiceModal(orderId) {
   invoiceOrderId = orderId;
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) return;
-  // 같은 회사의 다른 수주에서 세금계산서 정보 자동 조회 (가장 최근 수주 우선)
+  const norm = (s) => String(s || '').trim();
+  const curCompany = norm(o.company);
+  const curOwner = norm(o.inv_owner || o.owner);  // 이 수주의 담당자
+
+  // 같은 회사의 다른 수주 (최근 수주일 우선)
   const sameCompany = orders
-    .filter(x => String(x.id) !== String(orderId) && (x.company || '').trim() === (o.company || '').trim())
+    .filter(x => String(x.id) !== String(orderId) && norm(x.company) === curCompany)
     .sort((a, b) => String(b.order_date || '').localeCompare(String(a.order_date || '')));
-  const lookup = (field) => {
-    const m = sameCompany.find(x => x[field] && String(x[field]).trim());
+  // 회사 + 담당자가 모두 일치하는 수주 (담당자별 이메일 조회용)
+  const sameCompanyOwner = sameCompany
+    .filter(x => norm(x.inv_owner || x.owner) === curOwner && curOwner !== '');
+
+  // 이메일/참조: 회사+담당자 일치 건에서만 조회 (담당자마다 계산서 이메일이 다르므로)
+  const lookupByOwner = (field) => {
+    const m = sameCompanyOwner.find(x => norm(x[field]));
     return m ? m[field] : '';
   };
-  // 우선순위: 이 수주에 저장된 값 > 같은 회사 최근 수주 값 > 수주 기본값
-  document.getElementById('iCompany').value = o.inv_company || lookup('inv_company') || o.company || '';
-  document.getElementById('iOwner').value = o.inv_owner || o.owner || lookup('inv_owner') || '';
-  document.getElementById('iEmail').value = o.inv_email || lookup('inv_email') || '';
-  document.getElementById('iEmailCc').value = o.inv_email_cc || lookup('inv_email_cc') || '';
+  // 사업자등록증: 회사 단위 (담당자 무관)
+  const lookupByCompany = (field) => {
+    const m = sameCompany.find(x => norm(x[field]));
+    return m ? m[field] : '';
+  };
+
+  // 우선순위: 이 수주에 저장된 값 > 자동 조회 값 > 수주 기본값
+  document.getElementById('iCompany').value = o.inv_company || o.company || '';
+  document.getElementById('iOwner').value = o.inv_owner || o.owner || '';
+  document.getElementById('iEmail').value = o.inv_email || lookupByOwner('inv_email') || '';
+  document.getElementById('iEmailCc').value = o.inv_email_cc || lookupByOwner('inv_email_cc') || '';
   document.getElementById('iContent').value = o.inv_content || titleWithChannels(o.title, o.channels);
   document.getElementById('iAmount').value = o.inv_amount ? fmtMoney(o.inv_amount) : (o.amount ? fmtMoney(o.amount) : '');
   document.getElementById('iIssueDate').value = o.inv_issue_date || '';
   document.getElementById('iPaymentDue').value = o.inv_payment_due || '';
   document.getElementById('iStatus').value = o.invoice_status || '미발행';
-  // 사업자등록증 URL: 현재 수주에 있으면 그것, 없으면 같은 회사의 다른 수주에서 자동 조회
-  document.getElementById('iBizCertUrl').value = o.biz_cert_url || lookup('biz_cert_url') || '';
+  // 사업자등록증 URL: 이 수주에 있으면 그것, 없으면 같은 회사(담당자 무관)에서 조회
+  document.getElementById('iBizCertUrl').value = o.biz_cert_url || lookupByCompany('biz_cert_url') || '';
   document.getElementById('invoiceModalOverlay').classList.add('open');
   initBizCertDropZone();
 }
