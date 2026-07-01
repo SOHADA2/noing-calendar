@@ -326,6 +326,44 @@
     }
     .orders-search input:focus { border-color: var(--accent); }
 
+    /* 세금계산서/입금 일괄 편집 (드래그 선택) */
+    .bulk-cell { cursor: pointer; user-select: none; display: inline-block; }
+    .bulk-cell.bulk-selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+      border-radius: 6px;
+    }
+    .orders-table tbody tr.bulk-row-selected { background: rgba(245,130,90,.10) !important; }
+    .bulk-menu {
+      position: fixed;
+      z-index: 3000;
+      background: var(--bg-2);
+      border: 1px solid var(--border-2);
+      border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.45);
+      padding: 6px;
+      min-width: 170px;
+      display: none;
+    }
+    .bulk-menu-title {
+      font-size: 11px; color: var(--muted);
+      padding: 5px 8px 7px; font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .bulk-menu-opt {
+      display: block; width: 100%;
+      text-align: left;
+      background: transparent; border: none;
+      color: var(--text-2);
+      padding: 9px 10px;
+      border-radius: 6px;
+      font-size: 13px; font-family: inherit;
+      cursor: pointer;
+    }
+    .bulk-menu-opt:hover { background: var(--bg-3); color: var(--text); }
+    .bulk-menu-opt.cancel { color: var(--text-4); margin-top: 2px; border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; }
+
     /* 연도/월 기간 필터 바 */
     .orders-period-bar {
       display: flex; align-items: center; gap: 10px;
@@ -2471,7 +2509,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.5.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.6.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3069,8 +3107,8 @@ let ORDER_COLUMNS = [
   { key: 'title',          label: '제목',         sortable: true, tdClass: 'title', render: (o) => escapeHtml(o.title) },
   { key: 'ad_type',        label: '유형',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.ad_type) },
   { key: 'amount',         label: '금액',         sortable: true, thClass: 'num', tdClass: 'amount', render: (o) => fmtMoney(o.amount) },
-  { key: 'invoice_status', label: '세금계산서',   sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="invoice-badge ${o.invoice_status}" onclick="event.stopPropagation(); openInvoiceModal('${o.id}')" title="클릭해서 세금계산서 정보 입력">${escapeHtml(o.invoice_status)}</span>` },
-  { key: 'payment_status', label: '입금',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="payment-badge ${o.payment_status}">${escapeHtml(o.payment_status)}</span>` },
+  { key: 'invoice_status', label: '세금계산서',   sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell invoice-badge ${o.invoice_status}" data-bulk="invoice" data-oid="${o.id}" title="클릭: 상세 입력 · 위아래 드래그: 여러 건 일괄 변경">${escapeHtml(o.invoice_status)}</span>` },
+  { key: 'payment_status', label: '입금',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell payment-badge ${o.payment_status}" data-bulk="payment" data-oid="${o.id}" title="클릭 또는 드래그: 입금 상태 일괄 변경">${escapeHtml(o.payment_status)}</span>` },
   { key: 'owner',          label: '담당자',       sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.owner) },
   { key: 'content_progress', label: '콘텐츠 진행', sortable: true, thClass: 'center', tdClass: 'center', render: (o) => {
       const cp = getContentProgress(o.id);
@@ -3223,6 +3261,135 @@ function setOrderMonth(m) {
   renderOrders();
 }
 
+// ── 세금계산서/입금 상태 일괄 편집 (드래그 선택) ──
+const BULK_OPTIONS = {
+  invoice: { key: 'invoice_status', label: '세금계산서', values: ['미발행','요청됨','발행완료'] },
+  payment: { key: 'payment_status', label: '입금',       values: ['미입금','완료'] },
+};
+let bulkDrag = null;          // { field, anchorId, ids:Set, moved }
+let bulkSuppressClickUntil = 0;
+
+function rowIdsInOrder() {
+  return Array.from(document.querySelectorAll('#ordersBody tr[data-oid]')).map(tr => tr.dataset.oid);
+}
+function highlightBulk(field, ids) {
+  document.querySelectorAll('.bulk-cell.bulk-selected').forEach(el => el.classList.remove('bulk-selected'));
+  document.querySelectorAll('tr.bulk-row-selected').forEach(el => el.classList.remove('bulk-row-selected'));
+  ids.forEach(id => {
+    const cell = document.querySelector(`.bulk-cell[data-bulk="${field}"][data-oid="${id}"]`);
+    if (cell) { cell.classList.add('bulk-selected'); cell.closest('tr')?.classList.add('bulk-row-selected'); }
+  });
+}
+function clearBulkHighlight() {
+  document.querySelectorAll('.bulk-cell.bulk-selected').forEach(el => el.classList.remove('bulk-selected'));
+  document.querySelectorAll('tr.bulk-row-selected').forEach(el => el.classList.remove('bulk-row-selected'));
+}
+
+document.addEventListener('mousedown', (e) => {
+  const cell = e.target.closest('.bulk-cell');
+  if (!cell || e.button !== 0) return;
+  e.preventDefault();  // 텍스트 드래그 선택 방지
+  bulkDrag = { field: cell.dataset.bulk, anchorId: cell.dataset.oid, ids: new Set([cell.dataset.oid]), moved: false };
+  highlightBulk(bulkDrag.field, bulkDrag.ids);
+});
+document.addEventListener('mouseover', (e) => {
+  if (!bulkDrag) return;
+  const cell = e.target.closest(`.bulk-cell[data-bulk="${bulkDrag.field}"]`);
+  if (!cell) return;
+  const rows = rowIdsInOrder();
+  const ai = rows.indexOf(bulkDrag.anchorId);
+  const ci = rows.indexOf(cell.dataset.oid);
+  if (ai === -1 || ci === -1) return;
+  if (ci !== ai) bulkDrag.moved = true;
+  const [lo, hi] = ai <= ci ? [ai, ci] : [ci, ai];
+  bulkDrag.ids = new Set(rows.slice(lo, hi + 1));
+  highlightBulk(bulkDrag.field, bulkDrag.ids);
+});
+document.addEventListener('mouseup', (e) => {
+  if (!bulkDrag) return;
+  const d = bulkDrag;
+  bulkDrag = null;
+  bulkSuppressClickUntil = Date.now() + 400;  // 뒤따르는 row 클릭 억제
+  if (!d.moved && d.field === 'invoice') {
+    // 단순 클릭(세금계산서) → 기존처럼 상세 모달
+    clearBulkHighlight();
+    openInvoiceModal(d.anchorId);
+    return;
+  }
+  // 드래그 선택했거나, 입금 단일 클릭 → 일괄 변경 메뉴
+  openBulkMenu(d.field, d.ids, e.clientX, e.clientY);
+});
+// 일괄 편집 클릭이 row 모달을 열지 않도록 캡처 단계에서 차단
+document.addEventListener('click', (e) => {
+  if (Date.now() < bulkSuppressClickUntil && e.target.closest('#ordersBody')) {
+    e.stopPropagation(); e.preventDefault();
+  }
+}, true);
+function handleOrderRowClick(e, id) {
+  if (Date.now() < bulkSuppressClickUntil) return;  // 방금 일괄 편집이면 무시
+  openOrderModal(id);
+}
+
+function openBulkMenu(field, ids, x, y) {
+  const cfg = BULK_OPTIONS[field];
+  let menu = document.getElementById('bulkMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'bulkMenu'; menu.className = 'bulk-menu';
+    document.body.appendChild(menu);
+  }
+  menu.innerHTML =
+    `<div class="bulk-menu-title">${cfg.label} · ${ids.size}건 일괄 변경</div>` +
+    cfg.values.map(v => `<button class="bulk-menu-opt" data-val="${v}">${v}</button>`).join('') +
+    `<button class="bulk-menu-opt cancel" data-val="__cancel">취소</button>`;
+  menu.style.display = 'block';
+  // 위치 (화면 밖으로 안 나가게)
+  const mw = 180, mh = 40 + cfg.values.length * 40 + 40;
+  menu.style.left = Math.min(x, window.innerWidth - mw - 10) + 'px';
+  menu.style.top  = Math.min(y, window.innerHeight - mh - 10) + 'px';
+  menu.querySelectorAll('.bulk-menu-opt').forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      menu.style.display = 'none';
+      const val = btn.dataset.val;
+      if (val === '__cancel') { clearBulkHighlight(); return; }
+      applyBulkStatus(field, ids, val);
+    };
+  });
+}
+// 메뉴 바깥 클릭 시 닫기
+document.addEventListener('mousedown', (e) => {
+  const menu = document.getElementById('bulkMenu');
+  if (menu && menu.style.display === 'block' && !e.target.closest('#bulkMenu') && !e.target.closest('.bulk-cell')) {
+    menu.style.display = 'none';
+    clearBulkHighlight();
+  }
+});
+
+async function applyBulkStatus(field, ids, value) {
+  const key = BULK_OPTIONS[field].key;
+  const changed = [];
+  ids.forEach(id => {
+    const idx = orders.findIndex(o => String(o.id) === String(id));
+    if (idx !== -1 && orders[idx][key] !== value) {
+      orders[idx] = { ...orders[idx], [key]: value };
+      changed.push(orders[idx]);
+    }
+  });
+  if (changed.length === 0) { clearBulkHighlight(); showToast('변경할 항목이 없습니다.'); return; }
+  saveOrdersLocal();
+  renderOrders();
+  showToast(`${BULK_OPTIONS[field].label} ${changed.length}건 → "${value}" 변경 중...`);
+  let fail = 0;
+  for (const o of changed) {
+    const r = await pushOrderToSheet('update', o);
+    if (r && !r.ok) fail++;
+  }
+  showToast(fail
+    ? `⚠️ ${changed.length}건 중 ${fail}건 동기화 실패 (로컬 저장됨)`
+    : `✅ ${BULK_OPTIONS[field].label} ${changed.length}건 "${value}"로 변경 완료`);
+}
+
 function renderOrders() {
   renderOrderYearPills();
   const filtered = orders.filter(passesOrderFilter);
@@ -3282,7 +3449,7 @@ function renderOrders() {
         const cls = col.tdClass || '';
         return `<td class="${cls}" data-label="${escapeHtml(col.label)}">${col.render(o)}</td>`;
       }).join('');
-      return `<tr onclick="openOrderModal('${o.id}')">${cells}</tr>`;
+      return `<tr data-oid="${o.id}" onclick="handleOrderRowClick(event, '${o.id}')">${cells}</tr>`;
     }).join('');
   }
 
