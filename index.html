@@ -725,6 +725,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .alert-item-company { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .alert-item-tags { display: flex; gap: 4px; }
     .alert-item-tag {
       font-size: 9px;
@@ -2521,7 +2522,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.6.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.6.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -5865,6 +5866,7 @@ function updateAlerts() {
       <div class="alert-item-time">${isOverdue ? escapeHtml(String(c.date).slice(5).replace('-','/')) : escapeHtml(c.time || '-')}</div>
       <div class="alert-item-meta">
         <div class="alert-item-title">${escapeHtml(c.title)}</div>
+        ${c.company ? `<div class="alert-item-company">${escapeHtml(c.company)}</div>` : ''}
         <div class="alert-item-tags">
           <span class="alert-item-tag">${escapeHtml(c.channel)}</span>
           <span class="alert-item-tag">${escapeHtml(c.type)}</span>
