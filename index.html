@@ -836,10 +836,22 @@
       overflow-y: auto;
       flex: 1;
       min-height: 0;
+      /* 스크롤바를 배경에 녹아들게 (평소 투명, hover 시 은은하게) */
       scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+      transition: scrollbar-color .2s;
     }
-    .chips::-webkit-scrollbar { width: 4px; }
-    .chips::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+    .cal-cell:hover .chips { scrollbar-color: var(--border) transparent; }
+    .chips::-webkit-scrollbar { width: 5px; }
+    .chips::-webkit-scrollbar-track { background: transparent; }
+    .chips::-webkit-scrollbar-thumb {
+      background: transparent;
+      border-radius: 3px;
+      transition: background .2s;
+    }
+    /* 셀에 마우스 올렸을 때만 은은하게 표시 */
+    .cal-cell:hover .chips::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--border) 70%, transparent); }
+    .chips:hover::-webkit-scrollbar-thumb { background: var(--border-2); }
 
     .chip {
       font-size: 10.5px;
@@ -2509,7 +2521,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.6.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.6.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
