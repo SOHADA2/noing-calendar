@@ -2580,7 +2580,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.8.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.8.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4576,7 +4576,7 @@ function buildContractDocx(X, d) {
 
   // 셀 헬퍼
   const cell = (text, o = {}) => new TableCell({
-    width: { size: o.w, type: WidthType.PERCENTAGE },
+    width: o.w != null ? { size: o.w, type: WidthType.PERCENTAGE } : undefined,
     shading: o.shade ? { fill: 'F2F2F2' } : undefined,
     margins: { top: 60, bottom: 60, left: 80, right: 80 },
     columnSpan: o.span,
