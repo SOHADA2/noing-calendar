@@ -2571,7 +2571,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.7.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.7.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4254,10 +4254,16 @@ function recalcQuoteTotals() {
 }
 
 // ═══════════════ 계약서(용역계약서) 생성 ═══════════════
-const CONTRACT_SHEET = '계약서이력';
+// 이력은 localStorage에 저장 (Apps Script 시트 폴백 위험 회피 — 시트 세팅 불필요)
+const CONTRACT_HISTORY_KEY = 'cc-contract-history';
 const CONTRACT_CLIENTS_KEY = 'cc-contract-clients';  // 회사별 갑 정보 캐시
 let contractItems = [];   // [{category, price, detail}]
-let contractHistory = [];
+let contractHistory = (() => {
+  try { return JSON.parse(localStorage.getItem(CONTRACT_HISTORY_KEY) || '[]'); } catch { return []; }
+})();
+function saveContractHistory() {
+  try { localStorage.setItem(CONTRACT_HISTORY_KEY, JSON.stringify(contractHistory)); } catch {}
+}
 
 function loadContractClients() {
   try { return JSON.parse(localStorage.getItem(CONTRACT_CLIENTS_KEY) || '{}'); } catch { return {}; }
@@ -4521,10 +4527,8 @@ async function _saveContractToDrive() {
       subject: d.subject, total: d.total, url: result.url,
       items_json: JSON.stringify(d.items), created_at: new Date().toISOString(),
     };
-    try {
-      await fetch(apiUrl, { method:'POST', body: JSON.stringify({ action:'add', sheet: CONTRACT_SHEET, ...record }) });
-    } catch (he) { console.warn('계약서이력 기록 실패(시트 없음?):', he); }
     contractHistory.push(record);
+    saveContractHistory();  // localStorage 저장 (시트 미사용)
 
     upd('✓ 완료');
     setTimeout(() => {
@@ -4624,38 +4628,8 @@ async function fetchQuoteHistory() {
   }
 }
 
-async function fetchContractHistory() {
-  if (!apiUrl) return;
-  try {
-    const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(CONTRACT_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
-    const data = await res.json();
-    contractHistory = data.map(r => ({
-      id: String(r.id),
-      order_id: String(r.order_id || ''),
-      contract_number: r.contract_number || '',
-      date: normalizeDate(r.date),
-      client_name: r.client_name || '',
-      client_rep: r.client_rep || '',
-      client_bizno: r.client_bizno || '',
-      client_addr: r.client_addr || '',
-      subject: r.subject || '',
-      total: Number(r.total) || 0,
-      url: r.url || '',
-      items_json: r.items_json || '',
-      created_at: r.created_at || '',
-    }));
-    // 갑 정보 캐시도 최신화 (다른 PC에서 만든 계약서 정보 반영)
-    contractHistory.forEach(c => {
-      if (c.client_name && c.client_bizno) {
-        saveContractClient(c.client_name, { rep: c.client_rep, bizNo: c.client_bizno, addr: c.client_addr });
-      }
-    });
-    console.log('Loaded contract history:', contractHistory.length);
-  } catch (e) {
-    console.warn('Contract history not available yet:', e.message);
-  }
-}
+// 계약서 이력은 localStorage 기반이라 별도 fetch 불필요 (no-op 유지)
+async function fetchContractHistory() { /* localStorage 사용 */ }
 
 function renderQuoteHistoryForOrder(orderId) {
   const section = document.getElementById('oQuoteHistorySection');
