@@ -2580,7 +2580,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.8.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.8.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4465,7 +4465,10 @@ function buildContractHTML(d) {
     <div class="page-break"></div>
     <div class="annex-title keep">[별첨 - 작업내역서] <span style="font-size:9pt;font-weight:400">(단위: 원)</span></div>
     <table class="items">
-      <thead><tr><th>구분</th><th>상세 금액</th><th>상세</th></tr></thead>
+      <thead>
+        <tr><th colspan="3" style="text-align:center;font-size:10pt">용역 업무 비용 안내</th></tr>
+        <tr><th style="text-align:center">구분</th><th style="text-align:center">상세 금액</th><th style="text-align:center">상세</th></tr>
+      </thead>
       <tbody>
         ${itemsRows}
         <tr class="total"><td colspan="3">최종 금액 : ${fmtMoney(d.total)}원 (VAT별도)</td></tr>
@@ -4605,6 +4608,7 @@ function buildContractDocx(X, d) {
 
   // 작업내역서 표
   const itemRows = [
+    new TableRow({ children: [cell('용역 업무 비용 안내',{w:CONTENT_W,span:3,shade:1,bold:true,align:AlignmentType.CENTER,size:20})] }),
     new TableRow({ children: [cell('구분',{w:CW3[0],shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세 금액',{w:CW3[1],shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세',{w:CW3[2],shade:1,bold:true,align:AlignmentType.CENTER})] }),
     ...d.items.map(it => new TableRow({ children: [
       cell(it.category,{w:CW3[0],size:18}),
