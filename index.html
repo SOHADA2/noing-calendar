@@ -2580,7 +2580,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.8.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.8.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4615,13 +4615,25 @@ function buildContractDocx(X, d) {
   ];
   const itemsTable = new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths: CW3, layout: TableLayoutType.FIXED, borders: tableBorders, rows: itemRows });
 
+  // 계약 개요 박스 (단일 셀 표)
+  const overviewTable = new Table({
+    width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: [CONTENT_W], layout: TableLayoutType.FIXED, borders: tableBorders,
+    rows: [ new TableRow({ children: [ new TableCell({
+      width: { size: CONTENT_W, type: WidthType.DXA },
+      margins: { top: 120, bottom: 120, left: 160, right: 160 },
+      children: [
+        para(run(`계약건명 : ${d.subject}`, { size: 19 }), { after: 60 }),
+        para(run(`계약기간 : ${d.startDate}부터 콘텐츠 배포일까지 (작업완료)`, { size: 19 }), { after: 60 }),
+        para(run('계약금액 : 별첨 작업내역서 참고', { size: 19 }), { after: 60 }),
+        para(run('결제방법 : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불', { size: 19 }), { after: 0 }),
+      ],
+    }) ] }) ],
+  });
+
   const children = [
     para(run('용 역 계 약 서', { bold: true, size: 40 }), { align: AlignmentType.CENTER, after: 200, border: { top: bd, bottom: bd, left: bd, right: bd } }),
-    para(run(`계약건명 : ${d.subject}`, { size: 19 }), { after: 20 }),
-    para(run(`계약기간 : ${d.startDate}부터 콘텐츠 배포일까지 (작업완료)`, { size: 19 }), { after: 20 }),
-    para(run('계약금액 : 별첨 작업내역서 참고', { size: 19 }), { after: 20 }),
-    para(run('결제방법 : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불', { size: 19 }), { after: 160 }),
-    para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 19 }), { after: 140 }),
+    overviewTable,
+    para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 19 }), { before: 160, after: 140 }),
     ...clauseParas,
     para(run("본 계약을 증명하기 위하여 계약서 2부를 작성하여 ‘갑’과 ‘을’이 서명 날인하여 각각 1부씩 보관한다.", { size: 19 }), { before: 80, after: 160 }),
     para(run(d.dateKo, { bold: true, size: 22 }), { align: AlignmentType.CENTER, after: 200 }),
