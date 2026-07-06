@@ -2580,7 +2580,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.8.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.8.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4532,7 +4532,11 @@ function b64ToBytes(dataUri) {
 function buildContractDocx(X, d) {
   const C = QUOTE_COMPANY;
   const FONT = '맑은 고딕';
-  const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, PageBreak, ImageRun } = X;
+  const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, PageBreak, ImageRun, TableLayoutType } = X;
+  // A4(11906) - 좌우 여백(1000+1000) = 9906 twips 콘텐츠 폭
+  const CONTENT_W = 9906;
+  const CW4 = [1486, 3467, 1486, 3467];   // 갑/을 표 (15/35/15/35%)
+  const CW3 = [4160, 2774, 2972];         // 작업내역서 (42/28/30%)
   const run = (text, o = {}) => new TextRun({ text: String(text ?? ''), font: FONT, size: o.size || 20, bold: !!o.bold, break: o.break || 0 });
   const para = (children, o = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], alignment: o.align, spacing: { after: o.after != null ? o.after : 80, before: o.before || 0, line: 264 }, pageBreakBefore: !!o.pageBreakBefore, border: o.border });
   const bd = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
@@ -4574,9 +4578,9 @@ function buildContractDocx(X, d) {
     lines.forEach(ln => clauseParas.push(para(run(ln, { size: 19 }), { after: 30 })));
   });
 
-  // 셀 헬퍼
+  // 셀 헬퍼 (너비는 twips 절대값)
   const cell = (text, o = {}) => new TableCell({
-    width: o.w != null ? { size: o.w, type: WidthType.PERCENTAGE } : undefined,
+    width: o.w != null ? { size: o.w, type: WidthType.DXA } : undefined,
     shading: o.shade ? { fill: 'F2F2F2' } : undefined,
     margins: { top: 60, bottom: 60, left: 80, right: 80 },
     columnSpan: o.span,
@@ -4590,26 +4594,26 @@ function buildContractDocx(X, d) {
     new ImageRun({ data: b64ToBytes(SEAL_BASE64), transformation: { width: 40, height: 40 } }),
   ]});
   const partiesTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE }, borders: tableBorders,
+    width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: CW4, layout: TableLayoutType.FIXED, borders: tableBorders,
     rows: [
-      new TableRow({ children: [cell('상호 (갑)',{w:15,shade:1,bold:true}), cell(d.clientName,{w:35}), cell('상호 (을)',{w:15,shade:1,bold:true}), cell(C.name,{w:35})] }),
-      new TableRow({ children: [cell('사업자등록번호',{w:15,shade:1,bold:true}), cell(d.clientBizNo,{w:35}), cell('사업자등록번호',{w:15,shade:1,bold:true}), cell(C.bizNo,{w:35})] }),
-      new TableRow({ children: [cell('주소',{w:15,shade:1,bold:true}), cell(d.clientAddr,{w:35}), cell('주소',{w:15,shade:1,bold:true}), cell(C.addr,{w:35})] }),
-      new TableRow({ children: [cell('대표이사',{w:15,shade:1,bold:true}), cell(`${d.clientRep} (인)`,{w:35}), cell('대표이사',{w:15,shade:1,bold:true}), new TableCell({ width:{size:35,type:WidthType.PERCENTAGE}, margins:{top:60,bottom:60,left:80,right:80}, children:[repEulPara] })] }),
+      new TableRow({ children: [cell('상호 (갑)',{w:CW4[0],shade:1,bold:true}), cell(d.clientName,{w:CW4[1]}), cell('상호 (을)',{w:CW4[2],shade:1,bold:true}), cell(C.name,{w:CW4[3]})] }),
+      new TableRow({ children: [cell('사업자등록번호',{w:CW4[0],shade:1,bold:true}), cell(d.clientBizNo,{w:CW4[1]}), cell('사업자등록번호',{w:CW4[2],shade:1,bold:true}), cell(C.bizNo,{w:CW4[3]})] }),
+      new TableRow({ children: [cell('주소',{w:CW4[0],shade:1,bold:true}), cell(d.clientAddr,{w:CW4[1]}), cell('주소',{w:CW4[2],shade:1,bold:true}), cell(C.addr,{w:CW4[3]})] }),
+      new TableRow({ children: [cell('대표이사',{w:CW4[0],shade:1,bold:true}), cell(`${d.clientRep} (인)`,{w:CW4[1]}), cell('대표이사',{w:CW4[2],shade:1,bold:true}), new TableCell({ width:{size:CW4[3],type:WidthType.DXA}, margins:{top:60,bottom:60,left:80,right:80}, children:[repEulPara] })] }),
     ],
   });
 
   // 작업내역서 표
   const itemRows = [
-    new TableRow({ children: [cell('구분',{w:42,shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세 금액',{w:28,shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세',{w:30,shade:1,bold:true,align:AlignmentType.CENTER})] }),
+    new TableRow({ children: [cell('구분',{w:CW3[0],shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세 금액',{w:CW3[1],shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세',{w:CW3[2],shade:1,bold:true,align:AlignmentType.CENTER})] }),
     ...d.items.map(it => new TableRow({ children: [
-      cell(it.category,{w:42,size:18}),
-      cell(`${fmtMoney(it.price)}원 (VAT별도)`,{w:28,size:18,align:AlignmentType.RIGHT}),
-      cell(it.detail||'',{w:30,size:18}),
+      cell(it.category,{w:CW3[0],size:18}),
+      cell(`${fmtMoney(it.price)}원 (VAT별도)`,{w:CW3[1],size:18,align:AlignmentType.RIGHT}),
+      cell(it.detail||'',{w:CW3[2],size:18}),
     ]})),
-    new TableRow({ children: [cell(`최종 금액 : ${fmtMoney(d.total)}원 (VAT별도)`,{span:3,bold:true,align:AlignmentType.CENTER,shade:1})] }),
+    new TableRow({ children: [cell(`최종 금액 : ${fmtMoney(d.total)}원 (VAT별도)`,{w:CONTENT_W,span:3,bold:true,align:AlignmentType.CENTER,shade:1})] }),
   ];
-  const itemsTable = new Table({ width:{size:100,type:WidthType.PERCENTAGE}, borders: tableBorders, rows: itemRows });
+  const itemsTable = new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths: CW3, layout: TableLayoutType.FIXED, borders: tableBorders, rows: itemRows });
 
   const children = [
     para(run('용 역 계 약 서', { bold: true, size: 40 }), { align: AlignmentType.CENTER, after: 200, border: { top: bd, bottom: bd, left: bd, right: bd } }),
