@@ -2580,7 +2580,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.8.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.8.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4509,30 +4509,150 @@ function printContract() {
   setTimeout(() => w.print(), 400);
 }
 
-// Word(.doc) 다운로드 — 상대방이 수정 가능하도록 편집 가능한 워드 파일 생성
-function exportContractWord() {
+// docx 라이브러리 lazy 로드 (Word 다운로드 클릭 시에만)
+function ensureDocxLib() {
+  if (window.docx) return Promise.resolve(window.docx);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js';
+    s.onload = () => window.docx ? resolve(window.docx) : reject(new Error('docx 전역 없음'));
+    s.onerror = () => reject(new Error('docx 로드 실패'));
+    document.head.appendChild(s);
+  });
+}
+function b64ToBytes(dataUri) {
+  const b64 = String(dataUri).split(',').pop();
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+// 진짜 .docx 생성 (한글/MS워드 모두 편집 가능)
+function buildContractDocx(X, d) {
+  const C = QUOTE_COMPANY;
+  const FONT = '맑은 고딕';
+  const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, PageBreak, ImageRun } = X;
+  const run = (text, o = {}) => new TextRun({ text: String(text ?? ''), font: FONT, size: o.size || 20, bold: !!o.bold, break: o.break || 0 });
+  const para = (children, o = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], alignment: o.align, spacing: { after: o.after != null ? o.after : 80, before: o.before || 0, line: 264 }, pageBreakBefore: !!o.pageBreakBefore, border: o.border });
+  const bd = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+  const noB = { top:{style:BorderStyle.NONE}, bottom:{style:BorderStyle.NONE}, left:{style:BorderStyle.NONE}, right:{style:BorderStyle.NONE} };
+  // 조항 (본문은 줄단위 배열)
+  const clauses = [
+    ['제 1조 (목적)', ["‘갑’이 ‘을’에게 의뢰한 대행 콘텐츠 제작 및 배포를 효과적으로 진행하기 위한 범위와 규정을 목적으로 한다."]],
+    ['제 2조 (업무의 범위 및 내용)', ["‘을’은 ‘갑’의 요청에 따라 ‘갑’의 별첨 - 작업내역서와 같이 용역 업무를 수행한다."]],
+    ['제 3조 (수행기간)', [`본 계약의 업무 수행기간은 ${d.startDate}부터 프로젝트가 끝나는 시점으로 한다.`]],
+    ['제 4조 (수행방법)', [
+      "‘을’은 ‘갑’의 작업범위에 대해 다음의 내용을 수행한다.",
+      "가. ‘갑’은 ‘을’의 콘텐츠 제작을 위한 작업에 참고할 자료를 제공한다. (단, 해당 자료가 거짓이거나, 외부 기관으로부터의 소명요청이 오는 경우, ‘갑’은 성실히 소명한다.)",
+      "나. ‘갑’과 ‘을’은 대행 콘텐츠 제작이 원활하게 이루어지도록 콘텐츠에 대한 내용을 지속적으로 협의하며 진행한다.",
+      "다. ‘갑’은 ‘을’이 제작한 콘텐츠를 배포하기 전, 해당 콘텐츠를 검수하며, ‘갑’의 동의 후 콘텐츠를 협의한 날짜에 업로드한다. 단, 콘텐츠 업로드 일정 변동이 불가피할 경우엔 ‘갑’과 ‘을’은 빠르게 협의를 통해서 업로드 대체 일정을 정한다.",
+      "라. ‘을’은 ‘갑’이 콘텐츠에 대한 인사이트를 요청 시, 요청일로부터 2일 이내에 인사이트를 캡쳐하여 전달한다.",
+    ]],
+    ['제 5조 (상호 의무)', ["‘을’은 ‘갑’에게 위탁 받은 업무를 신의와 성실을 다하여 수행하며, ‘갑’의 사전 승인 없이 본 계약에 따른 권리 및 의무를 제 3자에게 양도 또는 위임할 수 없다."]],
+    ['제 6조 (비용 정산과 지급)', [
+      "가. ‘갑’은 제 2조에서 정한 기본 업무에 대가로서 별첨 – 작업내역서의 비용을 ‘을’에게 지급한다.",
+      "나. ‘갑’은 완료된 작업을 검수하여 이상이 없으면 세금계산서를 수취하고 작업 완료월의 익월 말일까지 ‘을’의 지정된 계좌에 입금한다. 단, 협의된 일자가 별도로 있을 시 해당 입금일자를 따른다.",
+    ]],
+    ['제 7조 (저작권)', ["‘을’이 작성한 저작물에 대한 저작권 및 기타 지적재산권은 ‘을’에게 귀속되며, ‘갑’은 ‘을’이 제공한 저작물을 별도의 협의되지 않은 마케팅에 사용할 수 없다."]],
+    ['제 8조 (비밀 유지)', ["‘갑’과 ‘을’은 본 작업과 관련된 일체의 정보 및 상호 간의 정보를 외부에 누설하거나 유출해서는 아니 되며, 이로 인해 발생되는 모든 책임은 ‘원인제공자’에게 있다."]],
+    ['제 9조 (계약의 중도 해지)', [
+      "가. ‘갑’ 또는 ‘을’에게 다음 각 호의 사유가 발생할 경우 상대방은 서면통지로써 본 계약을 해지할 수 있다.",
+      "  ① ‘갑’ 또는 ‘을’이 본 계약상 의무를 위반하여 상대방이 14일 이상의 기간을 정하여 서면으로 이행을 최고하였음에도 동 기간 내에 이행하지 않는 경우",
+      "  ② ‘을’의 비정상적인 업무수행으로 ‘갑’의 정상적인 업무수행을 방해한 경우",
+      "  ③ ‘갑’ 또는 ‘을’에게 해산, 부도 파산 또는 회생절차의 개시 신청, 기타 이에 준하는 사유가 발생하여 본 계약을 정상적으로 이행하기 어렵다고 판단되는 경우",
+      "나. 가.의 해지 사유에 해당하지 않는 경우에도 ‘갑’과 ‘을’은 상호 합의를 통하여 본 계약을 중도 해지할 수 있다.",
+      "다. 중도 해지시 ‘갑’은 이미 제공받은 결과물에 대해서는 환불을 요구할 수 없으며, ‘을’은 제공한 결과물을 제외한 잔여 용역 업무 비용을 즉시 환불하여야 한다.",
+    ]],
+    ['제 10조 (손해배상)', ["‘갑’과 ‘을’은 본 계약에 의한 제반 업무에 대하여, 고의나 과실로 인하여 발생하는 손해에 대해, 과실측이 일체의 배상책임을 갖는다."]],
+    ['제 11조 (분쟁 해결)', ["본 계약과 관련하여 발생하는 분쟁은 서울중앙지방법원을 관할로 한다."]],
+    ['제 12조 (일반 사항)', ["본 계약서에 명시되지 않거나 해석상 이견이 있을 시는 관련 법령 및 일반 상관례에 따른다."]],
+  ];
+  const clauseParas = [];
+  clauses.forEach(([h, lines]) => {
+    clauseParas.push(para(run(h, { bold: true, size: 20 }), { after: 40 }));
+    lines.forEach(ln => clauseParas.push(para(run(ln, { size: 19 }), { after: 30 })));
+  });
+
+  // 셀 헬퍼
+  const cell = (text, o = {}) => new TableCell({
+    width: { size: o.w, type: WidthType.PERCENTAGE },
+    shading: o.shade ? { fill: 'F2F2F2' } : undefined,
+    margins: { top: 60, bottom: 60, left: 80, right: 80 },
+    columnSpan: o.span,
+    children: Array.isArray(text) ? text : [para(run(text, { size: o.size || 18, bold: o.bold }), { after: 0, align: o.align })],
+  });
+  const tableBorders = { top: bd, bottom: bd, left: bd, right: bd, insideHorizontal: bd, insideVertical: bd };
+
+  // 갑/을 정보 표
+  const repEulPara = new Paragraph({ spacing:{after:0}, children: [
+    run(`${C.rep} `, { size: 18 }),
+    new ImageRun({ data: b64ToBytes(SEAL_BASE64), transformation: { width: 40, height: 40 } }),
+  ]});
+  const partiesTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE }, borders: tableBorders,
+    rows: [
+      new TableRow({ children: [cell('상호 (갑)',{w:15,shade:1,bold:true}), cell(d.clientName,{w:35}), cell('상호 (을)',{w:15,shade:1,bold:true}), cell(C.name,{w:35})] }),
+      new TableRow({ children: [cell('사업자등록번호',{w:15,shade:1,bold:true}), cell(d.clientBizNo,{w:35}), cell('사업자등록번호',{w:15,shade:1,bold:true}), cell(C.bizNo,{w:35})] }),
+      new TableRow({ children: [cell('주소',{w:15,shade:1,bold:true}), cell(d.clientAddr,{w:35}), cell('주소',{w:15,shade:1,bold:true}), cell(C.addr,{w:35})] }),
+      new TableRow({ children: [cell('대표이사',{w:15,shade:1,bold:true}), cell(`${d.clientRep} (인)`,{w:35}), cell('대표이사',{w:15,shade:1,bold:true}), new TableCell({ width:{size:35,type:WidthType.PERCENTAGE}, margins:{top:60,bottom:60,left:80,right:80}, children:[repEulPara] })] }),
+    ],
+  });
+
+  // 작업내역서 표
+  const itemRows = [
+    new TableRow({ children: [cell('구분',{w:42,shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세 금액',{w:28,shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세',{w:30,shade:1,bold:true,align:AlignmentType.CENTER})] }),
+    ...d.items.map(it => new TableRow({ children: [
+      cell(it.category,{w:42,size:18}),
+      cell(`${fmtMoney(it.price)}원 (VAT별도)`,{w:28,size:18,align:AlignmentType.RIGHT}),
+      cell(it.detail||'',{w:30,size:18}),
+    ]})),
+    new TableRow({ children: [cell(`최종 금액 : ${fmtMoney(d.total)}원 (VAT별도)`,{span:3,bold:true,align:AlignmentType.CENTER,shade:1})] }),
+  ];
+  const itemsTable = new Table({ width:{size:100,type:WidthType.PERCENTAGE}, borders: tableBorders, rows: itemRows });
+
+  const children = [
+    para(run('용 역 계 약 서', { bold: true, size: 40 }), { align: AlignmentType.CENTER, after: 200, border: { top: bd, bottom: bd, left: bd, right: bd } }),
+    para(run(`계약건명 : ${d.subject}`, { size: 19 }), { after: 20 }),
+    para(run(`계약기간 : ${d.startDate}부터 콘텐츠 배포일까지 (작업완료)`, { size: 19 }), { after: 20 }),
+    para(run('계약금액 : 별첨 작업내역서 참고', { size: 19 }), { after: 20 }),
+    para(run('결제방법 : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불', { size: 19 }), { after: 160 }),
+    para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 19 }), { after: 140 }),
+    ...clauseParas,
+    para(run("본 계약을 증명하기 위하여 계약서 2부를 작성하여 ‘갑’과 ‘을’이 서명 날인하여 각각 1부씩 보관한다.", { size: 19 }), { before: 80, after: 160 }),
+    para(run(d.dateKo, { bold: true, size: 22 }), { align: AlignmentType.CENTER, after: 200 }),
+    partiesTable,
+    para(run('[별첨 - 작업내역서]  (단위: 원)', { bold: true, size: 22 }), { pageBreakBefore: true, after: 120 }),
+    itemsTable,
+    para(run('· 상기 포스팅 수의 기준은 광고주의 최종 컨펌이 이루어져 포스팅이 된 것에 한정한다.', { size: 17 }), { before: 100, after: 20 }),
+    para(run('· 상기 내역 이외의 작업은 별도로 견적하여 정산한다. (추가 스폰서드 비용의 경우 협의 된 견적가격에 따른다.)', { size: 17 }), { after: 0 }),
+  ];
+  return new Document({ sections: [{ properties: { page: { margin: { top: 1000, bottom: 1000, left: 1000, right: 1000 } } }, children }] });
+}
+
+// Word(.docx) 다운로드 — 상대방이 수정 가능 (한글/MS워드 호환)
+async function exportContractWord() {
   const d = collectContractData();
   if (!d.clientName) { alert('갑(상대방) 상호를 입력해주세요.'); return; }
-  const html = buildContractHTML(d);
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const styleEl = doc.querySelector('style');
-  const bodyHTML = doc.body.innerHTML;
-  const wordHtml =
-    `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>` +
-    `<head><meta charset='utf-8'><title>용역계약서</title>` +
-    `<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->` +
-    `<style>${styleEl ? styleEl.textContent : ''}\n@page { size: A4; margin: 20mm 18mm; } body { font-size:10.5pt; }</style></head>` +
-    `<body>${bodyHTML}</body></html>`;
-  const blob = new Blob(['﻿', wordHtml], { type: 'application/msword' });
-  const sanitize = (s, n) => String(s || '').replace(/[\/\\:?*"<>|]/g, '_').slice(0, n);
-  const fname = ['계약서', d.cNumber, sanitize(d.clientName, 20), sanitize(d.subject, 24)].filter(Boolean).join('_') + '.doc';
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = fname;
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
-  showToast('✓ Word(.doc) 다운로드 — 상대방에게 전달 후 수정 요청 반영 가능');
+  showToast('📝 Word 파일 생성 중...');
+  let X;
+  try { X = await ensureDocxLib(); }
+  catch (e) { alert('Word 생성 라이브러리 로드 실패 — 인터넷 연결을 확인해주세요.'); return; }
+  try {
+    const doc = buildContractDocx(X, d);
+    const blob = await X.Packer.toBlob(doc);
+    const sanitize = (s, n) => String(s || '').replace(/[\/\\:?*"<>|]/g, '_').slice(0, n);
+    const fname = ['계약서', d.cNumber, sanitize(d.clientName, 20), sanitize(d.subject, 24)].filter(Boolean).join('_') + '.docx';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
+    showToast('✓ Word(.docx) 다운로드 완료 — 한글·MS워드에서 편집 가능');
+  } catch (e) {
+    console.error(e);
+    alert('Word 생성 중 오류: ' + (e.message || e));
+  }
 }
 
 // 계약서 모달용 사업자등록증 업로드 (드라이브 저장 → URL)
