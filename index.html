@@ -2176,7 +2176,8 @@
     </div>
 
     <div class="modal-actions">
-      <button class="btn" onclick="generateQuote()" style="margin-right:auto" title="이 수주 정보로 견적서 자동 생성">📄 견적서 생성</button>
+      <button class="btn" onclick="generateQuote()" title="이 수주 정보로 견적서 자동 생성">📄 견적서</button>
+      <button class="btn" onclick="generateContract()" style="margin-right:auto" title="이 수주 정보로 용역계약서 자동 생성">📑 계약서</button>
       <button class="btn" onclick="closeOrderModal()">취소</button>
       <button class="btn btn-primary" id="saveOrderBtn" onclick="saveOrder()">저장</button>
     </div>
@@ -2225,6 +2226,54 @@
       <button class="btn" onclick="closeQuoteModal()">취소</button>
       <button class="btn" onclick="printQuote()" title="브라우저 인쇄 다이얼로그로 직접 저장">🖨 인쇄</button>
       <button class="btn btn-primary" id="saveQuoteBtn" onclick="saveQuoteToDrive()" title="자동으로 PDF 생성 → 드라이브 저장 → 이력 기록">💾 PDF 저장 + 이력 기록</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Contract modal ── -->
+<div class="modal-overlay" id="contractModalOverlay" onclick="closeModalOutside(event, 'contractModalOverlay', closeContractModal)">
+  <div class="modal lg" style="width: 720px; max-width: 95vw">
+    <div class="modal-head">
+      <h3>📑 용역계약서 생성</h3>
+      <button class="icon-btn" onclick="closeContractModal()">✕</button>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group"><label>계약번호</label><input type="text" id="cNumber" /></div>
+      <div class="form-group"><label>계약일자</label><input type="date" id="cDate" /></div>
+    </div>
+
+    <div class="form-group"><label>계약건명</label><input type="text" id="cSubject" placeholder="예) 키베이스커머스 주식회사 대행 콘텐츠 발행 외주" /></div>
+
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:12px;color:var(--text-2);margin-bottom:8px">📌 갑 (계약 상대방 = 광고주/대행사) 정보</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2"><label>상호 <span style="color:var(--err)">*</span></label><input type="text" id="cClientName" placeholder="예) 키베이스커머스 주식회사" list="dlCompanies" /></div>
+        <div class="form-group" style="flex:1"><label>대표이사 <span style="color:var(--err)">*</span></label><input type="text" id="cClientRep" placeholder="예) 선흥원" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label>사업자등록번호 <span style="color:var(--err)">*</span></label><input type="text" id="cClientBizNo" placeholder="예) 222-88-00608" /></div>
+        <div class="form-group" style="flex:2"><label>주소 <span style="color:var(--err)">*</span></label><input type="text" id="cClientAddr" placeholder="예) 경기도 화성시 동탄신리천로 270, 403호" /></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-4);margin-top:2px">💡 같은 회사로 계약서를 한 번 만들면 다음부터 이 정보가 자동으로 채워집니다.</div>
+    </div>
+
+    <div class="form-group"><label>수행기간 시작일</label><input type="text" id="cStartDate" placeholder="예) 2026년 05월 21일 (비우면 계약일자 기준)" /></div>
+
+    <div class="form-group">
+      <label>작업내역 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 구분 / 상세금액 / 채널·비고</span></label>
+      <div id="cItemsList" style="display:flex;flex-direction:column;gap:6px"></div>
+      <button type="button" class="btn" onclick="addContractItem()" style="margin-top:8px;font-size:11px;padding:5px 10px">+ 항목 추가</button>
+    </div>
+
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:10px">
+      <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-weight:700;color:var(--accent)"><span>최종 금액 (VAT 별도)</span><span id="cTotal" style="font-variant-numeric:tabular-nums">0원</span></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeContractModal()">취소</button>
+      <button class="btn" onclick="printContract()" title="브라우저 인쇄 다이얼로그로 직접 저장">🖨 인쇄</button>
+      <button class="btn btn-primary" id="saveContractBtn" onclick="saveContractToDrive()" title="자동으로 PDF 생성 → 드라이브 저장 → 이력 기록">💾 PDF 저장 + 이력 기록</button>
     </div>
   </div>
 </div>
@@ -2522,7 +2571,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.6.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.7.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2996,6 +3045,7 @@ async function init() {
     const pQuotes = fetchQuoteHistory()
       .catch(e => { console.warn('Quote history fetch failed:', e); })
       .finally(tick);
+    fetchContractHistory().catch(e => console.warn('Contract history fetch failed:', e));
 
     Promise.all([pContents, pOrders, pQuotes]).finally(() => {
       finished = true;
@@ -4203,6 +4253,322 @@ function recalcQuoteTotals() {
   document.getElementById('qTotal').textContent = fmtMoney(total) + '원';
 }
 
+// ═══════════════ 계약서(용역계약서) 생성 ═══════════════
+const CONTRACT_SHEET = '계약서이력';
+const CONTRACT_CLIENTS_KEY = 'cc-contract-clients';  // 회사별 갑 정보 캐시
+let contractItems = [];   // [{category, price, detail}]
+let contractHistory = [];
+
+function loadContractClients() {
+  try { return JSON.parse(localStorage.getItem(CONTRACT_CLIENTS_KEY) || '{}'); } catch { return {}; }
+}
+function saveContractClient(name, info) {
+  const m = loadContractClients();
+  m[String(name).trim()] = info;
+  localStorage.setItem(CONTRACT_CLIENTS_KEY, JSON.stringify(m));
+}
+
+function generateNextContractNumber(orderId) {
+  const year = new Date().getFullYear();
+  const prefix = `C-${year}-`;
+  const orderContracts = contractHistory.filter(c => String(c.order_id) === String(orderId));
+  if (orderContracts.length > 0) {
+    const baseMatch = String(orderContracts[0].contract_number || '').match(/^(C-\d{4}-\d+)/);
+    if (baseMatch) {
+      const base = baseMatch[1];
+      const revs = orderContracts.map(c => c.contract_number).filter(n => n && n.startsWith(base))
+        .map(n => { const m = n.match(/-R(\d+)$/); return m ? parseInt(m[1],10) : 0; });
+      return `${base}-R${Math.max(0, ...revs) + 1}`;
+    }
+  }
+  const used = contractHistory.map(c => c.contract_number).filter(n => n && n.startsWith(prefix))
+    .map(n => { const m = n.match(/^C-\d{4}-(\d+)/); return m ? parseInt(m[1],10) : 0; });
+  return `${prefix}${String(Math.max(0, ...used) + 1).padStart(4,'0')}`;
+}
+
+function generateContract() {
+  if (!editingOrderId) return;
+  const o = orders.find(x => String(x.id) === String(editingOrderId));
+  if (!o) return;
+  const today = fmtDate(new Date());
+  document.getElementById('cNumber').value = generateNextContractNumber(o.id);
+  document.getElementById('cDate').value = today;
+  document.getElementById('cSubject').value = `${o.company || ''} 대행 콘텐츠 발행 외주`.trim();
+  // 갑 정보: 같은 회사로 만든 계약서 기록에서 자동 조회
+  const clients = loadContractClients();
+  const saved = clients[(o.company || '').trim()] || {};
+  document.getElementById('cClientName').value = o.company || '';
+  document.getElementById('cClientRep').value = saved.rep || '';
+  document.getElementById('cClientBizNo').value = saved.bizNo || '';
+  document.getElementById('cClientAddr').value = saved.addr || '';
+  document.getElementById('cStartDate').value = '';
+
+  // 작업내역: 채널별 or 단건
+  const channels = String(o.channels || '').split(/[,\s]+/).filter(Boolean);
+  const amount = Number(o.amount) || 0;
+  const typeLabel = o.ad_type && o.ad_type.includes('제작') ? '콘텐츠 제작 발행' : '콘텐츠 단순 발행';
+  if (channels.length > 0) {
+    const per = Math.round(amount / channels.length);
+    contractItems = channels.map(ch => ({
+      category: `'${o.title || ''} (${ch})' 인스타그램 채널 발행`,
+      price: per,
+      detail: `${typeLabel} : ${fmtMoney(per)}원 (VAT별도) · @${CHANNEL_FULLNAME[ch.toLowerCase()] || ch}`,
+    }));
+  } else {
+    contractItems = [{
+      category: `'${o.title || ''}' 인스타그램 채널 발행`,
+      price: amount,
+      detail: `${typeLabel} : ${fmtMoney(amount)}원 (VAT별도)`,
+    }];
+  }
+  renderContractItems();
+  closeOrderModal();
+  document.getElementById('contractModalOverlay').classList.add('open');
+}
+
+function closeContractModal() {
+  document.getElementById('contractModalOverlay').classList.remove('open');
+}
+
+function renderContractItems() {
+  const list = document.getElementById('cItemsList');
+  if (!list) return;
+  list.innerHTML = contractItems.map((item, idx) => `
+    <div style="display:grid;grid-template-columns:1fr 120px 1fr 24px;gap:6px;align-items:center">
+      <input type="text" value="${escapeHtml(item.category)}" placeholder="구분" onchange="updateContractItem(${idx},'category',this.value)" style="padding:6px 8px;font-size:12px" />
+      <input type="text" value="${item.price ? Number(item.price).toLocaleString('ko-KR') : ''}" placeholder="금액" oninput="updateContractItem(${idx},'price',parseMoney(this.value)); this.value=this.value.replace(/[^0-9]/g,'').replace(/\\B(?=(\\d{3})+(?!\\d))/g,',')" style="padding:6px 8px;font-size:12px;text-align:right" />
+      <input type="text" value="${escapeHtml(item.detail)}" placeholder="상세/채널" onchange="updateContractItem(${idx},'detail',this.value)" style="padding:6px 8px;font-size:12px" />
+      <button type="button" onclick="removeContractItem(${idx})" style="padding:4px;background:transparent;border:1px solid var(--border-2);border-radius:4px;color:var(--text-4);cursor:pointer">✕</button>
+    </div>`).join('');
+  recalcContractTotal();
+}
+function updateContractItem(idx, field, value) { if (contractItems[idx]) { contractItems[idx][field] = value; recalcContractTotal(); } }
+function removeContractItem(idx) { contractItems.splice(idx,1); renderContractItems(); }
+function addContractItem() { contractItems.push({ category:'', price:0, detail:'' }); renderContractItems(); }
+function recalcContractTotal() {
+  const total = contractItems.reduce((s,i) => s + (Number(i.price)||0), 0);
+  document.getElementById('cTotal').textContent = fmtMoney(total) + '원';
+}
+
+function buildContractHTML(d) {
+  const C = QUOTE_COMPANY;
+  const itemsRows = d.items.map(it => `
+    <tr>
+      <td style="width:42%">${escapeHtml(it.category)}</td>
+      <td style="width:28%;text-align:right">${fmtMoney(it.price)}원 (VAT별도)</td>
+      <td style="width:30%">${escapeHtml(it.detail || '')}</td>
+    </tr>`).join('');
+  const clauses = [
+    ['제 1조 (목적)', `'갑'이 '을'에게 의뢰한 대행 콘텐츠 제작 및 배포를 효과적으로 진행하기 위한 범위와 규정을 목적으로 한다.`],
+    ['제 2조 (업무의 범위 및 내용)', `'을'은 '갑'의 요청에 따라 '갑'의 별첨 - 작업내역서와 같이 용역 업무를 수행한다.`],
+    ['제 3조 (수행기간)', `본 계약의 업무 수행기간은 ${escapeHtml(d.startDate)}부터 프로젝트가 끝나는 시점으로 한다.`],
+    ['제 4조 (수행방법)', `'을'은 '갑'의 작업범위에 대해 다음의 내용을 수행한다.<br>
+      가. '갑'은 '을'의 콘텐츠 제작을 위한 작업에 참고할 자료를 제공한다. (단, 해당 자료가 거짓이거나, 외부 기관으로부터의 소명요청이 오는 경우, '갑'은 성실히 소명한다.)<br>
+      나. '갑'과 '을'은 대행 콘텐츠 제작이 원활하게 이루어지도록 콘텐츠에 대한 내용을 지속적으로 협의하며 진행한다.<br>
+      다. '갑'은 '을'이 제작한 콘텐츠를 배포하기 전, 해당 콘텐츠를 검수하며, '갑'의 동의 후 콘텐츠를 협의한 날짜에 업로드한다. 단, 콘텐츠 업로드 일정 변동이 불가피할 경우엔 '갑'과 '을'은 빠르게 협의를 통해서 업로드 대체 일정을 정한다.<br>
+      라. '을'은 '갑'이 콘텐츠에 대한 인사이트를 요청 시, 요청일로부터 2일 이내에 인사이트를 캡쳐하여 전달한다.`],
+    ['제 5조 (상호 의무)', `'을'은 '갑'에게 위탁 받은 업무를 신의와 성실을 다하여 수행하며, '갑'의 사전 승인 없이 본 계약에 따른 권리 및 의무를 제 3자에게 양도 또는 위임할 수 없다.`],
+    ['제 6조 (비용 정산과 지급)', `가. '갑'은 제 2조에서 정한 기본 업무에 대가로서 별첨 – 작업내역서의 비용을 '을'에게 지급한다.<br>
+      나. '갑'은 완료된 작업을 검수하여 이상이 없으면 세금계산서를 수취하고 작업 완료월의 익월 말일까지 '을'의 지정된 계좌에 입금한다. 단, 협의된 일자가 별도로 있을 시 해당 입금일자를 따른다.`],
+    ['제 7조 (저작권)', `'을'이 작성한 저작물에 대한 저작권 및 기타 지적재산권은 '을'에게 귀속되며, '갑'은 '을'이 제공한 저작물을 별도의 협의되지 않은 마케팅에 사용할 수 없다.`],
+    ['제 8조 (비밀 유지)', `'갑'과 '을'은 본 작업과 관련된 일체의 정보 및 상호 간의 정보를 외부에 누설하거나 유출해서는 아니 되며, 이로 인해 발생되는 모든 책임은 '원인제공자'에게 있다.`],
+    ['제 9조 (계약의 중도 해지)', `가. '갑' 또는 '을'에게 다음 각 호의 사유가 발생할 경우 상대방은 서면통지로써 본 계약을 해지할 수 있다.<br>
+      &nbsp;&nbsp;① '갑' 또는 '을'이 본 계약상 의무를 위반하여 상대방이 14일 이상의 기간을 정하여 서면으로 이행을 최고하였음에도 동 기간 내에 이행하지 않는 경우<br>
+      &nbsp;&nbsp;② '을'의 비정상적인 업무수행으로 '갑'의 정상적인 업무수행을 방해한 경우<br>
+      &nbsp;&nbsp;③ '갑' 또는 '을'에게 해산, 부도 파산 또는 회생절차의 개시 신청, 기타 이에 준하는 사유가 발생하여 본 계약을 정상적으로 이행하기 어렵다고 판단되는 경우<br>
+      나. 가.의 해지 사유에 해당하지 않는 경우에도 '갑'과 '을'은 상호 합의를 통하여 본 계약을 중도 해지할 수 있다.<br>
+      다. 중도 해지시 '갑'은 이미 제공받은 결과물에 대해서는 환불을 요구할 수 없으며, '을'은 제공한 결과물을 제외한 잔여 용역 업무 비용을 즉시 환불하여야 한다.`],
+    ['제 10조 (손해배상)', `'갑'과 '을'은 본 계약에 의한 제반 업무에 대하여, 고의나 과실로 인하여 발생하는 손해에 대해, 과실측이 일체의 배상책임을 갖는다.`],
+    ['제 11조 (분쟁 해결)', `본 계약과 관련하여 발생하는 분쟁은 서울중앙지방법원을 관할로 한다.`],
+    ['제 12조 (일반 사항)', `본 계약서에 명시되지 않거나 해석상 이견이 있을 시는 관련 법령 및 일반 상관례에 따른다.`],
+  ];
+  const clausesHTML = clauses.map(([h, b]) => `<div class="clause"><div class="clause-h">${h}</div><div class="clause-b">${b}</div></div>`).join('');
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><style>
+    @page { size: A4; margin: 8mm 12mm; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; }
+    body { font-family:'맑은 고딕',sans-serif; color:#000; font-size:9.5pt; line-height:1.5; }
+    .doc-title { text-align:center; font-size:20pt; font-weight:700; letter-spacing:12px; border:2px solid #000; padding:12px 0; margin-bottom:14px; }
+    .overview { border:1px solid #000; padding:10px 14px; margin-bottom:14px; font-size:9.5pt; line-height:1.9; }
+    .intro { margin:14px 0; font-size:9.5pt; }
+    .clause { margin-bottom:9px; }
+    .clause-h { font-weight:700; font-size:9.5pt; margin-bottom:2px; }
+    .clause-b { font-size:9pt; color:#222; padding-left:2px; }
+    .sign-date { text-align:center; font-size:11pt; font-weight:600; margin:20px 0 14px; }
+    table.parties { width:100%; border-collapse:collapse; margin-bottom:16px; }
+    table.parties td { border:1px solid #000; padding:7px 9px; font-size:9pt; vertical-align:middle; }
+    table.parties td.lbl { background:#f4f4f4; font-weight:600; width:15%; white-space:nowrap; }
+    table.parties td.val { width:35%; position:relative; }
+    .seal { position:absolute; right:8px; top:50%; transform:translateY(-50%); width:44px; opacity:.95; }
+    .annex-title { font-weight:700; font-size:11pt; margin:8px 0 8px; }
+    table.items { width:100%; border-collapse:collapse; margin-bottom:6px; }
+    table.items th { background:#f4f4f4; border:1px solid #000; padding:6px; font-size:9pt; }
+    table.items td { border:1px solid #000; padding:6px 8px; font-size:9pt; }
+    table.items tr.total td { font-weight:700; text-align:center; background:#fafafa; }
+    .annex-note { font-size:8.5pt; color:#444; line-height:1.6; margin-top:4px; }
+    .page-break { page-break-before: always; }
+  </style></head><body>
+    <div class="doc-title">용 역 계 약 서</div>
+    <div class="overview">
+      <div><b>계약건명</b> : ${escapeHtml(d.subject)}</div>
+      <div><b>계약기간</b> : ${escapeHtml(d.startDate)}부터 콘텐츠 배포일까지 (작업완료)</div>
+      <div><b>계약금액</b> : 별첨 작업내역서 참고</div>
+      <div><b>결제방법</b> : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불</div>
+    </div>
+    <table class="parties">
+      <tr>
+        <td class="lbl">상호 (갑)</td><td class="val">${escapeHtml(d.clientName)}</td>
+        <td class="lbl">상호 (을)</td><td class="val">${escapeHtml(C.name)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">사업자등록번호</td><td class="val">${escapeHtml(d.clientBizNo)}</td>
+        <td class="lbl">사업자등록번호</td><td class="val">${escapeHtml(C.bizNo)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">주소</td><td class="val">${escapeHtml(d.clientAddr)}</td>
+        <td class="lbl">주소</td><td class="val">${escapeHtml(C.addr)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">대표이사</td><td class="val">${escapeHtml(d.clientRep)} (인)</td>
+        <td class="lbl">대표이사</td><td class="val">${escapeHtml(C.rep)} <img class="seal" src="${SEAL_BASE64}" alt=""/></td>
+      </tr>
+    </table>
+    <div class="intro">${escapeHtml(d.clientName)}(이하 '갑')와 ${escapeHtml(C.name)}(이하 '을')는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.</div>
+    ${clausesHTML}
+    <div class="clause-b" style="margin-top:8px">본 계약을 증명하기 위하여 계약서 2부를 작성하여 '갑'과 '을'이 서명 날인하여 각각 1부씩 보관한다.</div>
+    <div class="sign-date">${escapeHtml(d.dateKo)}</div>
+    <div class="page-break"></div>
+    <div class="annex-title">[별첨 - 작업내역서] <span style="font-size:9pt;font-weight:400">(단위: 원)</span></div>
+    <table class="items">
+      <thead><tr><th>구분</th><th>상세 금액</th><th>상세</th></tr></thead>
+      <tbody>
+        ${itemsRows}
+        <tr class="total"><td colspan="3">최종 금액 : ${fmtMoney(d.total)}원 (VAT별도)</td></tr>
+      </tbody>
+    </table>
+    <div class="annex-note">
+      · 상기 포스팅 수의 기준은 광고주의 최종 컨펌이 이루어져 포스팅이 된 것에 한정한다.<br>
+      · 상기 내역 이외의 작업은 별도로 견적하여 정산한다. (추가 스폰서드 비용의 경우 협의 된 견적가격에 따른다.)
+    </div>
+  </body></html>`;
+}
+
+function collectContractData() {
+  const total = contractItems.reduce((s,i) => s + (Number(i.price)||0), 0);
+  const cNumber = document.getElementById('cNumber').value;
+  const cDate = document.getElementById('cDate').value;
+  const clientName = document.getElementById('cClientName').value.trim();
+  const clientRep = document.getElementById('cClientRep').value.trim();
+  const clientBizNo = document.getElementById('cClientBizNo').value.trim();
+  const clientAddr = document.getElementById('cClientAddr').value.trim();
+  let startDate = document.getElementById('cStartDate').value.trim();
+  // 날짜 한글 포맷
+  const dObj = cDate ? new Date(cDate) : new Date();
+  const dateKo = `${dObj.getFullYear()}년  ${String(dObj.getMonth()+1).padStart(2,'0')}월  ${String(dObj.getDate()).padStart(2,'0')}일`;
+  if (!startDate) startDate = `${dObj.getFullYear()}년 ${String(dObj.getMonth()+1).padStart(2,'0')}월 ${String(dObj.getDate()).padStart(2,'0')}일`;
+  return {
+    cNumber, cDate, dateKo, startDate,
+    subject: document.getElementById('cSubject').value.trim(),
+    clientName, clientRep, clientBizNo, clientAddr,
+    items: contractItems, total,
+  };
+}
+
+function printContract() {
+  const d = collectContractData();
+  const html = buildContractHTML(d);
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 400);
+}
+
+async function saveContractToDrive() { return withSubmitGuard('saveContractBtn', _saveContractToDrive); }
+async function _saveContractToDrive() {
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+  const d = collectContractData();
+  if (!d.clientName || !d.clientBizNo || !d.clientRep || !d.clientAddr) {
+    alert('갑(상대방) 정보 필수 항목을 입력해주세요.\n(상호 / 사업자등록번호 / 대표이사 / 주소)');
+    return;
+  }
+  if (!d.items.length || d.items.every(i => !i.price)) { alert('작업내역과 금액을 입력해주세요.'); return; }
+  if (typeof html2pdf === 'undefined') { alert('PDF 라이브러리가 로드되지 않았습니다.'); return; }
+
+  // 갑 정보 캐시 (다음 계약 시 자동완성)
+  saveContractClient(d.clientName, { rep: d.clientRep, bizNo: d.clientBizNo, addr: d.clientAddr });
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(31,30,29,0.96);z-index:999999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:맑은 고딕,sans-serif';
+  overlay.innerHTML = `<div style="font-size:20px;font-weight:600;margin-bottom:14px">📑 계약서 생성 중</div><div id="cPdfStatus" style="font-size:13px;color:#94a3b8">준비 중...</div>`;
+  document.body.appendChild(overlay);
+  const upd = (m) => { const el = document.getElementById('cPdfStatus'); if (el) el.textContent = m; };
+
+  try {
+    const blob = await htmlToPdfBlob(buildContractHTML(d));
+    upd('드라이브에 업로드 중...');
+    const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+    const sanitize = (s, n) => String(s || '').replace(/[\/\\:?*"<>|]/g, '_').slice(0, n);
+    const filename = ['계약서', d.cNumber, sanitize(d.clientName, 20), sanitize(d.subject, 30), (d.cDate||'').replace(/-/g,'')].filter(Boolean).join('_') + '.pdf';
+    const upRes = await fetch(apiUrl, { method:'POST', body: JSON.stringify({ action:'upload_quote', filename, file_base64: base64 }) });
+    const result = await upRes.json();
+    if (!result.ok || !result.url) { document.body.removeChild(overlay); alert('업로드 실패: ' + (result.error || '')); return; }
+
+    upd('이력 기록 중...');
+    const record = {
+      id: String(Date.now()), order_id: editingOrderId || '',
+      contract_number: d.cNumber, date: d.cDate,
+      client_name: d.clientName, client_rep: d.clientRep, client_bizno: d.clientBizNo, client_addr: d.clientAddr,
+      subject: d.subject, total: d.total, url: result.url,
+      items_json: JSON.stringify(d.items), created_at: new Date().toISOString(),
+    };
+    try {
+      await fetch(apiUrl, { method:'POST', body: JSON.stringify({ action:'add', sheet: CONTRACT_SHEET, ...record }) });
+    } catch (he) { console.warn('계약서이력 기록 실패(시트 없음?):', he); }
+    contractHistory.push(record);
+
+    upd('✓ 완료');
+    setTimeout(() => {
+      if (overlay.parentNode) document.body.removeChild(overlay);
+      showToast('✓ 계약서 저장 완료');
+      window.open(result.url, '_blank');
+      closeContractModal();
+    }, 500);
+  } catch (e) {
+    console.error(e);
+    if (overlay.parentNode) document.body.removeChild(overlay);
+    alert('계약서 생성 중 오류가 발생했습니다.\n' + (e.message || e));
+  }
+}
+
+// HTML → PDF Blob 공용 헬퍼 (견적서/계약서 공유)
+async function htmlToPdfBlob(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const styleEl = doc.querySelector('style');
+  const bodyHTML = doc.body.innerHTML;
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#000;font-family:맑은 고딕,sans-serif;opacity:0.001;pointer-events:none;z-index:-99999';
+  if (styleEl) { const s = document.createElement('style'); s.textContent = styleEl.textContent; container.appendChild(s); }
+  const wrapped = document.createElement('div');
+  wrapped.style.cssText = 'width:794px;box-sizing:border-box;background:#fff';
+  const inner = document.createElement('div');
+  inner.style.cssText = 'padding:38px 45px;box-sizing:border-box;width:100%';
+  inner.innerHTML = bodyHTML;
+  wrapped.appendChild(inner); container.appendChild(wrapped); document.body.appendChild(container);
+  await new Promise(r => setTimeout(r, 500));
+  const opt = {
+    margin: 0, image: { type:'jpeg', quality:0.95 },
+    html2canvas: { scale:2, useCORS:true, logging:false, backgroundColor:'#ffffff', scrollX:0, scrollY:0, x:0, y:0, windowWidth:794, windowHeight: wrapped.scrollHeight },
+    jsPDF: { unit:'px', format:[794,1123], orientation:'portrait', compress:true, hotfixes:['px_scaling'] },
+    pagebreak: { mode:['css','legacy'] },
+  };
+  try {
+    return await html2pdf().set(opt).from(wrapped).output('blob');
+  } finally {
+    if (container.parentNode) document.body.removeChild(container);
+  }
+}
+
 // 숫자를 한글 금액으로 변환 (예: 2860000 → 이백팔십육만원)
 function numberToHangul(num) {
   if (!num) return '영원';
@@ -4255,6 +4621,39 @@ async function fetchQuoteHistory() {
     console.log('Loaded quote history:', quoteHistory.length);
   } catch (e) {
     console.warn('Quote history not available yet:', e.message);
+  }
+}
+
+async function fetchContractHistory() {
+  if (!apiUrl) return;
+  try {
+    const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(CONTRACT_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    contractHistory = data.map(r => ({
+      id: String(r.id),
+      order_id: String(r.order_id || ''),
+      contract_number: r.contract_number || '',
+      date: normalizeDate(r.date),
+      client_name: r.client_name || '',
+      client_rep: r.client_rep || '',
+      client_bizno: r.client_bizno || '',
+      client_addr: r.client_addr || '',
+      subject: r.subject || '',
+      total: Number(r.total) || 0,
+      url: r.url || '',
+      items_json: r.items_json || '',
+      created_at: r.created_at || '',
+    }));
+    // 갑 정보 캐시도 최신화 (다른 PC에서 만든 계약서 정보 반영)
+    contractHistory.forEach(c => {
+      if (c.client_name && c.client_bizno) {
+        saveContractClient(c.client_name, { rep: c.client_rep, bizNo: c.client_bizno, addr: c.client_addr });
+      }
+    });
+    console.log('Loaded contract history:', contractHistory.length);
+  } catch (e) {
+    console.warn('Contract history not available yet:', e.message);
   }
 }
 
@@ -5754,6 +6153,7 @@ async function _saveSettings() {
     } catch (oe) {
       console.warn('광고수주 시트 로딩 실패:', oe);
     }
+    try { await fetchContractHistory(); } catch (ce) { console.warn('계약서이력 로딩 실패:', ce); }
     try {
       await fetchQuoteHistory();
     } catch (qe) {
