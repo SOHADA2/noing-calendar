@@ -2270,7 +2270,7 @@
     <div class="form-group"><label>수행기간 시작일</label><input type="text" id="cStartDate" placeholder="예) 2026년 05월 21일 (비우면 계약일자 기준)" /></div>
 
     <div class="form-group">
-      <label>작업내역 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 구분 / 상세금액 / 채널·비고</span></label>
+      <label>작업내역 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 채널 / 상세내역 / 금액 (발행 100만·제작 50만 표준단가 자동, 수정 가능)</span></label>
       <div id="cItemsList" style="display:flex;flex-direction:column;gap:6px"></div>
       <button type="button" class="btn" onclick="addContractItem()" style="margin-top:8px;font-size:11px;padding:5px 10px">+ 항목 추가</button>
     </div>
@@ -2279,8 +2279,10 @@
       <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-weight:700;color:var(--accent)"><span>최종 금액 (VAT 별도)</span><span id="cTotal" style="font-variant-numeric:tabular-nums">0원</span></div>
     </div>
 
+    <datalist id="dlContractChannels"><option value="life"><option value="guide"><option value="mag"></datalist>
     <div class="modal-actions">
       <button class="btn" onclick="closeContractModal()">취소</button>
+      <button class="btn" onclick="saveContractDraft()" title="작성 중인 내용을 임시저장 (다른 작업 후 복원 가능)" style="margin-right:auto">🗂 임시저장</button>
       <button class="btn" onclick="exportContractWord()" title="편집 가능한 Word 파일로 다운로드 (상대방 전달용)">📝 Word 다운로드</button>
       <button class="btn btn-primary" id="saveContractBtn" onclick="saveContractToDrive()" title="자동으로 PDF 생성 → 드라이브 저장 → 이력 기록">💾 PDF 저장</button>
     </div>
@@ -2580,7 +2582,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.8.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.9.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4266,7 +4268,11 @@ function recalcQuoteTotals() {
 // 이력은 localStorage에 저장 (Apps Script 시트 폴백 위험 회피 — 시트 세팅 불필요)
 const CONTRACT_HISTORY_KEY = 'cc-contract-history';
 const CONTRACT_CLIENTS_KEY = 'cc-contract-clients';  // 회사별 갑 정보 캐시
-let contractItems = [];   // [{category, price, detail}]
+const CONTRACT_DRAFT_KEY = 'cc-contract-draft';      // 임시저장
+// 표준 단가 (VAT 별도) — 수정 시 여기 값 변경
+const CONTRACT_RATES = { 발행: 1000000, 제작: 500000 };
+let contractItems = [];   // [{channel, detail, price}]
+let contractBaseTitle = '';  // 작업내역서 '구분'에 쓰는 원본 제목
 let contractHistory = (() => {
   try { return JSON.parse(localStorage.getItem(CONTRACT_HISTORY_KEY) || '[]'); } catch { return []; }
 })();
@@ -4325,27 +4331,34 @@ function generateContract() {
   }
   document.getElementById('cClientBizCertUrl').value = cert || '';
 
-  // 작업내역: 채널별 or 단건
+  // 원본 제목 (채널 접미사 제거) — 작업내역서 구분에 사용
+  contractBaseTitle = (o.title || '').replace(/\s*\((?:life|guide|mag)(?:\s*,\s*(?:life|guide|mag))*\)\s*$/i, '').trim();
+
+  // 작업내역: 표준 단가 기반 (무지성 나눗셈 X)
   const channels = String(o.channels || '').split(/[,\s]+/).filter(Boolean);
-  const amount = Number(o.amount) || 0;
-  const typeLabel = o.ad_type && o.ad_type.includes('제작') ? '콘텐츠 제작 발행' : '콘텐츠 단순 발행';
+  const isJejak = (o.ad_type || '').includes('제작');
+  contractItems = [];
   if (channels.length > 0) {
-    const per = Math.round(amount / channels.length);
-    contractItems = channels.map(ch => ({
-      category: `'${o.title || ''} (${ch})' 인스타그램 채널 발행`,
-      price: per,
-      detail: `${typeLabel} : ${fmtMoney(per)}원 (VAT별도) · @${CHANNEL_FULLNAME[ch.toLowerCase()] || ch}`,
-    }));
+    // 채널별 발행 라인 (채널당 표준 발행비)
+    channels.forEach(ch => {
+      contractItems.push({ channel: ch, detail: isJejak ? '콘텐츠 발행' : '콘텐츠 단순 발행', price: CONTRACT_RATES.발행 });
+    });
+    // 제작발행이면 제작 라인 별도 추가
+    if (isJejak) {
+      contractItems.push({ channel: '', detail: '콘텐츠 제작 (카드뉴스/릴스)', price: CONTRACT_RATES.제작 });
+    }
   } else {
-    contractItems = [{
-      category: `'${o.title || ''}' 인스타그램 채널 발행`,
-      price: amount,
-      detail: `${typeLabel} : ${fmtMoney(amount)}원 (VAT별도)`,
-    }];
+    contractItems = [{ channel: '', detail: isJejak ? '콘텐츠 제작 발행' : '콘텐츠 단순 발행', price: Number(o.amount) || CONTRACT_RATES.발행 }];
   }
   renderContractItems();
   closeOrderModal();
   document.getElementById('contractModalOverlay').classList.add('open');
+
+  // 이 수주로 임시저장된 계약서가 있으면 복원 제안
+  const draft = loadContractDraft();
+  if (draft && String(draft.orderId) === String(o.id)) {
+    if (confirm('이 수주로 임시저장된 계약서가 있습니다. 불러올까요?')) restoreContractDraft(draft);
+  }
 }
 
 function closeContractModal() {
@@ -4355,31 +4368,43 @@ function closeContractModal() {
 function renderContractItems() {
   const list = document.getElementById('cItemsList');
   if (!list) return;
+  // 순서: 채널 / 상세내역 / 금액
   list.innerHTML = contractItems.map((item, idx) => `
-    <div style="display:grid;grid-template-columns:1fr 120px 1fr 24px;gap:6px;align-items:center">
-      <input type="text" value="${escapeHtml(item.category)}" placeholder="구분" onchange="updateContractItem(${idx},'category',this.value)" style="padding:6px 8px;font-size:12px" />
+    <div style="display:grid;grid-template-columns:110px 1fr 130px 24px;gap:6px;align-items:center">
+      <input type="text" value="${escapeHtml(item.channel||'')}" placeholder="채널" list="dlContractChannels" onchange="updateContractItem(${idx},'channel',this.value)" style="padding:6px 8px;font-size:12px" />
+      <input type="text" value="${escapeHtml(item.detail||'')}" placeholder="상세내역 (예: 콘텐츠 발행, 카드뉴스 제작)" onchange="updateContractItem(${idx},'detail',this.value)" style="padding:6px 8px;font-size:12px" />
       <input type="text" value="${item.price ? Number(item.price).toLocaleString('ko-KR') : ''}" placeholder="금액" oninput="updateContractItem(${idx},'price',parseMoney(this.value)); this.value=this.value.replace(/[^0-9]/g,'').replace(/\\B(?=(\\d{3})+(?!\\d))/g,',')" style="padding:6px 8px;font-size:12px;text-align:right" />
-      <input type="text" value="${escapeHtml(item.detail)}" placeholder="상세/채널" onchange="updateContractItem(${idx},'detail',this.value)" style="padding:6px 8px;font-size:12px" />
       <button type="button" onclick="removeContractItem(${idx})" style="padding:4px;background:transparent;border:1px solid var(--border-2);border-radius:4px;color:var(--text-4);cursor:pointer">✕</button>
     </div>`).join('');
   recalcContractTotal();
 }
 function updateContractItem(idx, field, value) { if (contractItems[idx]) { contractItems[idx][field] = value; recalcContractTotal(); } }
 function removeContractItem(idx) { contractItems.splice(idx,1); renderContractItems(); }
-function addContractItem() { contractItems.push({ category:'', price:0, detail:'' }); renderContractItems(); }
+function addContractItem() { contractItems.push({ channel:'', detail:'', price:0 }); renderContractItems(); }
 function recalcContractTotal() {
   const total = contractItems.reduce((s,i) => s + (Number(i.price)||0), 0);
   document.getElementById('cTotal').textContent = fmtMoney(total) + '원';
 }
 
+// 작업내역서 한 줄 구성 (channel/detail/price → 구분/상세금액/상세)
+function contractItemCells(it, baseTitle) {
+  const ch = String(it.channel || '').trim();
+  const gubun = ch ? `‘${baseTitle} (${ch})’ 인스타그램 채널 발행` : `‘${baseTitle}’ ${it.detail || ''}`.trim();
+  const amt = `${it.detail || ''} : ${fmtMoney(it.price)}원 (VAT별도)`;
+  const sangse = ch ? `진행 협의한 채널에 배포 @${CHANNEL_FULLNAME[ch.toLowerCase()] || ch}` : '';
+  return { gubun, amt, sangse };
+}
 function buildContractHTML(d) {
   const C = QUOTE_COMPANY;
-  const itemsRows = d.items.map(it => `
+  const itemsRows = d.items.map(it => {
+    const c = contractItemCells(it, d.baseTitle);
+    return `
     <tr>
-      <td style="width:42%">${escapeHtml(it.category)}</td>
-      <td style="width:28%;text-align:right">${fmtMoney(it.price)}원 (VAT별도)</td>
-      <td style="width:30%">${escapeHtml(it.detail || '')}</td>
-    </tr>`).join('');
+      <td style="width:42%">${escapeHtml(c.gubun)}</td>
+      <td style="width:28%;text-align:right">${escapeHtml(c.amt)}</td>
+      <td style="width:30%">${escapeHtml(c.sangse)}</td>
+    </tr>`;
+  }).join('');
   const clauses = [
     ['제 1조 (목적)', `'갑'이 '을'에게 의뢰한 대행 콘텐츠 제작 및 배포를 효과적으로 진행하기 위한 범위와 규정을 목적으로 한다.`],
     ['제 2조 (업무의 범위 및 내용)', `'을'은 '갑'의 요청에 따라 '갑'의 별첨 - 작업내역서와 같이 용역 업무를 수행한다.`],
@@ -4499,8 +4524,37 @@ function collectContractData() {
     subject: document.getElementById('cSubject').value.trim(),
     clientName, clientRep, clientBizNo, clientAddr,
     clientBizCertUrl: document.getElementById('cClientBizCertUrl').value.trim(),
+    baseTitle: contractBaseTitle,
     items: contractItems, total,
   };
+}
+
+// ── 계약서 임시저장 ──
+function saveContractDraft() {
+  const d = collectContractData();
+  const draft = { ...d, orderId: editingOrderId, savedAt: new Date().toISOString() };
+  localStorage.setItem(CONTRACT_DRAFT_KEY, JSON.stringify(draft));
+  showToast('💾 임시저장됨 — 다른 작업 후 다시 열면 복원할 수 있어요');
+}
+function loadContractDraft() {
+  try { return JSON.parse(localStorage.getItem(CONTRACT_DRAFT_KEY) || 'null'); } catch { return null; }
+}
+function restoreContractDraft(draft) {
+  if (!draft) draft = loadContractDraft();
+  if (!draft) { showToast('임시저장된 계약서가 없습니다.'); return; }
+  document.getElementById('cNumber').value = draft.cNumber || '';
+  document.getElementById('cDate').value = draft.cDate || '';
+  document.getElementById('cSubject').value = draft.subject || '';
+  document.getElementById('cClientName').value = draft.clientName || '';
+  document.getElementById('cClientRep').value = draft.clientRep || '';
+  document.getElementById('cClientBizNo').value = draft.clientBizNo || '';
+  document.getElementById('cClientAddr').value = draft.clientAddr || '';
+  document.getElementById('cClientBizCertUrl').value = draft.clientBizCertUrl || '';
+  document.getElementById('cStartDate').value = (draft.startDate && !/^\d{4}년/.test(draft.startDate)) ? draft.startDate : (draft.startDate || '');
+  contractBaseTitle = draft.baseTitle || '';
+  contractItems = Array.isArray(draft.items) ? draft.items.map(i => ({ channel: i.channel||'', detail: i.detail||'', price: Number(i.price)||0 })) : [];
+  renderContractItems();
+  showToast('✓ 임시저장본 복원됨');
 }
 
 function printContract() {
@@ -4610,11 +4664,11 @@ function buildContractDocx(X, d) {
   const itemRows = [
     new TableRow({ children: [cell('용역 업무 비용 안내',{w:CONTENT_W,span:3,shade:1,bold:true,align:AlignmentType.CENTER,size:20})] }),
     new TableRow({ children: [cell('구분',{w:CW3[0],shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세 금액',{w:CW3[1],shade:1,bold:true,align:AlignmentType.CENTER}), cell('상세',{w:CW3[2],shade:1,bold:true,align:AlignmentType.CENTER})] }),
-    ...d.items.map(it => new TableRow({ children: [
-      cell(it.category,{w:CW3[0],size:18}),
-      cell(`${fmtMoney(it.price)}원 (VAT별도)`,{w:CW3[1],size:18,align:AlignmentType.RIGHT}),
-      cell(it.detail||'',{w:CW3[2],size:18}),
-    ]})),
+    ...d.items.map(it => { const c = contractItemCells(it, d.baseTitle); return new TableRow({ children: [
+      cell(c.gubun,{w:CW3[0],size:18}),
+      cell(c.amt,{w:CW3[1],size:18,align:AlignmentType.RIGHT}),
+      cell(c.sangse,{w:CW3[2],size:18}),
+    ]}); }),
     new TableRow({ children: [cell(`최종 금액 : ${fmtMoney(d.total)}원 (VAT별도)`,{w:CONTENT_W,span:3,bold:true,align:AlignmentType.CENTER,shade:1})] }),
   ];
   const itemsTable = new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths: CW3, layout: TableLayoutType.FIXED, borders: tableBorders, rows: itemRows });
@@ -4744,6 +4798,7 @@ async function _saveContractToDrive() {
     };
     contractHistory.push(record);
     saveContractHistory();  // localStorage 저장 (시트 미사용)
+    localStorage.removeItem(CONTRACT_DRAFT_KEY);  // 저장 완료 → 임시저장 제거
 
     upd('✓ 완료');
     setTimeout(() => {
