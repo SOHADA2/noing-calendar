@@ -2270,9 +2270,15 @@
     <div class="form-group"><label>수행기간 시작일</label><input type="text" id="cStartDate" placeholder="예) 2026년 05월 21일 (비우면 계약일자 기준)" /></div>
 
     <div class="form-group">
-      <label>작업내역 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 채널 / 상세내역 / 금액 (발행 100만·제작 50만 표준단가 자동, 수정 가능)</span></label>
+      <label>작업내역 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 채널 / 상세내역 / 금액 (life 100만·guide·mag 80만·제작 50만 표준단가 자동, 수정 가능)</span></label>
       <div id="cItemsList" style="display:flex;flex-direction:column;gap:6px"></div>
-      <button type="button" class="btn" onclick="addContractItem()" style="margin-top:8px;font-size:11px;padding:5px 10px">+ 항목 추가</button>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <button type="button" class="btn" onclick="addContractItem()" style="font-size:11px;padding:5px 10px">+ 항목 추가</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400">
+          <input type="checkbox" id="cVisitShoot" onchange="toggleVisitShoot()" style="width:15px;height:15px;cursor:pointer" />
+          방문촬영 포함 <span style="color:var(--text-4)">(+30만원 VAT별도)</span>
+        </label>
+      </div>
     </div>
 
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:10px">
@@ -2582,7 +2588,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.9.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.9.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4270,7 +4276,14 @@ const CONTRACT_HISTORY_KEY = 'cc-contract-history';
 const CONTRACT_CLIENTS_KEY = 'cc-contract-clients';  // 회사별 갑 정보 캐시
 const CONTRACT_DRAFT_KEY = 'cc-contract-draft';      // 임시저장
 // 표준 단가 (VAT 별도) — 수정 시 여기 값 변경
-const CONTRACT_RATES = { 발행: 1000000, 제작: 500000 };
+const CONTRACT_RATES = {
+  발행: { life: 1000000, guide: 800000, mag: 800000 },  // 채널별 발행비
+  제작: 500000,        // 카드뉴스/릴스 제작
+  방문촬영: 300000,    // 방문촬영 추가 시
+};
+function channelPubRate(ch) {
+  return CONTRACT_RATES.발행[String(ch).toLowerCase()] || CONTRACT_RATES.발행.life;
+}
 let contractItems = [];   // [{channel, detail, price}]
 let contractBaseTitle = '';  // 작업내역서 '구분'에 쓰는 원본 제목
 let contractHistory = (() => {
@@ -4339,17 +4352,18 @@ function generateContract() {
   const isJejak = (o.ad_type || '').includes('제작');
   contractItems = [];
   if (channels.length > 0) {
-    // 채널별 발행 라인 (채널당 표준 발행비)
+    // 채널별 발행 라인 (채널별 표준 발행비: life 100만, guide·mag 80만)
     channels.forEach(ch => {
-      contractItems.push({ channel: ch, detail: isJejak ? '콘텐츠 발행' : '콘텐츠 단순 발행', price: CONTRACT_RATES.발행 });
+      contractItems.push({ channel: ch, detail: isJejak ? '콘텐츠 발행' : '콘텐츠 단순 발행', price: channelPubRate(ch) });
     });
     // 제작발행이면 제작 라인 별도 추가
     if (isJejak) {
       contractItems.push({ channel: '', detail: '콘텐츠 제작 (카드뉴스/릴스)', price: CONTRACT_RATES.제작 });
     }
   } else {
-    contractItems = [{ channel: '', detail: isJejak ? '콘텐츠 제작 발행' : '콘텐츠 단순 발행', price: Number(o.amount) || CONTRACT_RATES.발행 }];
+    contractItems = [{ channel: '', detail: isJejak ? '콘텐츠 제작 발행' : '콘텐츠 단순 발행', price: Number(o.amount) || CONTRACT_RATES.발행.life }];
   }
+  document.getElementById('cVisitShoot').checked = false;
   renderContractItems();
   closeOrderModal();
   document.getElementById('contractModalOverlay').classList.add('open');
@@ -4381,6 +4395,17 @@ function renderContractItems() {
 function updateContractItem(idx, field, value) { if (contractItems[idx]) { contractItems[idx][field] = value; recalcContractTotal(); } }
 function removeContractItem(idx) { contractItems.splice(idx,1); renderContractItems(); }
 function addContractItem() { contractItems.push({ channel:'', detail:'', price:0 }); renderContractItems(); }
+// 방문촬영 라인 추가/제거
+function toggleVisitShoot() {
+  const on = document.getElementById('cVisitShoot').checked;
+  const idx = contractItems.findIndex(i => i.detail === '방문 촬영');
+  if (on && idx === -1) {
+    contractItems.push({ channel:'', detail:'방문 촬영', price: CONTRACT_RATES.방문촬영 });
+  } else if (!on && idx !== -1) {
+    contractItems.splice(idx, 1);
+  }
+  renderContractItems();
+}
 function recalcContractTotal() {
   const total = contractItems.reduce((s,i) => s + (Number(i.price)||0), 0);
   document.getElementById('cTotal').textContent = fmtMoney(total) + '원';
@@ -4553,6 +4578,8 @@ function restoreContractDraft(draft) {
   document.getElementById('cStartDate').value = (draft.startDate && !/^\d{4}년/.test(draft.startDate)) ? draft.startDate : (draft.startDate || '');
   contractBaseTitle = draft.baseTitle || '';
   contractItems = Array.isArray(draft.items) ? draft.items.map(i => ({ channel: i.channel||'', detail: i.detail||'', price: Number(i.price)||0 })) : [];
+  const vs = document.getElementById('cVisitShoot');
+  if (vs) vs.checked = contractItems.some(i => i.detail === '방문 촬영');
   renderContractItems();
   showToast('✓ 임시저장본 복원됨');
 }
