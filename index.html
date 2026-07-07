@@ -2588,7 +2588,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.9.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.9.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4472,7 +4472,7 @@ function buildContractHTML(d) {
     table.parties { width:100%; border-collapse:collapse; margin-bottom:14px; page-break-inside: avoid; break-inside: avoid; }
     table.items tr { page-break-inside: avoid; break-inside: avoid; }
     table.parties td { border:1px solid #000; padding:6px 8px; font-size:8pt; vertical-align:middle; }
-    table.parties td.lbl { background:#f4f4f4; font-weight:600; width:14%; white-space:nowrap; }
+    table.parties td.lbl { width:14%; white-space:nowrap; color:#000; }
     table.parties td.val { width:36%; position:relative; }
     .seal { position:absolute; right:8px; top:50%; transform:translateY(-50%); width:40px; opacity:.95; }
     .annex-title { font-weight:700; font-size:10pt; margin:8px 0 8px; }
@@ -4486,33 +4486,33 @@ function buildContractHTML(d) {
   </style></head><body>
     <div class="doc-title">용  역  계  약  서</div>
     <div class="overview">
-      <div><b>계약건명</b> : ${escapeHtml(d.subject)}</div>
-      <div><b>계약기간</b> : ${escapeHtml(d.startDate)}부터 콘텐츠 배포일까지 (작업완료)</div>
-      <div><b>계약금액</b> : 별첨 작업내역서 참고</div>
-      <div><b>결제방법</b> : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불</div>
+      <div>계약건명 : ${escapeHtml(d.subject)}</div>
+      <div>계약기간 : ${escapeHtml(d.startDate)}부터 콘텐츠 배포일까지 (작업완료)</div>
+      <div>계약금액 : 별첨 작업내역서 참고</div>
+      <div>결제방법 : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불</div>
     </div>
+    <table class="parties keep">
+      <tr>
+        <td class="lbl">상호 (갑):</td><td class="val">${escapeHtml(d.clientName)}</td>
+        <td class="lbl">상호 (을):</td><td class="val">${escapeHtml(C.name)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">사업자등록번호:</td><td class="val">${escapeHtml(d.clientBizNo)}</td>
+        <td class="lbl">사업자등록번호:</td><td class="val">${escapeHtml(C.bizNo)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">주소:</td><td class="val">${escapeHtml(d.clientAddr)}</td>
+        <td class="lbl">주소:</td><td class="val">${escapeHtml(C.addr)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">대표이사:</td><td class="val">${escapeHtml(d.clientRep)} (인)</td>
+        <td class="lbl">대표이사:</td><td class="val">${escapeHtml(C.rep)} <img class="seal" src="${SEAL_BASE64}" alt=""/></td>
+      </tr>
+    </table>
     <div class="intro">${escapeHtml(d.clientName)}(이하 '갑')와 ${escapeHtml(C.name)}(이하 '을')는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.</div>
     ${clausesHTML}
     <div class="clause-b keep" style="margin-top:8px">본 계약을 증명하기 위하여 계약서 2부를 작성하여 '갑'과 '을'이 서명 날인하여 각각 1부씩 보관한다.</div>
     <div class="sign-date">${escapeHtml(d.dateKo)}</div>
-    <table class="parties keep">
-      <tr>
-        <td class="lbl">상호 (갑)</td><td class="val">${escapeHtml(d.clientName)}</td>
-        <td class="lbl">상호 (을)</td><td class="val">${escapeHtml(C.name)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">사업자등록번호</td><td class="val">${escapeHtml(d.clientBizNo)}</td>
-        <td class="lbl">사업자등록번호</td><td class="val">${escapeHtml(C.bizNo)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">주소</td><td class="val">${escapeHtml(d.clientAddr)}</td>
-        <td class="lbl">주소</td><td class="val">${escapeHtml(C.addr)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">대표이사</td><td class="val">${escapeHtml(d.clientRep)} (인)</td>
-        <td class="lbl">대표이사</td><td class="val">${escapeHtml(C.rep)} <img class="seal" src="${SEAL_BASE64}" alt=""/></td>
-      </tr>
-    </table>
     <div class="page-break"></div>
     <div class="annex-title keep">[별첨 - 작업내역서] <span style="font-size:9pt;font-weight:400">(단위: 원)</span></div>
     <table class="items">
@@ -4685,10 +4685,10 @@ function buildContractDocx(X, d) {
   const partiesTable = new Table({
     width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: CW4, layout: TableLayoutType.FIXED, borders: tableBorders,
     rows: [
-      new TableRow({ children: [pc('상호 (갑)',{w:CW4[0],shade:1,bold:true}), pc(d.clientName,{w:CW4[1]}), pc('상호 (을)',{w:CW4[2],shade:1,bold:true}), pc(C.name,{w:CW4[3]})] }),
-      new TableRow({ children: [pc('사업자등록번호',{w:CW4[0],shade:1,bold:true}), pc(d.clientBizNo,{w:CW4[1]}), pc('사업자등록번호',{w:CW4[2],shade:1,bold:true}), pc(C.bizNo,{w:CW4[3]})] }),
-      new TableRow({ children: [pc('주소',{w:CW4[0],shade:1,bold:true}), pc(d.clientAddr,{w:CW4[1]}), pc('주소',{w:CW4[2],shade:1,bold:true}), pc(C.addr,{w:CW4[3]})] }),
-      new TableRow({ children: [pc('대표이사',{w:CW4[0],shade:1,bold:true}), pc(`${d.clientRep} (인)`,{w:CW4[1]}), pc('대표이사',{w:CW4[2],shade:1,bold:true}), new TableCell({ width:{size:CW4[3],type:WidthType.DXA}, margins:{top:60,bottom:60,left:80,right:80}, children:[repEulPara] })] }),
+      new TableRow({ children: [pc('상호 (갑):',{w:CW4[0]}), pc(d.clientName,{w:CW4[1]}), pc('상호 (을):',{w:CW4[2]}), pc(C.name,{w:CW4[3]})] }),
+      new TableRow({ children: [pc('사업자등록번호:',{w:CW4[0]}), pc(d.clientBizNo,{w:CW4[1]}), pc('사업자등록번호:',{w:CW4[2]}), pc(C.bizNo,{w:CW4[3]})] }),
+      new TableRow({ children: [pc('주소:',{w:CW4[0]}), pc(d.clientAddr,{w:CW4[1]}), pc('주소:',{w:CW4[2]}), pc(C.addr,{w:CW4[3]})] }),
+      new TableRow({ children: [pc('대표이사:',{w:CW4[0]}), pc(`${d.clientRep} (인)`,{w:CW4[1]}), pc('대표이사:',{w:CW4[2]}), new TableCell({ width:{size:CW4[3],type:WidthType.DXA}, margins:{top:60,bottom:60,left:80,right:80}, children:[repEulPara] })] }),
     ],
   });
 
@@ -4723,11 +4723,12 @@ function buildContractDocx(X, d) {
   const children = [
     para(run('용  역  계  약  서', { bold: true, size: 28 }), { align: AlignmentType.CENTER, after: 160, border: { top: bd, bottom: bd, left: bd, right: bd } }),
     overviewTable,
-    para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 18 }), { before: 140, after: 120 }),
+    para(run('', { size: 8 }), { after: 60 }),  // 개요-당사자 표 간격
+    partiesTable,
+    para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 18 }), { before: 160, after: 120 }),
     ...clauseParas,
     para(run("본 계약을 증명하기 위하여 계약서 2부를 작성하여 ‘갑’과 ‘을’이 서명 날인하여 각각 1부씩 보관한다.", { size: 18 }), { before: 80, after: 140 }),
-    para(run(d.dateKo, { bold: true, size: 20 }), { align: AlignmentType.CENTER, after: 180 }),
-    partiesTable,
+    para(run(d.dateKo, { bold: true, size: 20 }), { align: AlignmentType.CENTER, after: 120 }),
     para(run('[별첨 - 작업내역서]  (단위: 원)', { bold: true, size: 20 }), { pageBreakBefore: true, after: 100 }),
     itemsTable,
     para(run('· 상기 포스팅 수의 기준은 광고주의 최종 컨펌이 이루어져 포스팅이 된 것에 한정한다.', { size: 16 }), { before: 100, after: 20 }),
