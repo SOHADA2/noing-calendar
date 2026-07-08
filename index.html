@@ -630,6 +630,9 @@
       font-family: inherit;
     }
     .today-btn:hover { background: var(--bg-3); color: var(--text); }
+    .deadline-toggle { display: inline-flex; align-items: center; gap: 4px; }
+    .deadline-toggle.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .deadline-toggle.active:hover { filter: brightness(1.08); color: #fff; }
 
     .nav-right { display: flex; align-items: center; gap: 10px; position: relative; }
 
@@ -871,6 +874,23 @@
     }
 
     .chip:hover { filter: brightness(1.15); }
+
+    /* 데드라인(콘티/촬영/초안) 칩 — 게시 칩보다 흐리고 작게 (게시 우선) */
+    .chip.deadline-chip {
+      flex-direction: row;
+      align-items: center;
+      gap: 3px;
+      font-size: 9.5px;
+      padding: 2px 5px;
+      background: transparent;
+      border-left: 2px dashed var(--border-2);
+      color: var(--text-4);
+      opacity: .9;
+    }
+    .chip.deadline-chip:hover { opacity: 1; background: var(--bg-3); }
+    .deadline-chip .dl-icon { font-size: 8.5px; flex-shrink: 0; }
+    .deadline-chip .dl-label { font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+    .deadline-chip .dl-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-4); }
 
     .chip.s-draft { border-left-color: var(--st-draft); background: rgba(212,160,78,.16); }
     .chip.s-ready { border-left-color: var(--st-ready); background: rgba(110,138,166,.18); }
@@ -1873,6 +1893,7 @@
           <div class="cal-title" id="calTitle"></div>
           <button class="nav-btn" onclick="changeMonth(1)">›</button>
           <button class="today-btn" onclick="goToday()">오늘</button>
+          <button class="today-btn deadline-toggle active" id="deadlineToggle" onclick="toggleDeadlines()" title="콘티·촬영·초안 마감일 표시 켜기/끄기">📋 데드라인</button>
         </div>
         <div class="nav-right">
           <button class="alert-pill" id="alertPill" onclick="toggleAlertPopover(event)">
@@ -2588,7 +2609,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.9.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.10.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2641,6 +2662,15 @@ let currentView = localStorage.getItem(VIEW_KEY) || 'calendar';
 const CAL_MODE_KEY = 'cc-cal-mode';
 // 모바일(≤640)에선 기본 list, 데스크톱에선 기본 grid
 let calMode = localStorage.getItem(CAL_MODE_KEY) || (window.innerWidth <= 640 ? 'list' : 'grid');
+// 데드라인(콘티/촬영/초안) 표시 여부 (기본 ON)
+let showDeadlines = localStorage.getItem('cc-show-deadlines') !== '0';
+function toggleDeadlines() {
+  showDeadlines = !showDeadlines;
+  localStorage.setItem('cc-show-deadlines', showDeadlines ? '1' : '0');
+  const btn = document.getElementById('deadlineToggle');
+  if (btn) btn.classList.toggle('active', showDeadlines);
+  render();
+}
 function setCalMode(mode) {
   calMode = mode;
   localStorage.setItem(CAL_MODE_KEY, mode);
@@ -3073,6 +3103,8 @@ async function init() {
   }
   // 초기 달력 모드 적용 (UI 버튼 + 표시 토글)
   document.querySelectorAll('.cal-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === calMode));
+  const dlBtn = document.getElementById('deadlineToggle');
+  if (dlBtn) dlBtn.classList.toggle('active', showDeadlines);
   const gridView = document.getElementById('calendarGridView');
   const listView = document.getElementById('calendarListView');
   if (gridView && listView) {
@@ -5992,6 +6024,31 @@ function render() {
       chip.onclick = () => (c.status === '발행완료') ? openContentView(c.id) : openModal(c.date, c.id);
       container.appendChild(chip);
     });
+
+  // ── 데드라인(콘티/촬영/초안) 표시 — 게시 칩 아래에 흐리게 (게시일정 우선) ──
+  if (showDeadlines) {
+    const DL = [
+      { key: 'due_storyboard', label: '콘티', icon: '📋' },
+      { key: 'due_shoot',      label: '촬영', icon: '📸' },
+      { key: 'due_draft',      label: '초안', icon: '✏️' },
+    ];
+    contents.filter(passesFilter).forEach(c => {
+      DL.forEach(dl => {
+        const v = c[dl.key];
+        if (!v) return;
+        const dStr = String(v).slice(0, 10);  // YYYY-MM-DD
+        const container = document.getElementById(`chips-${dStr}`);
+        if (!container) return;
+        const chip = document.createElement('div');
+        chip.className = 'chip deadline-chip';
+        const timePart = String(v).slice(11, 16);
+        chip.title = `⏰ ${dl.label} 마감${timePart ? ' ' + timePart : ''}\n${c.company ? c.company + ' · ' : ''}${c.title} (${c.channel})`;
+        chip.innerHTML = `<span class="dl-icon">${dl.icon}</span><span class="dl-label">${dl.label}</span><span class="dl-title">${escapeHtml(c.title)}</span>`;
+        chip.onclick = (e) => { e.stopPropagation(); openModal(c.date, c.id); };
+        container.appendChild(chip);
+      });
+    });
+  }
 
   renderSidebar();
 }
