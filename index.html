@@ -2609,7 +2609,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.10.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.10.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6028,9 +6028,9 @@ function render() {
   // ── 데드라인(콘티/촬영/초안) 표시 — 게시 칩 아래에 흐리게 (게시일정 우선) ──
   if (showDeadlines) {
     const DL = [
-      { key: 'due_storyboard', label: '콘티', icon: '📋' },
-      { key: 'due_shoot',      label: '촬영', icon: '📸' },
-      { key: 'due_draft',      label: '초안', icon: '✏️' },
+      { key: 'due_storyboard', label: '콘티' },
+      { key: 'due_shoot',      label: '촬영' },
+      { key: 'due_draft',      label: '초안' },
     ];
     contents.filter(passesFilter).forEach(c => {
       DL.forEach(dl => {
@@ -6042,8 +6042,8 @@ function render() {
         const chip = document.createElement('div');
         chip.className = 'chip deadline-chip';
         const timePart = String(v).slice(11, 16);
-        chip.title = `⏰ ${dl.label} 마감${timePart ? ' ' + timePart : ''}\n${c.company ? c.company + ' · ' : ''}${c.title} (${c.channel})`;
-        chip.innerHTML = `<span class="dl-icon">${dl.icon}</span><span class="dl-label">${dl.label}</span><span class="dl-title">${escapeHtml(c.title)}</span>`;
+        chip.title = `${dl.label} 마감${timePart ? ' ' + timePart : ''}\n${c.company ? c.company + ' · ' : ''}${c.title} (${c.channel})`;
+        chip.innerHTML = `<span class="dl-label">${dl.label}</span><span class="dl-title">${escapeHtml(c.title)}</span>`;
         chip.onclick = (e) => { e.stopPropagation(); openModal(c.date, c.id); };
         container.appendChild(chip);
       });
