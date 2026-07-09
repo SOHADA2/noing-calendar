@@ -889,6 +889,7 @@
     }
     .chip.deadline-chip:hover { opacity: 1; background: var(--bg-3); }
     .deadline-chip .dl-icon { font-size: 8.5px; flex-shrink: 0; }
+    .deadline-chip .dl-time { font-variant-numeric: tabular-nums; color: var(--text-3); flex-shrink: 0; }
     .deadline-chip .dl-label { font-weight: 700; color: var(--text-3); flex-shrink: 0; }
     .deadline-chip .dl-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-4); }
 
@@ -2609,7 +2610,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.10.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.10.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6041,9 +6042,10 @@ function render() {
         if (!container) return;
         const chip = document.createElement('div');
         chip.className = 'chip deadline-chip';
-        const timePart = String(v).slice(11, 16);
-        chip.title = `${dl.label} 마감${timePart ? ' ' + timePart : ''}\n${c.company ? c.company + ' · ' : ''}${c.title} (${c.channel})`;
-        chip.innerHTML = `<span class="dl-label">${dl.label}</span><span class="dl-title">${escapeHtml(c.title)}</span>`;
+        const timePart = String(v).slice(11, 16);  // 'HH:mm' (없으면 '' or '00:00')
+        const timeStr = (timePart && timePart !== '00:00') ? timePart : '';
+        chip.title = `${dl.label} 마감${timeStr ? ' ' + timeStr : ''}\n${c.company ? c.company + ' · ' : ''}${c.title} (${c.channel})`;
+        chip.innerHTML = `${timeStr ? `<span class="dl-time">${timeStr}</span>` : ''}<span class="dl-label">${dl.label}</span><span class="dl-title">${escapeHtml(c.title)}</span>`;
         chip.onclick = (e) => { e.stopPropagation(); openModal(c.date, c.id); };
         container.appendChild(chip);
       });
