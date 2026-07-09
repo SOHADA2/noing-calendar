@@ -2610,7 +2610,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.10.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.10.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2789,8 +2789,10 @@ async function fetchFromSheet() {
 
 function normalizeDateTime(v) {
   if (!v) return '';
-  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) return v.slice(0, 16);
+  // 타임존 없는 로컬 형식만 그대로 사용 ($ 로 끝을 고정 — ISO+Z는 제외)
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return v.slice(0, 16);
   if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v + 'T00:00';
+  // ISO+Z(UTC) 등 그 외 → Date 파싱 후 로컬(KST)로 변환
   const d = new Date(v);
   if (isNaN(d.getTime())) return String(v);
   const y = d.getFullYear();
