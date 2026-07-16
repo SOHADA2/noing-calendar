@@ -248,6 +248,9 @@
       padding: 10px 28px 0;
       background: var(--bg);
       border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 61px;   /* 헤더 높이만큼 — JS(syncStickyTabs)로 정확히 재조정 */
+      z-index: 99;
     }
     .view-tab {
       padding: 9px 16px;
@@ -2666,7 +2669,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.11.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.11.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6920,6 +6923,15 @@ function clkApply() {
   if (btn) btn.textContent = fmtTimeKo(hhmm);
   closeClockPicker();
 }
+
+// 탭 바 sticky 위치를 헤더 높이에 맞춤 (모바일 wrap 등 대응)
+function syncStickyTabs() {
+  const h = document.querySelector('.header');
+  const t = document.querySelector('.view-tabs');
+  if (h && t) t.style.top = h.offsetHeight + 'px';
+}
+window.addEventListener('resize', syncStickyTabs);
+syncStickyTabs();
 
 init();
 </script>
