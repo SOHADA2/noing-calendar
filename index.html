@@ -2669,7 +2669,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.11.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.11.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3897,7 +3897,8 @@ function renderContentScheduleRows() {
       <div data-channel="${escapeHtml(ch)}" style="display:flex;gap:6px;align-items:center">
         <span style="min-width:60px;font-size:12px;color:var(--muted);padding:6px 8px;background:var(--bg-3);border-radius:6px;text-align:center">${escapeHtml(ch)}</span>
         <input type="date" class="csr-date" value="${p.date || ''}" style="flex:1" />
-        <input type="time" class="csr-time" value="${p.time || ''}" style="flex:0 0 100px" />
+        <input type="hidden" class="csr-time" value="${p.time || ''}" />
+        <button type="button" class="time-btn csr-time-btn" data-placeholder="시간 (선택)" style="flex:0 0 112px;font-size:12px;padding:7px 9px;color:${p.time ? 'var(--text)' : 'var(--text-4)'}" onclick="openClockPickerEl(this.previousElementSibling, this)">${p.time ? fmtTimeKo(p.time) : '시간 (선택)'}</button>
         <select class="csr-type" style="flex:0 0 110px">
           <option value="릴스" ${p.type === '릴스' ? 'selected' : ''}>릴스</option>
           <option value="카드뉴스" ${p.type === '카드뉴스' ? 'selected' : ''}>카드뉴스</option>
@@ -6846,7 +6847,8 @@ function refreshAutocompleteLists() {
 });
 
 // ── 시계형 시간 선택기 ──
-let clkHour12 = 6, clkMin = 0, clkAmPm = 'PM', clkMode = 'hour', clkInputId = '', clkBtnId = '';
+let clkHour12 = 6, clkMin = 0, clkAmPm = 'PM', clkMode = 'hour';
+let clkInputEl = null, clkBtnEl = null;
 function fmtTimeKo(hhmm) {
   const [h, m] = String(hhmm || '18:00').split(':').map(Number);
   const ap = h < 12 ? '오전' : '오후';
@@ -6860,8 +6862,13 @@ function setFTimeValue(hhmm) {
   if (btn) btn.textContent = fmtTimeKo(hhmm);
 }
 function openClockPicker(inputId, btnId) {
-  clkInputId = inputId; clkBtnId = btnId;
-  const cur = (document.getElementById(inputId).value || '18:00').split(':').map(Number);
+  openClockPickerEl(document.getElementById(inputId), document.getElementById(btnId));
+}
+// 요소 기반 (동적 행에서도 사용 가능)
+function openClockPickerEl(inp, btn) {
+  if (!inp || !btn) return;
+  clkInputEl = inp; clkBtnEl = btn;
+  const cur = (inp.value || '18:00').split(':').map(Number);
   let h = cur[0] || 0; clkMin = cur[1] || 0;
   clkAmPm = h < 12 ? 'AM' : 'PM';
   clkHour12 = h % 12 || 12;
@@ -6869,6 +6876,12 @@ function openClockPicker(inputId, btnId) {
   document.getElementById('clockOverlay').classList.add('open');
   clkUpdateDisplay();
   clkRenderFace();
+}
+// 시간 지우기 (선택 필드용)
+function clkClear() {
+  if (clkInputEl) clkInputEl.value = '';
+  if (clkBtnEl) { clkBtnEl.textContent = clkBtnEl.dataset.placeholder || '시간 선택'; clkBtnEl.style.color = 'var(--text-4)'; }
+  closeClockPicker();
 }
 function closeClockPicker() { document.getElementById('clockOverlay').classList.remove('open'); }
 function clkSetAmPm(ap) { clkAmPm = ap; clkUpdateDisplay(); }
@@ -6917,10 +6930,8 @@ function clkApply() {
   let h = clkHour12 % 12;
   if (clkAmPm === 'PM') h += 12;
   const hhmm = `${String(h).padStart(2,'0')}:${String(clkMin).padStart(2,'0')}`;
-  const inp = document.getElementById(clkInputId);
-  if (inp) inp.value = hhmm;
-  const btn = document.getElementById(clkBtnId);
-  if (btn) btn.textContent = fmtTimeKo(hhmm);
+  if (clkInputEl) clkInputEl.value = hhmm;
+  if (clkBtnEl) { clkBtnEl.textContent = fmtTimeKo(hhmm); clkBtnEl.style.color = 'var(--text)'; }
   closeClockPicker();
 }
 
@@ -6952,6 +6963,7 @@ init();
     </div>
     <div class="clock-face" id="clockFace"></div>
     <div class="clock-actions">
+      <button type="button" class="btn" onclick="clkClear()" style="margin-right:auto;color:var(--text-4)">지우기</button>
       <button type="button" class="btn" onclick="closeClockPicker()">취소</button>
       <button type="button" class="btn btn-primary" onclick="clkApply()">확인</button>
     </div>
