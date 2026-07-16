@@ -1821,6 +1821,59 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--text-4); }
 
     input[type=date], input[type=time] { color-scheme: dark; }
+
+    /* ── 시간 선택 버튼 + 시계 팝업 ── */
+    .time-btn {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-2);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px; font-family: inherit;
+      text-align: left; cursor: pointer;
+      transition: border-color .12s;
+    }
+    .time-btn:hover { border-color: var(--accent); }
+    .clock-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 4000;
+      align-items: center; justify-content: center;
+    }
+    .clock-overlay.open { display: flex; }
+    .clock-pop {
+      background: var(--bg-2); border: 1px solid var(--border-2);
+      border-radius: 16px; padding: 18px; width: 300px; max-width: 92vw;
+      box-shadow: 0 16px 48px rgba(0,0,0,.5);
+    }
+    .clock-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .clock-ampm { display: flex; flex-direction: column; gap: 4px; }
+    .clock-ampm button {
+      padding: 5px 12px; border-radius: 7px; border: 1px solid var(--border-2);
+      background: var(--bg); color: var(--text-3); cursor: pointer; font-size: 12px; font-family: inherit; font-weight: 600;
+    }
+    .clock-ampm button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .clock-display { font-size: 34px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .clk-seg { cursor: pointer; padding: 2px 4px; border-radius: 6px; opacity: .5; }
+    .clk-seg.active { opacity: 1; background: rgba(245,130,90,.18); color: var(--accent); }
+    .clk-colon { opacity: .5; }
+    .clock-face {
+      position: relative; width: 240px; height: 240px; margin: 0 auto 14px;
+      border-radius: 50%; background: var(--bg); border: 1px solid var(--border);
+    }
+    .clk-num {
+      position: absolute; width: 34px; height: 34px;
+      margin: -17px 0 0 -17px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; font-size: 14px; color: var(--text-2);
+      cursor: pointer; user-select: none; font-variant-numeric: tabular-nums;
+      transition: background .1s;
+    }
+    .clk-num:hover { background: var(--bg-3); }
+    .clk-num.selected { background: var(--accent); color: #fff; font-weight: 700; }
+    .clk-center { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); top: 50%; left: 50%; margin: -4px 0 0 -4px; z-index: 2; }
+    .clk-hand { position: absolute; top: 50%; left: 50%; height: 2px; background: var(--accent); transform-origin: left center; z-index: 1; }
+    .clock-actions { display: flex; gap: 8px; justify-content: flex-end; }
   </style>
 </head>
 <body>
@@ -2388,7 +2441,10 @@
 
     <div class="form-row">
       <div class="form-group" style="flex:2"><label>발행일자</label><input type="date" id="fDate" /></div>
-      <div class="form-group" style="flex:1"><label>시간</label><input type="time" id="fTime" value="18:00" /></div>
+      <div class="form-group" style="flex:1"><label>시간</label>
+        <input type="hidden" id="fTime" value="18:00" />
+        <button type="button" id="fTimeBtn" class="time-btn" onclick="openClockPicker('fTime','fTimeBtn')">오후 6:00</button>
+      </div>
     </div>
 
     <div class="form-group"><label>업체</label><input type="text" id="fCompany" placeholder="예) 바나나마케팅" list="dlCompanies" autocomplete="off" /></div>
@@ -2610,7 +2666,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.10.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.11.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6267,7 +6323,7 @@ function openModal(dateStr, id) {
     if (!c) return;
     document.getElementById('modalTitle').textContent = '콘텐츠 수정';
     document.getElementById('fDate').value = c.date;
-    document.getElementById('fTime').value = c.time || '18:00';
+    setFTimeValue(c.time || '18:00');
     document.getElementById('fCompany').value = c.company || '';
     document.getElementById('fTitle').value = c.title || '';
     setSegValue('fChannel', c.channel);
@@ -6290,7 +6346,7 @@ function openModal(dateStr, id) {
   } else {
     document.getElementById('modalTitle').textContent = '콘텐츠 추가';
     document.getElementById('fDate').value = dateStr || today;
-    document.getElementById('fTime').value = '18:00';
+    setFTimeValue('18:00');
     document.getElementById('fCompany').value = '';
     document.getElementById('fTitle').value = '';
     setSegValue('fChannel', 'life');
@@ -6786,9 +6842,108 @@ function refreshAutocompleteLists() {
   }
 });
 
+// ── 시계형 시간 선택기 ──
+let clkHour12 = 6, clkMin = 0, clkAmPm = 'PM', clkMode = 'hour', clkInputId = '', clkBtnId = '';
+function fmtTimeKo(hhmm) {
+  const [h, m] = String(hhmm || '18:00').split(':').map(Number);
+  const ap = h < 12 ? '오전' : '오후';
+  const h12 = h % 12 || 12;
+  return `${ap} ${h12}:${String(m || 0).padStart(2, '0')}`;
+}
+function setFTimeValue(hhmm) {
+  const inp = document.getElementById('fTime');
+  const btn = document.getElementById('fTimeBtn');
+  if (inp) inp.value = hhmm;
+  if (btn) btn.textContent = fmtTimeKo(hhmm);
+}
+function openClockPicker(inputId, btnId) {
+  clkInputId = inputId; clkBtnId = btnId;
+  const cur = (document.getElementById(inputId).value || '18:00').split(':').map(Number);
+  let h = cur[0] || 0; clkMin = cur[1] || 0;
+  clkAmPm = h < 12 ? 'AM' : 'PM';
+  clkHour12 = h % 12 || 12;
+  clkMode = 'hour';
+  document.getElementById('clockOverlay').classList.add('open');
+  clkUpdateDisplay();
+  clkRenderFace();
+}
+function closeClockPicker() { document.getElementById('clockOverlay').classList.remove('open'); }
+function clkSetAmPm(ap) { clkAmPm = ap; clkUpdateDisplay(); }
+function clkUpdateDisplay() {
+  document.getElementById('clkAM').classList.toggle('active', clkAmPm === 'AM');
+  document.getElementById('clkPM').classList.toggle('active', clkAmPm === 'PM');
+  document.getElementById('clkHourDisp').textContent = clkHour12;
+  document.getElementById('clkMinDisp').textContent = String(clkMin).padStart(2, '0');
+  document.getElementById('clkHourDisp').classList.toggle('active', clkMode === 'hour');
+  document.getElementById('clkMinDisp').classList.toggle('active', clkMode === 'min');
+}
+function clkRenderFace() {
+  clkUpdateDisplay();
+  const face = document.getElementById('clockFace');
+  const R = 120, r = 90, cx = R, cy = R;
+  // 시: 1~12 (12가 위), 분: 0,5,...,55 (00이 위)
+  const nums = clkMode === 'hour'
+    ? Array.from({length:12}, (_,i) => ({ val: i+1, label: i+1, pos: i+1 }))       // pos: 시계상 위치 1~12
+    : Array.from({length:12}, (_,i) => ({ val: i*5, label: String(i*5).padStart(2,'0'), pos: i }));  // pos: 0~11 (0=위)
+  const sel = clkMode === 'hour' ? clkHour12 : clkMin;
+  // 손잡이 각도 (12/00 = 맨 위)
+  const selPos = clkMode === 'hour' ? clkHour12 : (clkMin / 5);
+  const ang = selPos * 30 - 90;
+  let html = `<div class="clk-center"></div>`;
+  html += `<div class="clk-hand" style="width:${r}px;transform:rotate(${ang}deg)"></div>`;
+  nums.forEach(n => {
+    const a = (n.pos * 30 - 90) * Math.PI / 180;
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    const isSel = n.val === sel;
+    html += `<div class="clk-num${isSel?' selected':''}" style="left:${x}px;top:${y}px" onclick="clkPick(${n.val})">${n.label}</div>`;
+  });
+  face.innerHTML = html;
+}
+function clkPick(val) {
+  if (clkMode === 'hour') {
+    clkHour12 = val;
+    clkMode = 'min';   // 시 선택 후 자동으로 분 선택
+    clkRenderFace();
+  } else {
+    clkMin = val;
+    clkRenderFace();
+  }
+}
+function clkApply() {
+  let h = clkHour12 % 12;
+  if (clkAmPm === 'PM') h += 12;
+  const hhmm = `${String(h).padStart(2,'0')}:${String(clkMin).padStart(2,'0')}`;
+  const inp = document.getElementById(clkInputId);
+  if (inp) inp.value = hhmm;
+  const btn = document.getElementById(clkBtnId);
+  if (btn) btn.textContent = fmtTimeKo(hhmm);
+  closeClockPicker();
+}
+
 init();
 </script>
 <datalist id="dlCompanies"></datalist>
 <datalist id="dlOwners"></datalist>
+
+<!-- ── 시계형 시간 선택기 ── -->
+<div class="clock-overlay" id="clockOverlay" onclick="if(event.target===this)closeClockPicker()">
+  <div class="clock-pop">
+    <div class="clock-head">
+      <div class="clock-ampm">
+        <button type="button" id="clkAM" onclick="clkSetAmPm('AM')">오전</button>
+        <button type="button" id="clkPM" onclick="clkSetAmPm('PM')">오후</button>
+      </div>
+      <div class="clock-display">
+        <span id="clkHourDisp" class="clk-seg active" onclick="clkMode='hour';clkRenderFace()">6</span><span class="clk-colon">:</span><span id="clkMinDisp" class="clk-seg" onclick="clkMode='min';clkRenderFace()">00</span>
+      </div>
+    </div>
+    <div class="clock-face" id="clockFace"></div>
+    <div class="clock-actions">
+      <button type="button" class="btn" onclick="closeClockPicker()">취소</button>
+      <button type="button" class="btn btn-primary" onclick="clkApply()">확인</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
