@@ -878,6 +878,12 @@
 
     .chip:hover { filter: brightness(1.15); }
 
+    /* 마무리 단계(세금계산서 요청됨/발행완료) — 회색 처리해 신규건 부각 */
+    .chip.chip-wrapped { opacity: .4; filter: grayscale(.85); }
+    .chip.chip-wrapped:hover { opacity: .85; filter: grayscale(.2); }
+    .cal-list-item.item-wrapped { opacity: .45; filter: grayscale(.8); }
+    .cal-list-item.item-wrapped:hover { opacity: .9; filter: grayscale(.2); }
+
     /* 데드라인(콘티/촬영/초안) 칩 — 게시 칩보다 흐리고 작게 (게시 우선) */
     .chip.deadline-chip {
       flex-direction: row;
@@ -2669,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.11.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.12.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6074,8 +6080,11 @@ function render() {
       const chip = document.createElement('div');
       const sCls = STATUS_CLASS[c.status] || '';
       const tCls = TYPE_CLASS[c.type] || 't-other';
-      chip.className = `chip ch-${c.channel} ${sCls}`;
-      chip.title = `${c.time || ''} · [${c.channel}] ${c.type}\n${c.company ? c.company + ' · ' : ''}${c.title}\n담당: ${c.owner || '-'} · 상태: ${c.status}${c.memo ? '\n메모: '+c.memo : ''}`;
+      // 연결 수주의 세금계산서가 요청됨/발행완료 = 마무리 단계 → 회색 처리 (신규건 부각)
+      const lo = c.order_id ? orders.find(o => String(o.id) === String(c.order_id)) : null;
+      const wrapped = lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
+      chip.className = `chip ch-${c.channel} ${sCls}${wrapped ? ' chip-wrapped' : ''}`;
+      chip.title = `${c.time || ''} · [${c.channel}] ${c.type}\n${c.company ? c.company + ' · ' : ''}${c.title}\n담당: ${c.owner || '-'} · 상태: ${c.status}${wrapped ? '\n세금계산서: ' + lo.invoice_status + ' (마무리 단계)' : ''}${c.memo ? '\n메모: '+c.memo : ''}`;
       chip.innerHTML = `
         <div class="chip-row1">
           ${c.time ? `<span class="chip-time">${escapeHtml(c.time)}</span>` : ''}
@@ -6157,8 +6166,10 @@ function renderCalList() {
           ${items.map(c => {
             const statusMap = { '제작중':'s-draft', '예약완료':'s-ready', '발행완료':'s-done', '일자변경':'s-moved', '취소':'s-cancel' };
             const sCls = statusMap[c.status] || 's-draft';
+            const lo = c.order_id ? orders.find(o => String(o.id) === String(c.order_id)) : null;
+            const wrapped = lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
             return `
-              <div class="cal-list-item" data-id="${c.id}" onclick="(${c.status === '발행완료' ? `openContentView('${c.id}')` : `openModal('${c.date}','${c.id}')`})">
+              <div class="cal-list-item${wrapped ? ' item-wrapped' : ''}" data-id="${c.id}" onclick="(${c.status === '발행완료' ? `openContentView('${c.id}')` : `openModal('${c.date}','${c.id}')`})">
                 <div class="cal-list-item-time">${c.time || ''}</div>
                 <div class="cal-list-item-body">
                   <div class="cal-list-item-title">${escapeHtml(c.title || '(제목 없음)')}</div>
