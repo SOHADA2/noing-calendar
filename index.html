@@ -2675,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.12.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.12.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6260,7 +6260,7 @@ function renderSidebar() {
           if (isNaN(d.getTime())) return;
           d.setHours(0,0,0,0);
           const dday = Math.round((d - today0) / 86400000);
-          if (dday < -3) return; // hide stale (more than 3 days overdue)
+          if (dday < 0) return; // 지난 데드라인은 제외 — 예정(오늘 포함)만 표시
           milestones.push({ content: c, stage: s, date: c[s.key], dday });
         }
       });
