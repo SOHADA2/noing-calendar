@@ -2675,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.12.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.12.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3396,7 +3396,7 @@ function saveOrderColumnOrder() {
   localStorage.setItem(ORDER_COL_KEY, JSON.stringify(ORDER_COLUMNS.map(c => c.key)));
 }
 
-const CONTENT_PROGRESS_ORDER = { '제작중': 0, '발행완료': 1, '취소': 2 };
+const CONTENT_PROGRESS_ORDER = { '제작중': 0, '예약완료': 1, '발행완료': 2, '취소': 3 };
 const INVOICE_STATUS_ORDER   = { '미발행': 0, '요청됨': 1, '발행완료': 2 };
 function getSortValue(o, key) {
   if (key === 'content_progress') {
