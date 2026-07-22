@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4589,7 +4589,17 @@ function buildContractHTML(d) {
     ['제 11조 (분쟁 해결)', `본 계약과 관련하여 발생하는 분쟁은 서울중앙지방법원을 관할로 한다.`],
     ['제 12조 (일반 사항)', `본 계약서에 명시되지 않거나 해석상 이견이 있을 시는 관련 법령 및 일반 상관례에 따른다.`],
   ];
-  const clausesHTML = clauses.map(([h, b]) => `<div class="clause"><div class="clause-h">${h}</div><div class="clause-b">${b}</div></div>`).join('');
+  const clausesHTML = clauses.map(([h, b]) => {
+    const body = String(b).split(/<br>\s*/).map(raw => {
+      const t = raw.replace(/&nbsp;/g, '').trim();
+      if (!t) return '';
+      let cls = 'cl-line';
+      if (/^[가나다라마바사아][.．]/.test(t)) cls += ' cl-1';        // 가·나·다
+      else if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(t)) cls += ' cl-2';        // ①·②·③
+      return `<div class="${cls}">${t}</div>`;
+    }).join('');
+    return `<div class="clause"><div class="clause-h">${h}</div><div class="clause-b">${body}</div></div>`;
+  }).join('');
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><style>
     @page { size: A4; margin: 25mm 18mm; }
     * { box-sizing: border-box; }
@@ -4605,12 +4615,15 @@ function buildContractHTML(d) {
     .keep { page-break-inside: avoid; break-inside: avoid; }
     .clause-h { font-weight:700; font-size:9pt; margin-bottom:2px; }
     .clause-b { font-size:9pt; color:#222; padding-left:2px; }
+    .clause-b .cl-line { margin:1px 0; }
+    .clause-b .cl-1 { padding-left:2.2em; text-indent:-1.1em; }   /* 가·나·다 들여쓰기(내어쓰기) */
+    .clause-b .cl-2 { padding-left:3.3em; text-indent:-1.1em; }   /* ①·②·③ 한 단계 더 */
     .sign-date { text-align:center; font-size:10pt; font-weight:600; margin:18px 0 12px; }
     table.parties { width:100%; border-collapse:collapse; margin-bottom:14px; page-break-inside: avoid; break-inside: avoid; }
     table.items tr { page-break-inside: avoid; break-inside: avoid; }
     table.parties td { border:1px solid #000; padding:6px 8px; font-size:9pt; vertical-align:middle; }
     table.parties td.lbl { width:17%; background:#f2f2f2; font-weight:700; text-align:center; white-space:nowrap; color:#000; }
-    table.parties td.val { width:33%; position:relative; }
+    table.parties td.val { width:33%; position:relative; text-align:center; }
     .seal { position:absolute; right:8px; top:50%; transform:translateY(-50%); width:40px; opacity:.95; }
     .annex-title { font-weight:700; font-size:12pt; margin:8px 0 8px; }
     table.items { width:100%; border-collapse:collapse; margin-bottom:6px; table-layout:fixed; }
@@ -4631,6 +4644,10 @@ function buildContractHTML(d) {
       <tr><td class="lbl">계약금액</td><td>별첨 작업내역서 참고</td></tr>
       <tr><td class="lbl">결제방법</td><td>작업 완료 확인 후, 익월 말일까지 완불 (후불)</td></tr>
     </table>
+    <div class="intro">${escapeHtml(d.clientName)}(이하 '갑')와 ${escapeHtml(C.name)}(이하 '을')는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.</div>
+    ${clausesHTML}
+    <div class="clause-b keep" style="margin-top:8px">본 계약을 증명하기 위하여 계약서 2부를 작성하여 '갑'과 '을'이 서명 날인하여 각각 1부씩 보관한다.</div>
+    <div class="sign-date">${escapeHtml(d.dateKo)}</div>
     <table class="parties keep">
       <tr>
         <td class="lbl">상호 (갑)</td><td class="val">${escapeHtml(d.clientName)}</td>
@@ -4649,10 +4666,6 @@ function buildContractHTML(d) {
         <td class="lbl">대표이사</td><td class="val">${escapeHtml(C.rep)} <img class="seal" src="${SEAL_BASE64}" alt=""/></td>
       </tr>
     </table>
-    <div class="intro">${escapeHtml(d.clientName)}(이하 '갑')와 ${escapeHtml(C.name)}(이하 '을')는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.</div>
-    ${clausesHTML}
-    <div class="clause-b keep" style="margin-top:8px">본 계약을 증명하기 위하여 계약서 2부를 작성하여 '갑'과 '을'이 서명 날인하여 각각 1부씩 보관한다.</div>
-    <div class="sign-date">${escapeHtml(d.dateKo)}</div>
     <div class="page-break"></div>
     <div class="annex-title keep">[별첨 - 작업내역서] <span style="font-size:9pt;font-weight:400">(단위: 원)</span></div>
     <table class="annex-info keep">
@@ -4793,7 +4806,7 @@ function buildContractDocx(X, d) {
   const CW4 = [1677, 3255, 1677, 3255];   // 갑/을·별첨정보 표 (17/33/17/33%)
   const CWcost = [3650, 3748, 986, 1480]; // 작업내역서 (구분/상세/수량/금액)
   const run = (text, o = {}) => new TextRun({ text: String(text ?? ''), font: FONT, size: o.size || 20, bold: !!o.bold, break: o.break || 0 });
-  const para = (children, o = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], alignment: o.align, spacing: { after: o.after != null ? o.after : 80, before: o.before || 0, line: 264 }, pageBreakBefore: !!o.pageBreakBefore, border: o.border });
+  const para = (children, o = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], alignment: o.align, spacing: { after: o.after != null ? o.after : 80, before: o.before || 0, line: 264 }, pageBreakBefore: !!o.pageBreakBefore, border: o.border, indent: o.indent });
   const bd = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
   const noB = { top:{style:BorderStyle.NONE}, bottom:{style:BorderStyle.NONE}, left:{style:BorderStyle.NONE}, right:{style:BorderStyle.NONE} };
   // 조항 (본문은 줄단위 배열)
@@ -4831,7 +4844,13 @@ function buildContractDocx(X, d) {
   const clauseParas = [];
   clauses.forEach(([h, lines]) => {
     clauseParas.push(para(run(h, { bold: true, size: 18 }), { after: 30 }));
-    lines.forEach(ln => clauseParas.push(para(run(ln, { size: 18 }), { after: 24 })));
+    lines.forEach(ln => {
+      const t = String(ln).trim();
+      let indent;
+      if (/^[가나다라마바사아][.．]/.test(t)) indent = { left: 380, hanging: 200 };        // 가·나·다
+      else if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(t)) indent = { left: 700, hanging: 200 };        // ①·②·③
+      clauseParas.push(para(run(t, { size: 18 }), { after: 24, indent }));
+    });
   });
 
   // 셀 헬퍼 (너비는 twips 절대값)
@@ -4845,7 +4864,7 @@ function buildContractDocx(X, d) {
   const tableBorders = { top: bd, bottom: bd, left: bd, right: bd, insideHorizontal: bd, insideVertical: bd };
 
   // 갑/을 정보 표 (8pt)
-  const pc = (t, o = {}) => cell(t, { size: 16, ...o });  // party cell = 8pt
+  const pc = (t, o = {}) => cell(t, { size: 16, align: AlignmentType.CENTER, ...o });  // 값 셀(중앙정렬)
   const lc = (t) => cell(t, { size: 16, bold: true, shade: 1, align: AlignmentType.CENTER });  // 라벨(음영·굵게·중앙)
   // Word는 편집 가능해 도장 이미지 미포함 — '(인)' 텍스트만 (도장 이미지 유출 방지)
   const partiesTable = new Table({
@@ -4909,12 +4928,11 @@ function buildContractDocx(X, d) {
   const children = [
     para(run('용  역  계  약  서', { bold: true, size: 40 }), { align: AlignmentType.CENTER, after: 220 }),
     overviewTable,
-    para(run('', { size: 8 }), { after: 60 }),  // 개요-당사자 표 간격
-    partiesTable,
     para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 18 }), { before: 160, after: 120 }),
     ...clauseParas,
     para(run("본 계약을 증명하기 위하여 계약서 2부를 작성하여 ‘갑’과 ‘을’이 서명 날인하여 각각 1부씩 보관한다.", { size: 18 }), { before: 80, after: 140 }),
-    para(run(d.dateKo, { bold: true, size: 20 }), { align: AlignmentType.CENTER, after: 120 }),
+    para(run(d.dateKo, { bold: true, size: 20 }), { align: AlignmentType.CENTER, after: 200 }),
+    partiesTable,
     para(run('[별첨 - 작업내역서]  (단위: 원)', { bold: true, size: 24 }), { pageBreakBefore: true, after: 100 }),
     infoTable,
     para(run('', { size: 6 }), { after: 40 }),
