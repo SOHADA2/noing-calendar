@@ -1408,20 +1408,6 @@
       font-size: 12px;
     }
 
-    .auto-match-banner {
-      background: rgba(201,100,66,.08);
-      border: 1px solid rgba(201,100,66,.3);
-      border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 12px;
-      font-size: 12px;
-      color: var(--text-2);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
     .seg {
       display: flex;
       gap: 4px;
@@ -2065,7 +2051,6 @@
           <div class="orders-search">
             <input type="text" id="ordersSearch" placeholder="업체, 제목, 담당자, 상태 검색..." />
           </div>
-          <button class="btn" onclick="autoLinkOrders()" title="회사·제목 매칭으로 콘텐츠와 자동 연결">🔗 자동 매칭</button>
         </div>
       </div>
 
@@ -2685,7 +2670,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.14.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.15.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3695,7 +3680,8 @@ function renderOrders() {
 function renderOrderStats(filtered) {
   const now = new Date();
   const monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const thisMonth = orders.filter(o => String(o.order_date).startsWith(monthStr) && passesOrderFilter(o));
+  // '이번 달 요약'은 필터/검색/조회월과 무관하게 항상 실제 이번 달 전체 기준 (안정적 개요)
+  const thisMonth = orders.filter(o => String(o.order_date).startsWith(monthStr));
 
   document.getElementById('oCnt-total').textContent = thisMonth.length;
   const totalAmount = thisMonth.reduce((s, o) => s + (Number(o.amount) || 0), 0);
@@ -4179,99 +4165,6 @@ function renderLinkedContents(orderId) {
       </div>
     </div>
   `).join('');
-}
-
-// ── Auto-match ──
-function autoLinkOrders() {
-  const unlinked = contents.filter(c => !c.order_id);
-  if (unlinked.length === 0) {
-    alert('이미 모든 콘텐츠에 수주가 연결되어 있습니다.');
-    return;
-  }
-
-  // For each unlinked content, find best matching order
-  const matches = [];
-  unlinked.forEach(c => {
-    const candidates = orders.filter(o => {
-      // Must have similar company OR title contains
-      const cCompany = (c.company || '').trim();
-      const oCompany = (o.company || '').trim();
-      const cTitle = (c.title || '').trim();
-      const oTitle = (o.title || '').trim();
-      if (!cCompany && !cTitle) return false;
-      // Company match (either exact or substring)
-      const companyMatch = cCompany && oCompany && (cCompany === oCompany || cCompany.includes(oCompany) || oCompany.includes(cCompany));
-      // Title similarity
-      const titleMatch = cTitle && oTitle && (cTitle === oTitle || cTitle.includes(oTitle) || oTitle.includes(cTitle));
-      // At least one of: same company, or title overlap
-      return (companyMatch && titleMatch) || (companyMatch && cTitle.length > 0 && oTitle.length > 0) || titleMatch;
-    });
-    // Score: prefer same company + title; order_date before content date; closest date
-    candidates.forEach(o => {
-      let score = 0;
-      if (c.company === o.company) score += 5;
-      if (c.title === o.title) score += 10;
-      else if (c.title && o.title && (c.title.includes(o.title) || o.title.includes(c.title))) score += 3;
-      // date proximity (order_date should be before or near content date)
-      if (c.date && o.order_date) {
-        const d1 = new Date(c.date), d2 = new Date(o.order_date);
-        const diffDays = (d1 - d2) / (1000*60*60*24);
-        if (diffDays >= -7 && diffDays <= 120) score += 3;
-      }
-      matches.push({ content: c, order: o, score });
-    });
-  });
-
-  // For each content, keep only the best match
-  const bestPerContent = new Map();
-  matches.forEach(m => {
-    const cid = m.content.id;
-    const cur = bestPerContent.get(cid);
-    if (!cur || m.score > cur.score) bestPerContent.set(cid, m);
-  });
-
-  const confident = Array.from(bestPerContent.values()).filter(m => m.score >= 13); // company exact + title exact
-  const candidates = Array.from(bestPerContent.values()).filter(m => m.score >= 8 && m.score < 13);
-
-  if (confident.length === 0 && candidates.length === 0) {
-    alert(`자동 매칭 가능한 항목이 없습니다.\n\n조건: 같은 회사 + 같은 제목 또는 비슷한 제목`);
-    return;
-  }
-
-  const msg = `자동 매칭 결과:\n\n` +
-    `✓ 확실한 매치: ${confident.length}건 (회사 + 제목 일치)\n` +
-    `△ 가능성 있는 매치: ${candidates.length}건 (제목 부분 일치)\n\n` +
-    `확실한 ${confident.length}건만 자동 연결할까요?\n(나머지는 수동으로 확인 후 연결 가능)`;
-
-  if (!confirm(msg)) return;
-
-  applyMatches(confident);
-}
-
-async function applyMatches(matchList) {
-  setStatus('매칭 적용 중...', 'busy');
-  let updated = 0;
-  for (const m of matchList) {
-    const idx = contents.findIndex(c => String(c.id) === String(m.content.id));
-    if (idx === -1) continue;
-    contents[idx] = { ...contents[idx], order_id: String(m.order.id) };
-    if (apiUrl) {
-      try {
-        await fetch(apiUrl, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'update', ...contents[idx] }),
-        });
-        updated++;
-      } catch (e) { console.error(e); }
-    } else {
-      updated++;
-    }
-  }
-  saveLocal();
-  render();
-  renderOrders();
-  setStatus(`${updated}건 연결 완료`, 'ok');
-  alert(`${updated}건의 콘텐츠가 수주와 연결되었습니다.`);
 }
 
 // ── Quote (견적서) Generator ──
