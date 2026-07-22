@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.8';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4604,18 +4604,18 @@ function buildContractHTML(d) {
     @page { size: A4; margin: 25mm 18mm; }
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; }
-    body { font-family:'맑은 고딕',sans-serif; color:#000; font-size:9pt; line-height:1.8; }
+    body { font-family:'맑은 고딕',sans-serif; color:#000; font-size:9pt; line-height:1.95; }
     .doc-title { text-align:center; font-size:20pt; font-weight:700; letter-spacing:8px; margin:4px 0 16px; }
     table.overview { width:100%; border-collapse:collapse; margin-bottom:22px; table-layout:fixed; page-break-inside:avoid; break-inside:avoid; }
     table.overview td { border:1px solid #000; padding:6px 10px; font-size:9pt; vertical-align:middle; }
     table.overview td.lbl { width:20%; background:#f2f2f2; font-weight:700; text-align:center; white-space:nowrap; }
-    .intro { margin:20px 0; font-size:9pt; }
+    .intro { margin:26px 0; font-size:9pt; }
     /* 페이지 넘김 시 블록 중간에서 잘리지 않도록 */
-    .clause { margin-bottom:16px; page-break-inside: avoid; break-inside: avoid; }
+    .clause { margin-bottom:22px; page-break-inside: avoid; break-inside: avoid; }
     .keep { page-break-inside: avoid; break-inside: avoid; }
-    .clause-h { font-weight:700; font-size:9pt; margin-bottom:5px; }
+    .clause-h { font-weight:700; font-size:9pt; margin-bottom:7px; }
     .clause-b { font-size:9pt; color:#222; padding-left:2px; }
-    .clause-b .cl-line { margin:3px 0; }
+    .clause-b .cl-line { margin:4px 0; }
     .clause-b .cl-1 { padding-left:2.2em; text-indent:-1.1em; }   /* 가·나·다 들여쓰기(내어쓰기) */
     .clause-b .cl-2 { padding-left:3.3em; text-indent:-1.1em; }   /* ①·②·③ 한 단계 더 */
     .sign-date { text-align:center; font-size:10pt; font-weight:600; margin:34px 0 20px; }
@@ -4806,7 +4806,7 @@ function buildContractDocx(X, d) {
   const CW4 = [1677, 3255, 1677, 3255];   // 갑/을·별첨정보 표 (17/33/17/33%)
   const CWcost = [3650, 3748, 986, 1480]; // 작업내역서 (구분/상세/수량/금액)
   const run = (text, o = {}) => new TextRun({ text: String(text ?? ''), font: FONT, size: o.size || 20, bold: !!o.bold, break: o.break || 0 });
-  const para = (children, o = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], alignment: o.align, spacing: { after: o.after != null ? o.after : 80, before: o.before || 0, line: o.line || 300 }, pageBreakBefore: !!o.pageBreakBefore, border: o.border, indent: o.indent });
+  const para = (children, o = {}) => new Paragraph({ children: Array.isArray(children) ? children : [children], alignment: o.align, spacing: { after: o.after != null ? o.after : 80, before: o.before || 0, line: o.line || 264 }, pageBreakBefore: !!o.pageBreakBefore, border: o.border, indent: o.indent });
   const bd = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
   const noB = { top:{style:BorderStyle.NONE}, bottom:{style:BorderStyle.NONE}, left:{style:BorderStyle.NONE}, right:{style:BorderStyle.NONE} };
   // 조항 (본문은 줄단위 배열)
@@ -4843,13 +4843,13 @@ function buildContractDocx(X, d) {
   ];
   const clauseParas = [];
   clauses.forEach(([h, lines], ci) => {
-    clauseParas.push(para(run(h, { bold: true, size: 18 }), { after: 60, before: ci === 0 ? 0 : 60 }));
+    clauseParas.push(para(run(h, { bold: true, size: 18 }), { after: 30, before: ci === 0 ? 0 : 20 }));
     lines.forEach(ln => {
       const t = String(ln).trim();
       let indent;
       if (/^[가나다라마바사아][.．]/.test(t)) indent = { left: 380, hanging: 200 };        // 가·나·다
       else if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(t)) indent = { left: 700, hanging: 200 };        // ①·②·③
-      clauseParas.push(para(run(t, { size: 18 }), { after: 44, indent }));
+      clauseParas.push(para(run(t, { size: 18 }), { after: 24, indent }));
     });
   });
 
