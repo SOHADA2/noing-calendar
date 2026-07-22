@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.10';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.14.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3514,8 +3514,54 @@ document.addEventListener('click', (e) => {
 }, true);
 function handleOrderRowClick(e, id) {
   if (Date.now() < bulkSuppressClickUntil) return;  // 방금 일괄 편집이면 무시
-  openOrderModal(id);
+  openOrderActionMenu(id, e.clientX, e.clientY);
 }
+
+// 수주 행 클릭 → 작업 선택 메뉴 (수주수정/견적서/계약서/세금계산서)
+function openOrderActionMenu(id, x, y) {
+  let menu = document.getElementById('orderActionMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'orderActionMenu'; menu.className = 'bulk-menu';
+    document.body.appendChild(menu);
+  }
+  const o = orders.find(od => String(od.id) === String(id));
+  const label = o ? (o.company || o.title || '수주') : '수주';
+  const acts = [
+    { k: 'edit',     t: '✏️ 수주 수정' },
+    { k: 'quote',    t: '📄 견적서' },
+    { k: 'contract', t: '📑 계약서' },
+    { k: 'invoice',  t: '🧾 세금계산서' },
+  ];
+  menu.innerHTML =
+    `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
+    acts.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
+    `<button class="bulk-menu-opt cancel" data-act="__cancel">취소</button>`;
+  menu.style.display = 'block';
+  const mw = 200, mh = 40 + (acts.length + 1) * 40;
+  menu.style.left = Math.min(x, window.innerWidth - mw - 10) + 'px';
+  menu.style.top  = Math.min(y, window.innerHeight - mh - 10) + 'px';
+  menu.querySelectorAll('.bulk-menu-opt').forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      menu.style.display = 'none';
+      const act = btn.dataset.act;
+      if (act === '__cancel') return;
+      if (act === 'edit') { openOrderModal(id); return; }
+      editingOrderId = id;  // 견적서/계약서 생성 함수가 editingOrderId를 사용
+      if (act === 'quote') generateQuote();
+      else if (act === 'contract') generateContract();
+      else if (act === 'invoice') openInvoiceModal(id);
+    };
+  });
+}
+// 작업 선택 메뉴 바깥 클릭 시 닫기
+document.addEventListener('mousedown', (e) => {
+  const m = document.getElementById('orderActionMenu');
+  if (m && m.style.display === 'block' && !e.target.closest('#orderActionMenu')) {
+    m.style.display = 'none';
+  }
+});
 
 function openBulkMenu(field, ids, x, y) {
   const cfg = BULK_OPTIONS[field];
