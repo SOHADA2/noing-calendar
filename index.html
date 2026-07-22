@@ -2318,7 +2318,7 @@
 <div class="modal-overlay" id="contractModalOverlay" onclick="closeModalOutside(event, 'contractModalOverlay', closeContractModal)">
   <div class="modal lg" style="width: 720px; max-width: 95vw">
     <div class="modal-head">
-      <h3>📑 용역계약서 생성</h3>
+      <h3>📑 계약서 생성</h3>
       <button class="icon-btn" onclick="closeContractModal()">✕</button>
     </div>
 
@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4436,9 +4436,22 @@ function generateContract() {
   document.getElementById('cDate').value = today;
   document.getElementById('cSubject').value = `${o.company || ''} 대행 콘텐츠 발행 외주`.trim();
   document.getElementById('cContentType').value = o.ad_type || '';
-  // 발행(예정)일: 메모의 "발행: MM월DD일" 자동 추출
-  const pubM = String(o.notes || '').match(/발행\s*[:：]\s*([^\/\n]+)/);
-  document.getElementById('cPubDate').value = pubM ? pubM[1].trim() : '';
+  // 발행(예정)일: ① 달력에 연결된 콘텐츠의 실제 날짜(발행완료·예약 등) 우선, ② 없으면 메모 "발행: MM월DD일" 파싱
+  const fmtPub = s => String(s).replace(/-/g, '.');
+  const linkedDates = [...new Set(
+    contents.filter(c => String(c.order_id) === String(o.id) && c.date && c.status !== '취소')
+            .map(c => c.date)
+  )].sort();
+  let pub = '';
+  if (linkedDates.length) {
+    pub = linkedDates.length === 1
+      ? fmtPub(linkedDates[0])
+      : `${fmtPub(linkedDates[0])} ~ ${fmtPub(linkedDates[linkedDates.length - 1])}`;
+  } else {
+    const pubM = String(o.notes || '').match(/발행\s*[:：]\s*([^\/\n]+)/);
+    pub = pubM ? pubM[1].trim() : '';
+  }
+  document.getElementById('cPubDate').value = pub;
   // 갑 정보: 같은 회사로 만든 계약서 기록에서 자동 조회
   const clients = loadContractClients();
   const saved = clients[(o.company || '').trim()] || {};
