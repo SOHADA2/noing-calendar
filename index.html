@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4391,8 +4391,9 @@ const CONTRACT_RATES = {
 function channelPubRate(ch) {
   return CONTRACT_RATES.발행[String(ch).toLowerCase()] || CONTRACT_RATES.발행.life;
 }
-let contractItems = [];   // [{channel, detail, price}]
+let contractItems = [];   // [{channel, detail, qty, price}]
 let contractBaseTitle = '';  // 작업내역서 '구분'에 쓰는 원본 제목
+let contractOrderId = null;  // 계약서 작성 중인 수주 id (editingOrderId는 모달 닫히면 null이 되므로 별도 보관)
 let contractHistory = (() => {
   try { return JSON.parse(localStorage.getItem(CONTRACT_HISTORY_KEY) || '[]'); } catch { return []; }
 })();
@@ -4431,6 +4432,8 @@ function generateContract() {
   if (!editingOrderId) return;
   const o = orders.find(x => String(x.id) === String(editingOrderId));
   if (!o) return;
+  contractOrderId = o.id;  // 모달 닫혀 editingOrderId가 null 되어도 임시저장 orderId 유지
+  bindContractAutosave();
   const today = fmtDate(new Date());
   document.getElementById('cNumber').value = generateNextContractNumber(o.id);
   document.getElementById('cDate').value = today;
@@ -4703,9 +4706,26 @@ function collectContractData() {
 // ── 계약서 임시저장 ──
 function saveContractDraft() {
   const d = collectContractData();
-  const draft = { ...d, orderId: editingOrderId, savedAt: new Date().toISOString() };
+  const draft = { ...d, orderId: contractOrderId, savedAt: new Date().toISOString() };
   localStorage.setItem(CONTRACT_DRAFT_KEY, JSON.stringify(draft));
   showToast('💾 임시저장됨 — 다른 작업 후 다시 열면 복원할 수 있어요');
+}
+// 타이핑 중 자동 저장 (토스트 없음) — 저장 버튼을 안 눌러도 작성 내용 보존
+function saveContractDraftSilent() {
+  if (!contractOrderId) return;
+  try {
+    const d = collectContractData();
+    localStorage.setItem(CONTRACT_DRAFT_KEY, JSON.stringify({ ...d, orderId: contractOrderId, savedAt: new Date().toISOString() }));
+  } catch {}
+}
+let _contractAutosaveTimer = null;
+function bindContractAutosave() {
+  const ov = document.getElementById('contractModalOverlay');
+  if (!ov || ov.dataset.autosaveBound) return;
+  ov.dataset.autosaveBound = '1';
+  const handler = () => { clearTimeout(_contractAutosaveTimer); _contractAutosaveTimer = setTimeout(saveContractDraftSilent, 600); };
+  ov.addEventListener('input', handler);
+  ov.addEventListener('change', handler);
 }
 function loadContractDraft() {
   try { return JSON.parse(localStorage.getItem(CONTRACT_DRAFT_KEY) || 'null'); } catch { return null; }
