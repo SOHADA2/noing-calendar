@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4548,7 +4548,8 @@ function contractItemCells(it, baseTitle) {
   return { gubun, detail, qty, amount };
 }
 function buildContractHTML(d) {
-  const C = QUOTE_COMPANY;
+  // 계약서 을 표기는 v3 템플릿과 일치(견적서와 별개): 정식 상호·주소
+  const C = { ...QUOTE_COMPANY, name: '주식회사 노잉커뮤니케이션즈', addr: '서울특별시 서대문구 수색로 43, 1층 105호' };
   const itemsRows = d.items.map(it => {
     const c = contractItemCells(it, d.baseTitle);
     return `
@@ -4625,7 +4626,7 @@ function buildContractHTML(d) {
       <tr><td class="lbl">계약건명</td><td>${escapeHtml(d.subject)}</td></tr>
       <tr><td class="lbl">계약기간</td><td>${escapeHtml(d.startDate)}부터 콘텐츠 배포일까지 (작업 완료)</td></tr>
       <tr><td class="lbl">계약금액</td><td>별첨 작업내역서 참고</td></tr>
-      <tr><td class="lbl">결제방법</td><td>작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불 (후불)</td></tr>
+      <tr><td class="lbl">결제방법</td><td>작업 완료 확인 후, 익월 말일까지 완불 (후불)</td></tr>
     </table>
     <table class="parties keep">
       <tr>
@@ -4661,11 +4662,11 @@ function buildContractHTML(d) {
       <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
       <thead>
         <tr><th colspan="4" style="text-align:center;font-size:9pt">용역 업무 비용 안내</th></tr>
-        <tr><th style="text-align:center">구분</th><th style="text-align:center">상세</th><th style="text-align:center">수량</th><th style="text-align:center">금액 (VAT별도)</th></tr>
+        <tr><th style="text-align:center">구분</th><th style="text-align:center">상세</th><th style="text-align:center">수량</th><th style="text-align:center">금액 (VAT 별도)</th></tr>
       </thead>
       <tbody>
         ${itemsRows}
-        <tr class="total"><td colspan="2">최종 금액</td><td style="text-align:center">${totalQty}건</td><td style="text-align:right">${fmtMoney(d.total)}원 (VAT별도)</td></tr>
+        <tr class="total"><td colspan="2" style="text-align:center">최 종 금 액</td><td style="text-align:center">${totalQty}건</td><td style="text-align:right">${fmtMoney(d.total)}원</td></tr>
       </tbody>
     </table>
     <div class="annex-note">
