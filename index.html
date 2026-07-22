@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.8';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.9';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4604,18 +4604,18 @@ function buildContractHTML(d) {
     @page { size: A4; margin: 25mm 18mm; }
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; }
-    body { font-family:'맑은 고딕',sans-serif; color:#000; font-size:9pt; line-height:1.95; }
+    body { font-family:'맑은 고딕',sans-serif; color:#000; font-size:9pt; line-height:1.86; }
     .doc-title { text-align:center; font-size:20pt; font-weight:700; letter-spacing:8px; margin:4px 0 16px; }
     table.overview { width:100%; border-collapse:collapse; margin-bottom:22px; table-layout:fixed; page-break-inside:avoid; break-inside:avoid; }
     table.overview td { border:1px solid #000; padding:6px 10px; font-size:9pt; vertical-align:middle; }
     table.overview td.lbl { width:20%; background:#f2f2f2; font-weight:700; text-align:center; white-space:nowrap; }
-    .intro { margin:26px 0; font-size:9pt; }
+    .intro { margin:22px 0; font-size:9pt; }
     /* 페이지 넘김 시 블록 중간에서 잘리지 않도록 */
-    .clause { margin-bottom:22px; page-break-inside: avoid; break-inside: avoid; }
+    .clause { margin-bottom:18px; page-break-inside: avoid; break-inside: avoid; }
     .keep { page-break-inside: avoid; break-inside: avoid; }
-    .clause-h { font-weight:700; font-size:9pt; margin-bottom:7px; }
+    .clause-h { font-weight:700; font-size:9pt; margin-bottom:6px; }
     .clause-b { font-size:9pt; color:#222; padding-left:2px; }
-    .clause-b .cl-line { margin:4px 0; }
+    .clause-b .cl-line { margin:3px 0; }
     .clause-b .cl-1 { padding-left:2.2em; text-indent:-1.1em; }   /* 가·나·다 들여쓰기(내어쓰기) */
     .clause-b .cl-2 { padding-left:3.3em; text-indent:-1.1em; }   /* ①·②·③ 한 단계 더 */
     .sign-date { text-align:center; font-size:10pt; font-weight:600; margin:34px 0 20px; }
@@ -5065,12 +5065,12 @@ async function htmlToPdfBlob(html) {
   const wrapped = document.createElement('div');
   wrapped.style.cssText = 'width:794px;box-sizing:border-box;background:#fff';
   const inner = document.createElement('div');
-  inner.style.cssText = 'padding:38px 45px;box-sizing:border-box;width:100%';
+  inner.style.cssText = 'padding:0 45px;box-sizing:border-box;width:100%';   // 좌우 여백만(상하는 아래 margin으로 페이지마다)
   inner.innerHTML = bodyHTML;
   wrapped.appendChild(inner); container.appendChild(wrapped); document.body.appendChild(container);
   await new Promise(r => setTimeout(r, 500));
   const opt = {
-    margin: 0, image: { type:'jpeg', quality:0.95 },
+    margin: [48, 0, 48, 0], image: { type:'jpeg', quality:0.95 },   // 페이지마다 상/하 48px 여백(≈12.7mm)
     html2canvas: { scale:2, useCORS:true, logging:false, backgroundColor:'#ffffff', scrollX:0, scrollY:0, x:0, y:0, windowWidth:794, windowHeight: wrapped.scrollHeight },
     jsPDF: { unit:'px', format:[794,1123], orientation:'portrait', compress:true, hotfixes:['px_scaling'] },
     pagebreak: { mode:['css','legacy'] },
