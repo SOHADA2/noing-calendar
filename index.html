@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4591,8 +4591,10 @@ function buildContractHTML(d) {
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; }
     body { font-family:'맑은 고딕',sans-serif; color:#000; font-size:9pt; line-height:1.5; }
-    .doc-title { text-align:center; font-size:14pt; font-weight:700; letter-spacing:6px; border:1px solid #000; padding:9px 0; margin-bottom:12px; }
-    .overview { border:1px solid #000; padding:9px 13px; margin-bottom:13px; font-size:9pt; line-height:1.85; }
+    .doc-title { text-align:center; font-size:20pt; font-weight:700; letter-spacing:8px; margin:4px 0 16px; }
+    table.overview { width:100%; border-collapse:collapse; margin-bottom:14px; table-layout:fixed; page-break-inside:avoid; break-inside:avoid; }
+    table.overview td { border:1px solid #000; padding:6px 10px; font-size:9pt; vertical-align:middle; }
+    table.overview td.lbl { width:20%; background:#f2f2f2; font-weight:700; text-align:center; white-space:nowrap; }
     .intro { margin:12px 0; font-size:9pt; }
     /* 페이지 넘김 시 블록 중간에서 잘리지 않도록 */
     .clause { margin-bottom:7px; page-break-inside: avoid; break-inside: avoid; }
@@ -4602,15 +4604,15 @@ function buildContractHTML(d) {
     .sign-date { text-align:center; font-size:10pt; font-weight:600; margin:18px 0 12px; }
     table.parties { width:100%; border-collapse:collapse; margin-bottom:14px; page-break-inside: avoid; break-inside: avoid; }
     table.items tr { page-break-inside: avoid; break-inside: avoid; }
-    table.parties td { border:1px solid #000; padding:6px 8px; font-size:8pt; vertical-align:middle; }
-    table.parties td.lbl { width:14%; white-space:nowrap; color:#000; }
-    table.parties td.val { width:36%; position:relative; }
+    table.parties td { border:1px solid #000; padding:6px 8px; font-size:9pt; vertical-align:middle; }
+    table.parties td.lbl { width:17%; background:#f2f2f2; font-weight:700; text-align:center; white-space:nowrap; color:#000; }
+    table.parties td.val { width:33%; position:relative; }
     .seal { position:absolute; right:8px; top:50%; transform:translateY(-50%); width:40px; opacity:.95; }
-    .annex-title { font-weight:700; font-size:10pt; margin:8px 0 8px; }
+    .annex-title { font-weight:700; font-size:12pt; margin:8px 0 8px; }
     table.items { width:100%; border-collapse:collapse; margin-bottom:6px; table-layout:fixed; }
     table.items th { background:#f4f4f4; border:1px solid #000; padding:6px; font-size:9pt; }
     table.items td { border:1px solid #000; padding:6px 8px; font-size:9pt; word-break:break-all; }
-    table.items col.c1 { width:38%; } table.items col.c2 { width:32%; } table.items col.c3 { width:10%; } table.items col.c4 { width:20%; }
+    table.items col.c1 { width:37%; } table.items col.c2 { width:38%; } table.items col.c3 { width:10%; } table.items col.c4 { width:15%; }
     table.items tr.total td { font-weight:700; background:#fafafa; }
     table.annex-info { width:100%; border-collapse:collapse; margin-bottom:8px; table-layout:fixed; page-break-inside:avoid; break-inside:avoid; }
     table.annex-info td { border:1px solid #000; padding:5px 8px; font-size:8.5pt; vertical-align:middle; word-break:break-all; }
@@ -4619,28 +4621,28 @@ function buildContractHTML(d) {
     .page-break { page-break-before: always; }
   </style></head><body>
     <div class="doc-title">용  역  계  약  서</div>
-    <div class="overview">
-      <div>계약건명 : ${escapeHtml(d.subject)}</div>
-      <div>계약기간 : ${escapeHtml(d.startDate)}부터 콘텐츠 배포일까지 (작업완료)</div>
-      <div>계약금액 : 별첨 작업내역서 참고</div>
-      <div>결제방법 : 작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불</div>
-    </div>
+    <table class="overview keep">
+      <tr><td class="lbl">계약건명</td><td>${escapeHtml(d.subject)}</td></tr>
+      <tr><td class="lbl">계약기간</td><td>${escapeHtml(d.startDate)}부터 콘텐츠 배포일까지 (작업 완료)</td></tr>
+      <tr><td class="lbl">계약금액</td><td>별첨 작업내역서 참고</td></tr>
+      <tr><td class="lbl">결제방법</td><td>작업 완료 확인 후, 작업 완료월의 익월 말일까지 완불 (후불)</td></tr>
+    </table>
     <table class="parties keep">
       <tr>
-        <td class="lbl">상호 (갑):</td><td class="val">${escapeHtml(d.clientName)}</td>
-        <td class="lbl">상호 (을):</td><td class="val">${escapeHtml(C.name)}</td>
+        <td class="lbl">상호 (갑)</td><td class="val">${escapeHtml(d.clientName)}</td>
+        <td class="lbl">상호 (을)</td><td class="val">${escapeHtml(C.name)}</td>
       </tr>
       <tr>
-        <td class="lbl">사업자등록번호:</td><td class="val">${escapeHtml(d.clientBizNo)}</td>
-        <td class="lbl">사업자등록번호:</td><td class="val">${escapeHtml(C.bizNo)}</td>
+        <td class="lbl">사업자등록번호</td><td class="val">${escapeHtml(d.clientBizNo)}</td>
+        <td class="lbl">사업자등록번호</td><td class="val">${escapeHtml(C.bizNo)}</td>
       </tr>
       <tr>
-        <td class="lbl">주소:</td><td class="val">${escapeHtml(d.clientAddr)}</td>
-        <td class="lbl">주소:</td><td class="val">${escapeHtml(C.addr)}</td>
+        <td class="lbl">주소</td><td class="val">${escapeHtml(d.clientAddr)}</td>
+        <td class="lbl">주소</td><td class="val">${escapeHtml(C.addr)}</td>
       </tr>
       <tr>
-        <td class="lbl">대표이사:</td><td class="val">${escapeHtml(d.clientRep)} (인)</td>
-        <td class="lbl">대표이사:</td><td class="val">${escapeHtml(C.rep)} <img class="seal" src="${SEAL_BASE64}" alt=""/></td>
+        <td class="lbl">대표이사</td><td class="val">${escapeHtml(d.clientRep)} (인)</td>
+        <td class="lbl">대표이사</td><td class="val">${escapeHtml(C.rep)} <img class="seal" src="${SEAL_BASE64}" alt=""/></td>
       </tr>
     </table>
     <div class="intro">${escapeHtml(d.clientName)}(이하 '갑')와 ${escapeHtml(C.name)}(이하 '을')는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.</div>
