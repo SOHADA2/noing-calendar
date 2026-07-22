@@ -366,6 +366,10 @@
     }
     .bulk-menu-opt:hover { background: var(--bg-3); color: var(--text); }
     .bulk-menu-opt.cancel { color: var(--text-4); margin-top: 2px; border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; }
+    /* 수주 작업 선택 메뉴 — 더 얇고 컴팩트하게 */
+    #orderActionMenu { min-width: 148px; padding: 5px; }
+    #orderActionMenu .bulk-menu-title { padding: 4px 8px 5px; margin-bottom: 3px; }
+    #orderActionMenu .bulk-menu-opt { padding: 6px 10px; font-size: 12.5px; }
 
     /* 연도/월 기간 필터 바 */
     .orders-period-bar {
@@ -2681,7 +2685,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.14.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.14.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3528,17 +3532,16 @@ function openOrderActionMenu(id, x, y) {
   const o = orders.find(od => String(od.id) === String(id));
   const label = o ? (o.company || o.title || '수주') : '수주';
   const acts = [
-    { k: 'edit',     t: '✏️ 수주 수정' },
-    { k: 'quote',    t: '📄 견적서' },
-    { k: 'contract', t: '📑 계약서' },
-    { k: 'invoice',  t: '🧾 세금계산서' },
+    { k: 'edit',     t: '수주 수정' },
+    { k: 'quote',    t: '견적서' },
+    { k: 'contract', t: '계약서' },
+    { k: 'invoice',  t: '세금계산서' },
   ];
   menu.innerHTML =
     `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
-    acts.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
-    `<button class="bulk-menu-opt cancel" data-act="__cancel">취소</button>`;
+    acts.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('');
   menu.style.display = 'block';
-  const mw = 200, mh = 40 + (acts.length + 1) * 40;
+  const mw = 180, mh = 34 + acts.length * 32;
   menu.style.left = Math.min(x, window.innerWidth - mw - 10) + 'px';
   menu.style.top  = Math.min(y, window.innerHeight - mh - 10) + 'px';
   menu.querySelectorAll('.bulk-menu-opt').forEach(btn => {
