@@ -2681,7 +2681,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.13.9';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.13.10';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4925,13 +4925,18 @@ function buildContractDocx(X, d) {
     ],
   });
 
+  // 빈 줄(엔터) — 사장님이 수기로 넣던 간격을 그대로 재현
+  const blank = (n) => Array.from({ length: n }, () => para(run(''), { after: 0 }));
   const children = [
     para(run('용  역  계  약  서', { bold: true, size: 40 }), { align: AlignmentType.CENTER, after: 220 }),
     overviewTable,
+    ...blank(1),
     para(run(`${d.clientName}(이하 ‘갑’)와 ${C.name}(이하 ‘을’)는 본 용역 건의 작업을 위하여 다음과 같이 계약을 체결한다.`, { size: 18 }), { before: 160, after: 120 }),
     ...clauseParas,
     para(run("본 계약을 증명하기 위하여 계약서 2부를 작성하여 ‘갑’과 ‘을’이 서명 날인하여 각각 1부씩 보관한다.", { size: 18 }), { before: 80, after: 140 }),
+    ...blank(3),
     para(run(d.dateKo, { bold: true, size: 20 }), { align: AlignmentType.CENTER, after: 200 }),
+    ...blank(3),
     partiesTable,
     para(run('[별첨 - 작업내역서]  (단위: 원)', { bold: true, size: 24 }), { pageBreakBefore: true, after: 100 }),
     infoTable,
