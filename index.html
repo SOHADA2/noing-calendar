@@ -2675,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.12.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.12.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6080,9 +6080,9 @@ function render() {
       const chip = document.createElement('div');
       const sCls = STATUS_CLASS[c.status] || '';
       const tCls = TYPE_CLASS[c.type] || 't-other';
-      // 연결 수주의 세금계산서가 요청됨/발행완료 = 마무리 단계 → 회색 처리 (신규건 부각)
+      // 콘텐츠가 발행완료 + 연결 수주의 세금계산서가 요청됨/발행완료 = 마무리 단계 → 회색 처리 (신규건 부각)
       const lo = c.order_id ? orders.find(o => String(o.id) === String(c.order_id)) : null;
-      const wrapped = lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
+      const wrapped = c.status === '발행완료' && lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
       chip.className = `chip ch-${c.channel} ${sCls}${wrapped ? ' chip-wrapped' : ''}`;
       chip.title = `${c.time || ''} · [${c.channel}] ${c.type}\n${c.company ? c.company + ' · ' : ''}${c.title}\n담당: ${c.owner || '-'} · 상태: ${c.status}${wrapped ? '\n세금계산서: ' + lo.invoice_status + ' (마무리 단계)' : ''}${c.memo ? '\n메모: '+c.memo : ''}`;
       chip.innerHTML = `
@@ -6167,7 +6167,7 @@ function renderCalList() {
             const statusMap = { '제작중':'s-draft', '예약완료':'s-ready', '발행완료':'s-done', '일자변경':'s-moved', '취소':'s-cancel' };
             const sCls = statusMap[c.status] || 's-draft';
             const lo = c.order_id ? orders.find(o => String(o.id) === String(c.order_id)) : null;
-            const wrapped = lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
+            const wrapped = c.status === '발행완료' && lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
             return `
               <div class="cal-list-item${wrapped ? ' item-wrapped' : ''}" data-id="${c.id}" onclick="(${c.status === '발행완료' ? `openContentView('${c.id}')` : `openModal('${c.date}','${c.id}')`})">
                 <div class="cal-list-item-time">${c.time || ''}</div>
