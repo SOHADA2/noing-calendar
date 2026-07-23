@@ -2675,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.16.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.17.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3288,8 +3288,8 @@ let ORDER_COLUMNS = [
   { key: 'title',          label: '제목',         sortable: true, tdClass: 'title', render: (o) => escapeHtml(o.title) },
   { key: 'ad_type',        label: '유형',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.ad_type) },
   { key: 'amount',         label: '금액',         sortable: true, thClass: 'num', tdClass: 'amount', render: (o) => fmtMoney(o.amount) },
-  { key: 'invoice_status', label: '세금계산서',   sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell invoice-badge ${o.invoice_status}" data-bulk="invoice" data-oid="${o.id}" title="클릭: 상세 입력 · 위아래 드래그: 여러 건 일괄 변경">${escapeHtml(o.invoice_status)}</span>` },
-  { key: 'payment_status', label: '입금',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell payment-badge ${o.payment_status}" data-bulk="payment" data-oid="${o.id}" title="클릭 또는 드래그: 입금 상태 일괄 변경">${escapeHtml(o.payment_status)}</span>` },
+  { key: 'invoice_status', label: '세금계산서',   sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell invoice-badge ${o.invoice_status}" data-bulk="invoice" data-oid="${o.id}" title="클릭: 상태 변경 · 드래그/Shift·Ctrl 클릭: 여러 건 선택 (상세는 제목 클릭 모달)">${escapeHtml(o.invoice_status)}</span>` },
+  { key: 'payment_status', label: '입금',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell payment-badge ${o.payment_status}" data-bulk="payment" data-oid="${o.id}" title="클릭: 상태 변경 · 드래그/Shift·Ctrl 클릭: 여러 건 선택">${escapeHtml(o.payment_status)}</span>` },
   { key: 'owner',          label: '담당자',       sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.owner) },
   { key: 'content_progress', label: '콘텐츠 진행', sortable: true, thClass: 'center', tdClass: 'center', render: (o) => {
       const cp = getContentProgress(o.id);
@@ -3448,6 +3448,8 @@ const BULK_OPTIONS = {
   payment: { key: 'payment_status', label: '입금',       values: ['미입금','완료'] },
 };
 let bulkDrag = null;          // { field, anchorId, ids:Set, moved }
+let bulkSel = null;           // 지속 선택 (Shift/Ctrl 클릭용): { field, anchorId, ids:Set }
+let bulkModifierClick = false; // 이번 mousedown이 Shift/Ctrl 클릭이었는지
 let bulkSuppressClickUntil = 0;
 
 function rowIdsInOrder() {
@@ -3470,7 +3472,33 @@ document.addEventListener('mousedown', (e) => {
   const cell = e.target.closest('.bulk-cell');
   if (!cell || e.button !== 0) return;
   e.preventDefault();  // 텍스트 드래그 선택 방지
-  bulkDrag = { field: cell.dataset.bulk, anchorId: cell.dataset.oid, ids: new Set([cell.dataset.oid]), moved: false };
+  const field = cell.dataset.bulk, id = cell.dataset.oid;
+  bulkModifierClick = false;
+
+  // Shift+클릭: 앵커~클릭 범위 선택 (같은 열일 때)
+  if (e.shiftKey && bulkSel && bulkSel.field === field) {
+    const rows = rowIdsInOrder();
+    const ai = rows.indexOf(bulkSel.anchorId), ci = rows.indexOf(id);
+    if (ai !== -1 && ci !== -1) {
+      const [lo, hi] = ai <= ci ? [ai, ci] : [ci, ai];
+      bulkSel.ids = new Set(rows.slice(lo, hi + 1));  // 앵커 유지
+    } else { bulkSel.ids.add(id); }
+    highlightBulk(field, bulkSel.ids);
+    bulkModifierClick = true;
+    return;  // 드래그 시작 안 함
+  }
+  // Ctrl/Cmd+클릭: 개별 토글 (같은 열일 때)
+  if ((e.ctrlKey || e.metaKey) && bulkSel && bulkSel.field === field) {
+    if (bulkSel.ids.has(id)) bulkSel.ids.delete(id); else bulkSel.ids.add(id);
+    if (bulkSel.ids.size === 0) { clearBulkHighlight(); bulkSel = null; bulkSuppressClickUntil = Date.now() + 400; return; }
+    bulkSel.anchorId = id;  // 다음 Shift 범위의 기준
+    highlightBulk(field, bulkSel.ids);
+    bulkModifierClick = true;
+    return;
+  }
+
+  // 일반 클릭/드래그 시작
+  bulkDrag = { field, anchorId: id, ids: new Set([id]), moved: false };
   highlightBulk(bulkDrag.field, bulkDrag.ids);
 });
 document.addEventListener('mouseover', (e) => {
@@ -3487,17 +3515,19 @@ document.addEventListener('mouseover', (e) => {
   highlightBulk(bulkDrag.field, bulkDrag.ids);
 });
 document.addEventListener('mouseup', (e) => {
+  // Shift/Ctrl 클릭 → 지속 선택 기준으로 메뉴 열기 (세금계산서·입금 공통)
+  if (bulkModifierClick) {
+    bulkModifierClick = false;
+    bulkSuppressClickUntil = Date.now() + 400;
+    if (bulkSel && bulkSel.ids.size) openBulkMenu(bulkSel.field, bulkSel.ids, e.clientX, e.clientY);
+    return;
+  }
   if (!bulkDrag) return;
   const d = bulkDrag;
   bulkDrag = null;
   bulkSuppressClickUntil = Date.now() + 400;  // 뒤따르는 row 클릭 억제
-  if (!d.moved && d.field === 'invoice') {
-    // 단순 클릭(세금계산서) → 기존처럼 상세 모달
-    clearBulkHighlight();
-    openInvoiceModal(d.anchorId);
-    return;
-  }
-  // 드래그 선택했거나, 입금 단일 클릭 → 일괄 변경 메뉴
+  bulkSel = { field: d.field, anchorId: d.anchorId, ids: new Set(d.ids) };  // Shift/Ctrl 이어쓰기용 지속
+  // 단일 클릭·드래그 모두 상태 변경 메뉴 (세금계산서 단일 클릭도 상세모달 대신 상태변경)
   openBulkMenu(d.field, d.ids, e.clientX, e.clientY);
 });
 // 일괄 편집 클릭이 row 모달을 열지 않도록 캡처 단계에서 차단
@@ -3650,8 +3680,9 @@ function openBulkMenu(field, ids, x, y) {
       ev.stopPropagation();
       menu.style.display = 'none';
       const val = btn.dataset.val;
-      if (val === '__cancel') { clearBulkHighlight(); return; }
+      if (val === '__cancel') { clearBulkHighlight(); bulkSel = null; return; }
       applyBulkStatus(field, ids, val);
+      bulkSel = null;
     };
   });
 }
@@ -3661,6 +3692,7 @@ document.addEventListener('mousedown', (e) => {
   if (menu && menu.style.display === 'block' && !e.target.closest('#bulkMenu') && !e.target.closest('.bulk-cell')) {
     menu.style.display = 'none';
     clearBulkHighlight();
+    bulkSel = null;
   }
 });
 
@@ -3674,7 +3706,7 @@ async function applyBulkStatus(field, ids, value) {
       changed.push(orders[idx]);
     }
   });
-  if (changed.length === 0) { clearBulkHighlight(); showToast('변경할 항목이 없습니다.'); return; }
+  if (changed.length === 0) { clearBulkHighlight(); bulkSel = null; showToast('변경할 항목이 없습니다.'); return; }
   saveOrdersLocal();
   renderOrders();
   showToast(`${BULK_OPTIONS[field].label} ${changed.length}건 → "${value}" 변경 중...`);
