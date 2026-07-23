@@ -371,6 +371,10 @@
     #orderActionMenu .bulk-menu-title, #contentActionMenu .bulk-menu-title { padding: 4px 8px 5px; margin-bottom: 3px; }
     #orderActionMenu .bulk-menu-opt, #contentActionMenu .bulk-menu-opt { padding: 6px 10px; font-size: 12.5px; }
     #contentActionMenu .menu-note { padding: 6px 10px; font-size: 12px; color: var(--text-4); }
+    #contentActionMenu .menu-status-label { padding: 5px 10px 3px; font-size: 11px; color: var(--text-4); border-top: 1px solid var(--border); margin-top: 4px; }
+    #contentActionMenu .menu-status-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 6px; }
+    #contentActionMenu .menu-status-row .content-progress-tag { cursor: pointer; border: 1.5px solid transparent; }
+    #contentActionMenu .menu-status-row .content-progress-tag.cur { border-color: var(--accent); }
 
     /* 연도/월 기간 필터 바 */
     .orders-period-bar {
@@ -2671,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.16.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.16.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3570,14 +3574,17 @@ function openContentActionMenu(id, x, y) {
     { k: 'contract', t: '계약서' },
     { k: 'invoice',  t: '세금계산서' },
   ] : [];
+  const statusPills = STATUS_KEYS.map(st =>
+    `<span class="content-progress-tag ${st}${c.status === st ? ' cur' : ''}" data-st="${st}">${st}</span>`).join('');
   menu.innerHTML =
     `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
     `<button class="bulk-menu-opt" data-act="edit">콘텐츠 수정</button>` +
     orderActs.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
-    (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`);
+    (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`) +
+    `<div class="menu-status-label">상태 변경</div><div class="menu-status-row">${statusPills}</div>`;
   menu.style.display = 'block';
   const rowCount = 1 + orderActs.length + (lo ? 0 : 1);
-  const mw = 180, mh = 34 + rowCount * 32;
+  const mw = 180, mh = 34 + rowCount * 32 + 74;
   menu.style.left = Math.min(x, window.innerWidth - mw - 10) + 'px';
   menu.style.top  = Math.min(y, window.innerHeight - mh - 10) + 'px';
   menu.querySelectorAll('.bulk-menu-opt').forEach(btn => {
@@ -3594,6 +3601,25 @@ function openContentActionMenu(id, x, y) {
       else if (act === 'invoice') openInvoiceModal(lo.id);
     };
   });
+  menu.querySelectorAll('.content-progress-tag[data-st]').forEach(pill => {
+    pill.onclick = (ev) => {
+      ev.stopPropagation();
+      menu.style.display = 'none';
+      setContentStatus(id, pill.dataset.st);
+    };
+  });
+}
+// 콘텐츠 상태 빠른 변경
+async function setContentStatus(id, status) {
+  const idx = contents.findIndex(c => String(c.id) === String(id));
+  if (idx === -1 || contents[idx].status === status) return;
+  contents[idx] = { ...contents[idx], status };
+  const item = contents[idx];
+  saveLocal();
+  render();
+  renderOrders();
+  const result = await pushToSheet('update', item);
+  if (result && !result.ok) notifySyncFailure(`${item.title || '콘텐츠'} (${item.date || ''})`, result.reason);
 }
 document.addEventListener('mousedown', (e) => {
   const m = document.getElementById('contentActionMenu');
