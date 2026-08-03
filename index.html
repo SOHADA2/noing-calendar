@@ -2675,7 +2675,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.17.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.17.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4092,7 +4092,17 @@ async function _saveOrder() {
   if (isEditing) {
     const idx = orders.findIndex(o => String(o.id) === String(editingOrderId));
     if (idx === -1) return;
-    item = { ...orders[idx], order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, invoice_status, payment_status, owner, status, notes };
+    const prev = orders[idx];
+    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, invoice_status, payment_status, owner, status, notes };
+    // 세금계산서 스냅샷 동기화: 수주 금액을 그대로 따르던 값이면 새 금액으로 갱신(수동 override는 보존)
+    // → 수주 금액 수정 후 세금계산서 공유 시 옛 금액이 뜨던 문제 방지
+    if (prev.inv_amount && Number(prev.inv_amount) === Number(prev.amount) && Number(amount) !== Number(prev.amount)) {
+      item.inv_amount = Number(amount) || 0;
+    }
+    if (prev.inv_content && prev.inv_content === titleWithChannels(prev.title, prev.channels) &&
+        titleWithChannels(prev.title, prev.channels) !== titleWithChannels(title, channels)) {
+      item.inv_content = titleWithChannels(title, channels);
+    }
     orders[idx] = item;
   } else {
     item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, invoice_status, payment_status, owner, status, notes };
