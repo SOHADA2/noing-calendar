@@ -2546,8 +2546,13 @@
     <div class="form-group">
       <label>📊 인사이트 이미지 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">(발행 후 성과 캡쳐 · 여러 장 가능)</span></label>
       <div id="insightThumbs" class="insight-thumbs"></div>
+      <div id="insightProgress" style="display:none;margin-top:8px;font-size:12px;color:var(--text-2)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span id="insightProgLabel">업로드 중...</span><span id="insightProgCount" style="font-variant-numeric:tabular-nums">0 / 0</span></div>
+        <div style="height:7px;background:var(--bg-3);border-radius:4px;overflow:hidden"><div id="insightProgBar" style="height:100%;width:0%;background:var(--accent);transition:width .25s"></div></div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
         <button type="button" class="btn" onclick="document.getElementById('insightFile').click()" style="font-size:12px;padding:6px 10px">＋ 이미지 추가</button>
+        <button type="button" class="btn" id="insightStitchBtn" onclick="stitchInsights()" style="font-size:12px;padding:6px 10px;display:none" title="여러 캡쳐를 겹침 제거하고 한 장으로 이어붙이기 + 상단 상태바 정리">🧷 이어붙이기·정리</button>
         <button type="button" class="btn" id="insightReportBtn" onclick="openInsightReport()" style="font-size:12px;padding:6px 10px;display:none" title="인사이트 보고서 생성">📄 인사이트 보고서</button>
         <input type="file" id="insightFile" accept="image/*" multiple style="display:none" onchange="handleInsightUpload(this.files)" />
       </div>
@@ -2690,7 +2695,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.18.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.18.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6645,6 +6650,8 @@ function renderInsightThumbs() {
   }).join('');
   const btn = document.getElementById('insightReportBtn');
   if (btn) btn.style.display = insightEditUrls.length ? '' : 'none';
+  const stitchBtn = document.getElementById('insightStitchBtn');
+  if (stitchBtn) stitchBtn.style.display = insightEditUrls.length >= 2 ? '' : 'none';
 }
 function removeInsight(i) { insightEditUrls.splice(i, 1); renderInsightThumbs(); }
 
@@ -6667,32 +6674,160 @@ function downscaleToJpeg(file, maxW = 1080, q = 0.82) {
   });
 }
 
+function setInsightProgress(done, totalOrHide, label) {
+  const box = document.getElementById('insightProgress');
+  if (!box) return;
+  if (totalOrHide === false) { box.style.display = 'none'; return; }
+  const total = totalOrHide;
+  box.style.display = 'block';
+  document.getElementById('insightProgLabel').textContent = label || '인사이트 업로드 중...';
+  document.getElementById('insightProgCount').textContent = `${done} / ${total}`;
+  document.getElementById('insightProgBar').style.width = total ? Math.round(done / total * 100) + '%' : '0%';
+}
+
 async function handleInsightUpload(files) {
   if (!files || !files.length) return;
   const fileInput = document.getElementById('insightFile');
   if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); if (fileInput) fileInput.value = ''; return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   const title = document.getElementById('fTitle').value.trim() || '';
-  for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    showToast(`📤 인사이트 업로드 중... (${(file.size / 1024).toFixed(0)}KB)`);
+  const imgFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  const total = imgFiles.length;
+  let done = 0, failed = 0;
+  setInsightProgress(0, total, `인사이트 업로드 중... (${total}장)`);
+  for (const file of imgFiles) {
     try {
       const dataUrl = await downscaleToJpeg(file);
       const raw = dataUrl.split(',')[1];
       const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({
         action: 'upload_biz_cert',
-        filename: `[인사이트] ${company}_${title}_${Date.now()}.jpg`.replace(/[\\/:*?"<>|]/g, '_'),
+        filename: `[인사이트] ${company}_${title}_${Date.now()}_${done + 1}.jpg`.replace(/[\\/:*?"<>|]/g, '_'),
         mime_type: 'image/jpeg', file_base64: raw }) });
       const result = await res.json();
       if (result.ok && result.url) {
         insightEditUrls.push(result.url);
         insightB64[result.url] = dataUrl; saveInsightB64();
         renderInsightThumbs();
-        showToast('✓ 인사이트 추가됨');
-      } else { alert('업로드 실패: ' + (result.error || '알 수 없는 오류')); }
-    } catch (e) { alert('업로드 실패: ' + e.message); }
+      } else { failed++; console.error('insight upload:', result.error); }
+    } catch (e) { failed++; console.error(e); }
+    done++;
+    setInsightProgress(done, total, `인사이트 업로드 중... (${total}장)`);
   }
+  setInsightProgress(0, false);
   if (fileInput) fileInput.value = '';
+  if (failed) showToast(`⚠ ${total - failed}/${total}장 업로드됨 (${failed}장 실패)`);
+  else showToast(`✓ 인사이트 ${total}장 모두 업로드 완료`);
+}
+
+// ── 긴 캡쳐 이어붙이기(겹침 제거) + 상단 상태바 정리 ──
+function dataUrlToCanvas(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); resolve(c); };
+    img.onerror = reject; img.src = dataUrl;
+  });
+}
+function scaleCanvasW(canvas, W) {
+  const h = Math.round(canvas.height * W / canvas.width);
+  const c = document.createElement('canvas'); c.width = W; c.height = h;
+  c.getContext('2d').drawImage(canvas, 0, 0, W, h); return c;
+}
+function rowSigs(canvas, cols = 24) {
+  const h = canvas.height;
+  const tmp = document.createElement('canvas'); tmp.width = cols; tmp.height = h;
+  tmp.getContext('2d').drawImage(canvas, 0, 0, cols, h);
+  const data = tmp.getContext('2d').getImageData(0, 0, cols, h).data;
+  const sigs = new Array(h);
+  for (let y = 0; y < h; y++) { const row = new Uint8Array(cols); for (let x = 0; x < cols; x++) { const i = (y * cols + x) * 4; row[x] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0; } sigs[y] = row; }
+  return sigs;
+}
+function rowDiff(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]); return s / a.length; }
+// cur의 상단 몇 px가 prev의 하단과 겹치는지 (같은 폭 전제)
+function detectOverlap(prev, cur) {
+  const ps = rowSigs(prev), cs = rowSigs(cur);
+  const S = Math.max(20, Math.min(90, Math.floor(cur.height * 0.12)));
+  const start = Math.floor(prev.height * 0.25), end = prev.height - S;
+  let best = 1e9, bestP = -1;
+  for (let p = start; p <= end; p++) {
+    let d = 0, n = 0;
+    for (let j = 0; j < S; j += 2) { d += rowDiff(ps[p + j], cs[j]); n++; }
+    d /= n; if (d < best) { best = d; bestP = p; }
+  }
+  return (best < 12 && bestP >= 0) ? (prev.height - bestP) : 0;
+}
+// 상단 상태바 감지 → 자를 px (없으면 0)
+function detectStatusBar(canvas) {
+  const s = rowSigs(canvas), H = canvas.height;
+  const lo = Math.max(1, Math.floor(H * 0.015)), hi = Math.floor(H * 0.12);
+  let best = 0, bestY = 0;
+  for (let y = lo; y < hi; y++) { const d = rowDiff(s[y], s[y - 1]); if (d > best) { best = d; bestY = y; } }
+  return best > 18 ? bestY : 0;  // 뚜렷한 가로 경계가 상단에 있을 때만
+}
+let _stitchState = null;
+async function stitchInsights() {
+  const urls = insightEditUrls.slice();
+  if (urls.length < 2) return;
+  if (urls.some(u => !insightB64[u])) { alert('일부 이미지의 원본이 이 기기에 없어 정리할 수 없어요.\n해당 이미지를 이 기기에서 다시 추가한 뒤 시도해주세요.'); return; }
+  showToast('캡쳐 분석 중...');
+  try {
+    const cvs = []; for (const u of urls) cvs.push(await dataUrlToCanvas(insightB64[u]));
+    const W = Math.min(...cvs.map(c => c.width));
+    const norm = cvs.map(c => c.width === W ? c : scaleCanvasW(c, W));
+    const overlaps = [0];
+    for (let i = 1; i < norm.length; i++) overlaps.push(detectOverlap(norm[i - 1], norm[i]));
+    _stitchState = { norm, overlaps, statusTop: detectStatusBar(norm[0]), W };
+    showStitchPreview(true);
+  } catch (e) { alert('정리 실패: ' + e.message); }
+}
+function composeStitch(cropStatus) {
+  const { norm, overlaps, statusTop, W } = _stitchState;
+  const tops = overlaps.slice(); if (cropStatus) tops[0] = statusTop;
+  const totalH = norm.reduce((s, c, i) => s + (c.height - tops[i]), 0);
+  const out = document.createElement('canvas'); out.width = W; out.height = totalH;
+  const ctx = out.getContext('2d'); let y = 0;
+  norm.forEach((c, i) => { const h = c.height - tops[i]; ctx.drawImage(c, 0, tops[i], W, h, 0, y, W, h); y += h; });
+  return out.toDataURL('image/jpeg', 0.85);
+}
+function showStitchPreview(cropStatus) {
+  const dataUrl = composeStitch(cropStatus);
+  window._stitchDataUrl = dataUrl;
+  let ov = document.getElementById('stitchOverlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'stitchOverlay'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
+  const removed = _stitchState.overlaps.filter(o => o > 0).length;
+  ov.innerHTML = `<div class="modal" style="width:520px;max-width:95vw">
+    <div class="modal-head"><h3>🧷 캡쳐 정리 미리보기</h3><button class="icon-btn" onclick="document.getElementById('stitchOverlay').classList.remove('open')">✕</button></div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">${_stitchState.norm.length}장 → 1장 · 겹침 제거 ${removed}곳${_stitchState.statusTop > 0 ? ' · 상단 상태바 감지됨' : ''}</div>
+    <div style="max-height:52vh;overflow:auto;background:#fff;border-radius:8px;padding:6px;text-align:center"><img src="${dataUrl}" style="max-width:100%;border:1px solid #e4e4e4"/></div>
+    <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:13px;color:var(--text-2);cursor:pointer">
+      <input type="checkbox" id="stitchCropStatus" ${cropStatus ? 'checked' : ''} onchange="showStitchPreview(this.checked)" ${_stitchState.statusTop > 0 ? '' : 'disabled'} style="width:15px;height:15px"/>
+      상단 상태바(시간·배터리 표시줄) 자르기 ${_stitchState.statusTop > 0 ? '' : '<span style="color:var(--text-4)">(감지 안 됨)</span>'}
+    </label>
+    <div class="modal-actions"><button class="btn" onclick="document.getElementById('stitchOverlay').classList.remove('open')">취소</button>
+      <button class="btn btn-primary" onclick="applyStitch()">이 한 장으로 적용</button></div></div>`;
+  ov.classList.add('open');
+}
+async function uploadImageDataUrl(dataUrl, nameHint) {
+  const raw = dataUrl.split(',')[1];
+  const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.jpg`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: 'image/jpeg', file_base64: raw }) });
+  const r = await res.json();
+  if (r.ok && r.url) return r.url;
+  throw new Error(r.error || '업로드 실패');
+}
+async function applyStitch() {
+  const dataUrl = window._stitchDataUrl;
+  if (!dataUrl) return;
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
+  const title = document.getElementById('fTitle').value.trim() || '';
+  showToast('📤 정리본 업로드 중...');
+  try {
+    const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_정리`);
+    insightEditUrls = [url];
+    insightB64[url] = dataUrl; saveInsightB64();
+    renderInsightThumbs();
+    document.getElementById('stitchOverlay').classList.remove('open');
+    showToast('✓ 한 장으로 정리 완료 (저장하려면 콘텐츠 저장)');
+  } catch (e) { alert('적용 실패: ' + e.message); }
 }
 
 // ── 인사이트 보고서 ──
