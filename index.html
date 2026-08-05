@@ -375,6 +375,11 @@
     #contentActionMenu .menu-status-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 7px; border-bottom: 1px solid var(--border); margin-bottom: 3px; }
     #contentActionMenu .menu-status-row .content-progress-tag { cursor: pointer; border: 1.5px solid transparent; text-decoration: none; }
     #contentActionMenu .menu-status-row .content-progress-tag.cur { border-color: var(--accent); }
+    /* 인사이트 이미지 썸네일 */
+    .insight-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .insight-thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg-3); }
+    .insight-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .insight-thumb .rm { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 12px; line-height: 16px; padding: 0; text-align: center; }
 
     /* 연도/월 기간 필터 바 */
     .orders-period-bar {
@@ -2538,6 +2543,16 @@
       <input type="url" id="fUrl" placeholder="예) https://www.instagram.com/p/xxxxx/" autocomplete="off" />
     </div>
 
+    <div class="form-group">
+      <label>📊 인사이트 이미지 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">(발행 후 성과 캡쳐 · 여러 장 가능)</span></label>
+      <div id="insightThumbs" class="insight-thumbs"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <button type="button" class="btn" onclick="document.getElementById('insightFile').click()" style="font-size:12px;padding:6px 10px">＋ 이미지 추가</button>
+        <button type="button" class="btn" id="insightReportBtn" onclick="openInsightReport()" style="font-size:12px;padding:6px 10px;display:none" title="인사이트 보고서 생성">📄 인사이트 보고서</button>
+        <input type="file" id="insightFile" accept="image/*" multiple style="display:none" onchange="handleInsightUpload(this.files)" />
+      </div>
+    </div>
+
     <div class="form-group"><label>메모 (선택)</label><textarea id="fMemo" placeholder="비고"></textarea></div>
 
     <div class="modal-actions">
@@ -2675,7 +2690,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.17.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.18.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2849,6 +2864,7 @@ async function fetchFromSheet() {
     due_draft: normalizeDateTime(r.due_draft),
     order_id: r.order_id ? String(r.order_id) : '',
     publish_url: r.publish_url || '',
+    insight_urls: r.insight_urls || '',   // 인사이트 이미지 드라이브 URL들 ('|' 구분)
   }));
 }
 
@@ -3610,6 +3626,7 @@ function openContentActionMenu(id, x, y) {
     `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
     `<div class="menu-status-label">상태 변경</div><div class="menu-status-row">${statusPills}</div>` +
     `<button class="bulk-menu-opt" data-act="edit">콘텐츠 수정</button>` +
+    ((c.insight_urls || '').trim() ? `<button class="bulk-menu-opt" data-act="insight">📄 인사이트 보고서</button>` : '') +
     orderActs.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
     (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`);
   menu.style.display = 'block';
@@ -3623,6 +3640,7 @@ function openContentActionMenu(id, x, y) {
       menu.style.display = 'none';
       const act = btn.dataset.act;
       if (act === 'edit') { openModal(c.date, id); return; }
+      if (act === 'insight') { openInsightReportFor(id); return; }
       if (!lo) return;
       if (act === 'order') { openOrderModal(lo.id); return; }
       editingOrderId = lo.id;  // 견적서/계약서 생성 함수가 editingOrderId를 사용
@@ -6528,6 +6546,8 @@ function openModal(dateStr, id) {
     document.getElementById('fDueDraftHour').value = dr.hour;
     document.getElementById('fMemo').value = c.memo || '';
     document.getElementById('fUrl').value = c.publish_url || '';
+    insightEditUrls = (c.insight_urls || '').split('|').filter(Boolean);
+    renderInsightThumbs();
     delBtn.style.display = 'inline-flex';
   } else {
     document.getElementById('modalTitle').textContent = '콘텐츠 추가';
@@ -6548,6 +6568,8 @@ function openModal(dateStr, id) {
     document.getElementById('fDueDraftHour').value = '';
     document.getElementById('fMemo').value = '';
     document.getElementById('fUrl').value = '';
+    insightEditUrls = [];
+    renderInsightThumbs();
     delBtn.style.display = 'none';
   }
 
@@ -6609,6 +6631,162 @@ function closeModalOutside(e, overlayId, closer) {
   if (e.target === document.getElementById(overlayId)) closer();
 }
 
+// ═══════════════ 콘텐츠 인사이트 이미지 + 보고서 ═══════════════
+let insightEditUrls = [];   // 편집 중 콘텐츠의 인사이트 이미지 URL들
+let insightB64 = (() => { try { return JSON.parse(localStorage.getItem('cc-insight-b64') || '{}'); } catch { return {}; } })();  // {url: dataURL} 렌더용 캐시
+function saveInsightB64() { try { localStorage.setItem('cc-insight-b64', JSON.stringify(insightB64)); } catch (e) {} }
+
+function renderInsightThumbs() {
+  const box = document.getElementById('insightThumbs');
+  if (!box) return;
+  box.innerHTML = insightEditUrls.map((u, i) => {
+    const src = insightB64[u] || u;
+    return `<div class="insight-thumb"><img src="${escapeHtml(src)}" alt="" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeInsight(${i})">×</button></div>`;
+  }).join('');
+  const btn = document.getElementById('insightReportBtn');
+  if (btn) btn.style.display = insightEditUrls.length ? '' : 'none';
+}
+function removeInsight(i) { insightEditUrls.splice(i, 1); renderInsightThumbs(); }
+
+// 이미지 축소 + JPEG 압축 → dataURL (드라이브·캐시 용량 절감)
+function downscaleToJpeg(file, maxW = 1080, q = 0.82) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', q));
+      };
+      img.onerror = reject; img.src = fr.result;
+    };
+    fr.onerror = reject; fr.readAsDataURL(file);
+  });
+}
+
+async function handleInsightUpload(files) {
+  if (!files || !files.length) return;
+  const fileInput = document.getElementById('insightFile');
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); if (fileInput) fileInput.value = ''; return; }
+  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
+  const title = document.getElementById('fTitle').value.trim() || '';
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    showToast(`📤 인사이트 업로드 중... (${(file.size / 1024).toFixed(0)}KB)`);
+    try {
+      const dataUrl = await downscaleToJpeg(file);
+      const raw = dataUrl.split(',')[1];
+      const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({
+        action: 'upload_biz_cert',
+        filename: `[인사이트] ${company}_${title}_${Date.now()}.jpg`.replace(/[\\/:*?"<>|]/g, '_'),
+        mime_type: 'image/jpeg', file_base64: raw }) });
+      const result = await res.json();
+      if (result.ok && result.url) {
+        insightEditUrls.push(result.url);
+        insightB64[result.url] = dataUrl; saveInsightB64();
+        renderInsightThumbs();
+        showToast('✓ 인사이트 추가됨');
+      } else { alert('업로드 실패: ' + (result.error || '알 수 없는 오류')); }
+    } catch (e) { alert('업로드 실패: ' + e.message); }
+  }
+  if (fileInput) fileInput.value = '';
+}
+
+// ── 인사이트 보고서 ──
+function buildInsightReportHTML(d) {
+  const C = QUOTE_COMPANY;
+  const chMap = { life: 'one_home_life', guide: 'one_home_guide', mag: 'one_home_mag' };
+  const chans = String(d.channel || '').split(/[,\s]+/).filter(Boolean);
+  const chanText = chans.map(c => `@${chMap[c.toLowerCase()] || c}`).join('  ·  ') || '-';
+  const dateStr = d.date ? `${d.date}${d.time ? ' ' + d.time : ''}` : '-';
+  const rows = [['회사', d.company || '-'], ['콘텐츠', d.title || '-'], ['채널', chanText], ['유형', d.type || '-'], ['발행일', dateStr], ['담당자', d.owner || '-']];
+  if (d.publish_url) rows.push(['발행 링크', d.publish_url]);
+  const infoRows = rows.map(([k, v]) =>
+    `<tr><td style="width:92px;background:#f4f4f4;font-weight:700;padding:8px 11px;border:1px solid #e4e4e4;white-space:nowrap">${k}</td><td style="padding:8px 11px;border:1px solid #e4e4e4;word-break:break-all">${escapeHtml(v)}</td></tr>`).join('');
+  const imgs = d.urls.map(u => `<img src="${escapeHtml(insightB64[u] || u)}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/>`).join('');
+  const today = fmtDate(new Date());
+  return `<div id="insightReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:18px">
+      <div><div style="font-size:11px;color:#999;letter-spacing:1.5px">CONTENT INSIGHT REPORT</div>
+        <div style="font-size:22px;font-weight:800;margin-top:3px">콘텐츠 인사이트 리포트</div></div>
+      <div style="text-align:right;font-size:12px;color:#555;line-height:1.5">${escapeHtml(C.name)}<br>${today}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:13px">${infoRows}</table>
+    <div style="display:flex;flex-direction:column;gap:14px">${imgs}</div>
+    <div style="margin-top:22px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:11px;color:#aaa;text-align:center">${escapeHtml(C.name)} · 발행 콘텐츠 성과 인사이트 요약</div>
+  </div>`;
+}
+
+function openInsightReport() {
+  const d = {
+    company: document.getElementById('fCompany').value.trim(),
+    title: document.getElementById('fTitle').value.trim(),
+    channel: getSegValue('fChannel'),
+    type: getSegValue('fType'),
+    date: document.getElementById('fDate').value,
+    time: document.getElementById('fTime').value,
+    owner: document.getElementById('fOwner').value.trim(),
+    publish_url: document.getElementById('fUrl').value.trim(),
+    urls: insightEditUrls.slice(),
+  };
+  if (!d.urls.length) { alert('먼저 인사이트 이미지를 추가해주세요.'); return; }
+  showInsightReportOverlay(d);
+}
+function openInsightReportFor(id) {
+  const c = contents.find(x => String(x.id) === String(id));
+  if (!c || !(c.insight_urls || '').trim()) { alert('이 콘텐츠에 인사이트 이미지가 없습니다.'); return; }
+  showInsightReportOverlay({ company: c.company, title: c.title, channel: c.channel, type: c.type, date: c.date, time: c.time, owner: c.owner, publish_url: c.publish_url, urls: (c.insight_urls || '').split('|').filter(Boolean) });
+}
+function showInsightReportOverlay(d) {
+  let ov = document.getElementById('insightReportOverlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'insightReportOverlay'; ov.className = 'modal-overlay';
+    ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); };
+    document.body.appendChild(ov);
+  }
+  window._insightReportData = d;
+  ov.innerHTML = `<div class="modal" style="width:780px;max-width:96vw">
+    <div class="modal-head"><h3>📄 인사이트 보고서</h3><button class="icon-btn" onclick="document.getElementById('insightReportOverlay').classList.remove('open')">✕</button></div>
+    <div style="max-height:60vh;overflow:auto;background:#fff;border-radius:8px;padding:10px">${buildInsightReportHTML(d)}</div>
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px">
+      <button class="btn" onclick="exportInsight('png')">🖼 이미지(PNG) 저장</button>
+      <button class="btn" onclick="exportInsight('pdf')">📄 PDF 저장</button>
+      <button class="btn btn-primary" onclick="exportInsight('share')">💬 카톡/공유</button>
+    </div></div>`;
+  ov.classList.add('open');
+}
+async function exportInsight(mode) {
+  const node = document.getElementById('insightReportDoc');
+  if (!node) return;
+  const d = window._insightReportData || {};
+  const base = (`인사이트_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '인사이트리포트';
+  try {
+    if (mode === 'pdf') {
+      showToast('PDF 생성 중...');
+      await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'px', format: [720, node.scrollHeight], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
+      showToast('✓ PDF 저장됨');
+      return;
+    }
+    if (typeof html2canvas === 'undefined') { alert('이미지 라이브러리 로드 실패 — PDF를 이용해주세요.'); return; }
+    showToast('이미지 생성 중...');
+    const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const file = new File([blob], base + '.png', { type: 'image/png' });
+    if (mode === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: '콘텐츠 인사이트 리포트' });
+      return;
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = base + '.png'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    showToast('✓ 이미지 저장됨' + (mode === 'share' ? ' — 카톡에 첨부해주세요' : ''));
+  } catch (e) {
+    alert('생성 실패: ' + e.message + '\n\n※ 다른 기기에서 올린 이미지는 이 기기에 원본 캡쳐가 없어 실패할 수 있어요. 그 경우 이 기기에서 이미지를 다시 추가하면 됩니다.');
+  }
+}
+
 async function saveContent() { return withSubmitGuard('saveContentBtn', _saveContent); }
 async function _saveContent() {
   const date    = document.getElementById('fDate').value;
@@ -6621,6 +6799,7 @@ async function _saveContent() {
   const owner   = document.getElementById('fOwner').value.trim();
   const memo    = document.getElementById('fMemo').value.trim();
   const publish_url = document.getElementById('fUrl').value.trim();
+  const insight_urls = insightEditUrls.join('|');
 
   if (!date || !title) { alert('날짜와 제목을 입력해 주세요.'); return; }
 
@@ -6644,10 +6823,10 @@ async function _saveContent() {
   if (isEditing) {
     const idx = contents.findIndex(c => String(c.id) === String(editingId));
     if (idx === -1) return;
-    item = { ...contents[idx], date, time, company, title, channel, type, status, owner, memo, publish_url, due_storyboard, due_shoot, due_draft, order_id };
+    item = { ...contents[idx], date, time, company, title, channel, type, status, owner, memo, publish_url, insight_urls, due_storyboard, due_shoot, due_draft, order_id };
     contents[idx] = item;
   } else {
-    item = { id: String(Date.now()), date, time, company, title, channel, type, status, owner, memo, publish_url, due_storyboard, due_shoot, due_draft, order_id };
+    item = { id: String(Date.now()), date, time, company, title, channel, type, status, owner, memo, publish_url, insight_urls, due_storyboard, due_shoot, due_draft, order_id };
     contents.push(item);
   }
 
