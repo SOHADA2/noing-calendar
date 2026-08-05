@@ -381,12 +381,15 @@
     .insight-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .insight-thumb .rm { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 12px; line-height: 16px; padding: 0; text-align: center; }
     /* 캡쳐 정리 드래그 편집기 */
-    #stitchEditor .se-stack { display: flex; flex-direction: column; align-items: center; gap: 0; background: #2a2a2a; padding: 10px; border-radius: 8px; max-height: 56vh; overflow: auto; }
-    #stitchEditor .se-img { position: relative; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
-    #stitchEditor .se-img img { display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-    #stitchEditor .se-handle { position: absolute; left: 0; right: 0; height: 20px; cursor: ns-resize; z-index: 2; touch-action: none; font-size: 10px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-    #stitchEditor .se-handle.top { top: 0; background: linear-gradient(rgba(106,168,255,.85), rgba(106,168,255,.15)); }
-    #stitchEditor .se-handle.bot { bottom: 0; background: linear-gradient(rgba(242,162,75,.15), rgba(242,162,75,.85)); }
+    #stitchEditor .se-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #2a2a2a; padding: 10px; border-radius: 8px; max-height: 62vh; overflow-y: auto; overflow-x: hidden; }
+    #stitchEditor .se-img { position: relative; background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.15); flex-shrink: 0; }
+    #stitchEditor .se-img > img { display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+    #stitchEditor .se-cut { position: absolute; left: 0; right: 0; background: rgba(0,0,0,.6); pointer-events: none; z-index: 1; }
+    #stitchEditor .se-cut.top { top: 0; } #stitchEditor .se-cut.bot { bottom: 0; }
+    #stitchEditor .se-line { position: absolute; left: 0; right: 0; height: 22px; transform: translateY(-50%); cursor: ns-resize; z-index: 3; touch-action: none; font-size: 10px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+    #stitchEditor .se-line.top { background: rgba(106,168,255,.9); border-top: 2px solid #6aa8ff; }
+    #stitchEditor .se-line.bot { transform: translateY(50%); background: rgba(242,162,75,.9); border-bottom: 2px solid #f2a24b; }
+    #stitchEditor .se-num { position: absolute; top: 4px; left: 4px; z-index: 2; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
     /* 연도/월 기간 필터 바 */
     .orders-period-bar {
@@ -2702,7 +2705,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.18.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.18.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6787,24 +6790,24 @@ async function stitchInsights() {
     const cvs = []; for (const u of urls) cvs.push(await dataUrlToCanvas(insightB64[u]));
     const W = Math.min(...cvs.map(c => c.width));
     const norm = cvs.map(c => c.width === W ? c : scaleCanvasW(c, W));
-    const dispW = Math.min(300, W), scale = dispW / W;
-    _editor = { norm, W, dispW, scale, crops: autoCrops(norm), dispSrc: norm.map(c => c.toDataURL('image/jpeg', 0.9)) };
+    const dispW = Math.min(340, W), scale = dispW / W;
+    _editor = { norm, W, dispW, scale, crops: norm.map(() => ({ top: 0, bottom: 0 })), dispSrc: norm.map(c => c.toDataURL('image/jpeg', 0.9)) };
     openStitchEditor();
   } catch (e) { alert('불러오기 실패: ' + e.message); }
 }
 function openStitchEditor() {
   let ov = document.getElementById('stitchEditor');
   if (!ov) { ov = document.createElement('div'); ov.id = 'stitchEditor'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
-  ov.innerHTML = `<div class="modal" style="width:400px;max-width:96vw">
-    <div class="modal-head"><h3>✂️ 캡쳐 정리 (드래그로 조절)</h3><button class="icon-btn" onclick="document.getElementById('stitchEditor').classList.remove('open')">✕</button></div>
-    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">각 이미지의 <b style="color:#6aa8ff">위 손잡이</b>·<b style="color:#f2a24b">아래 손잡이</b>를 드래그해서 겹치는 부분·상단 표시줄을 잘라 맞춰주세요.</div>
+  ov.innerHTML = `<div class="modal" style="width:420px;max-width:96vw">
+    <div class="modal-head"><h3>✂️ 캡쳐 정리</h3><button class="icon-btn" onclick="document.getElementById('stitchEditor').classList.remove('open')">✕</button></div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">각 이미지의 <b style="color:#6aa8ff">파란 선(위)</b>을 아래로, <b style="color:#f2a24b">주황 선(아래)</b>을 위로 드래그해 자를 부분(어둡게 표시)을 정하세요. 겹치는 부분·상단 표시줄을 잘라 맞추면 됩니다.</div>
     <div class="se-stack" id="seStack"></div>
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
       <button class="btn" style="font-size:11px;padding:5px 9px" onclick="editorAuto()">🔄 자동 맞춤</button>
-      <button class="btn" style="font-size:11px;padding:5px 9px" onclick="editorReset()">크롭 초기화</button>
+      <button class="btn" style="font-size:11px;padding:5px 9px" onclick="editorReset()">초기화</button>
     </div>
     <div class="modal-actions"><button class="btn" onclick="document.getElementById('stitchEditor').classList.remove('open')">취소</button>
-      <button class="btn btn-primary" onclick="applyStitchEditor()">한 장으로 적용</button></div></div>`;
+      <button class="btn btn-primary" onclick="previewStitchResult()">👁 결과 확인 → 적용</button></div></div>`;
   renderEditorStack();
   ov.classList.add('open');
 }
@@ -6812,20 +6815,23 @@ function renderEditorStack() {
   const { norm, crops, scale, dispW, dispSrc } = _editor;
   const stack = document.getElementById('seStack');
   stack.innerHTML = norm.map((c, i) => {
-    const cr = crops[i], h = Math.max(20, (c.height - cr.top - cr.bottom)) * scale;
-    return `<div class="se-img" data-idx="${i}" style="width:${dispW}px;height:${h}px">
-      <img src="${dispSrc[i]}" style="width:${dispW}px;margin-top:${-cr.top * scale}px"/>
-      <div class="se-handle top" data-idx="${i}" data-which="top">▲ 위 자르기</div>
-      <div class="se-handle bot" data-idx="${i}" data-which="bottom">아래 자르기 ▼</div>
+    const cr = crops[i], imgH = Math.round(c.height * scale);
+    return `<div class="se-img" data-idx="${i}" style="width:${dispW}px;height:${imgH}px">
+      <img src="${dispSrc[i]}" style="width:${dispW}px;height:${imgH}px"/>
+      <div class="se-cut top" style="height:${cr.top * scale}px"></div>
+      <div class="se-cut bot" style="height:${cr.bottom * scale}px"></div>
+      <div class="se-line top" data-idx="${i}" data-which="top" style="top:${cr.top * scale}px">▼ 위 <span class="px">${cr.top}</span>px 자름</div>
+      <div class="se-line bot" data-idx="${i}" data-which="bottom" style="bottom:${cr.bottom * scale}px">▲ 아래 <span class="px">${cr.bottom}</span>px 자름</div>
+      <div class="se-num">${i + 1}</div>
     </div>`;
   }).join('');
-  stack.querySelectorAll('.se-handle').forEach(h => h.addEventListener('pointerdown', editorHandleDown));
+  stack.querySelectorAll('.se-line').forEach(g => g.addEventListener('pointerdown', editorHandleDown));
 }
 let _drag = null;
 function editorHandleDown(e) {
   e.preventDefault();
   const idx = +this.dataset.idx, which = this.dataset.which;
-  _drag = { idx, which, startY: e.clientY, startVal: _editor.crops[idx][which], el: this.parentElement };
+  _drag = { idx, which, startY: e.clientY, startVal: _editor.crops[idx][which], img: this.closest('.se-img'), line: this };
   try { this.setPointerCapture(e.pointerId); } catch (_) {}
   document.addEventListener('pointermove', editorHandleMove);
   document.addEventListener('pointerup', editorHandleUp);
@@ -6835,13 +6841,14 @@ function editorHandleMove(e) {
   const { norm, crops, scale } = _editor;
   const c = norm[_drag.idx];
   let delta = (e.clientY - _drag.startY) / scale;
-  if (_drag.which === 'bottom') delta = -delta;  // 아래 손잡이는 위로 끌면 증가
+  if (_drag.which === 'bottom') delta = -delta;  // 아래 선은 위로 끌면 증가
   const other = _drag.which === 'top' ? crops[_drag.idx].bottom : crops[_drag.idx].top;
   const v = Math.max(0, Math.min(Math.round(_drag.startVal + delta), c.height - other - 20));
   crops[_drag.idx][_drag.which] = v;
-  const cr = crops[_drag.idx];
-  _drag.el.style.height = Math.max(20, (c.height - cr.top - cr.bottom)) * scale + 'px';
-  _drag.el.querySelector('img').style.marginTop = (-cr.top * scale) + 'px';
+  const img = _drag.img, off = v * scale;
+  _drag.line.querySelector('.px').textContent = v;
+  if (_drag.which === 'top') { img.querySelector('.se-cut.top').style.height = off + 'px'; _drag.line.style.top = off + 'px'; }
+  else { img.querySelector('.se-cut.bot').style.height = off + 'px'; _drag.line.style.bottom = off + 'px'; }
 }
 function editorHandleUp() { _drag = null; document.removeEventListener('pointermove', editorHandleMove); document.removeEventListener('pointerup', editorHandleUp); }
 function editorAuto() { _editor.crops = autoCrops(_editor.norm); renderEditorStack(); }
@@ -6861,9 +6868,21 @@ async function uploadImageDataUrl(dataUrl, nameHint) {
   if (r.ok && r.url) return r.url;
   throw new Error(r.error || '업로드 실패');
 }
-async function applyStitchEditor() {
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+function previewStitchResult() {
   const dataUrl = composeEditor();
+  window._stitchResult = dataUrl;
+  let ov = document.getElementById('stitchPreview');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'stitchPreview'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="modal" style="width:430px;max-width:96vw">
+    <div class="modal-head"><h3>👁 정리 결과 (합쳐진 한 장)</h3><button class="icon-btn" onclick="document.getElementById('stitchPreview').classList.remove('open')">✕</button></div>
+    <div style="max-height:64vh;overflow:auto;background:#fff;border-radius:8px;padding:6px;text-align:center"><img src="${dataUrl}" style="width:100%;border:1px solid #e4e4e4"/></div>
+    <div class="modal-actions"><button class="btn" onclick="document.getElementById('stitchPreview').classList.remove('open')">◀ 계속 편집</button>
+      <button class="btn btn-primary" onclick="commitStitch()">이대로 적용</button></div></div>`;
+  ov.classList.add('open');
+}
+async function commitStitch() {
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+  const dataUrl = window._stitchResult; if (!dataUrl) return;
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   const title = document.getElementById('fTitle').value.trim() || '';
   showToast('📤 정리본 업로드 중...');
@@ -6872,6 +6891,7 @@ async function applyStitchEditor() {
     insightEditUrls = [url];
     insightB64[url] = dataUrl; saveInsightB64();
     renderInsightThumbs();
+    document.getElementById('stitchPreview').classList.remove('open');
     document.getElementById('stitchEditor').classList.remove('open');
     showToast('✓ 한 장으로 정리 완료 (콘텐츠 저장하면 반영)');
   } catch (e) { alert('적용 실패: ' + e.message); }
