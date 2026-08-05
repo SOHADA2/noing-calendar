@@ -380,6 +380,13 @@
     .insight-thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg-3); }
     .insight-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .insight-thumb .rm { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 12px; line-height: 16px; padding: 0; text-align: center; }
+    /* 캡쳐 정리 드래그 편집기 */
+    #stitchEditor .se-stack { display: flex; flex-direction: column; align-items: center; gap: 0; background: #2a2a2a; padding: 10px; border-radius: 8px; max-height: 56vh; overflow: auto; }
+    #stitchEditor .se-img { position: relative; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+    #stitchEditor .se-img img { display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+    #stitchEditor .se-handle { position: absolute; left: 0; right: 0; height: 20px; cursor: ns-resize; z-index: 2; touch-action: none; font-size: 10px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+    #stitchEditor .se-handle.top { top: 0; background: linear-gradient(rgba(106,168,255,.85), rgba(106,168,255,.15)); }
+    #stitchEditor .se-handle.bot { bottom: 0; background: linear-gradient(rgba(242,162,75,.15), rgba(242,162,75,.85)); }
 
     /* 연도/월 기간 필터 바 */
     .orders-period-bar {
@@ -2552,7 +2559,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
         <button type="button" class="btn" onclick="document.getElementById('insightFile').click()" style="font-size:12px;padding:6px 10px">＋ 이미지 추가</button>
-        <button type="button" class="btn" id="insightStitchBtn" onclick="stitchInsights()" style="font-size:12px;padding:6px 10px;display:none" title="여러 캡쳐를 겹침 제거하고 한 장으로 이어붙이기 + 상단 상태바 정리">🧷 이어붙이기·정리</button>
+        <button type="button" class="btn" id="insightStitchBtn" onclick="stitchInsights()" style="font-size:12px;padding:6px 10px;display:none" title="드래그로 각 이미지 위/아래를 잘라 겹침·상태바를 맞춰 한 장으로 이어붙이기">✂️ 이어붙이기(편집)</button>
         <button type="button" class="btn" id="insightReportBtn" onclick="openInsightReport()" style="font-size:12px;padding:6px 10px;display:none" title="인사이트 보고서 생성">📄 인사이트 보고서</button>
         <input type="file" id="insightFile" accept="image/*" multiple style="display:none" onchange="handleInsightUpload(this.files)" />
       </div>
@@ -2695,7 +2702,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.18.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.18.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6763,48 +6770,89 @@ function detectStatusBar(canvas) {
   for (let y = lo; y < hi; y++) { const d = rowDiff(s[y], s[y - 1]); if (d > best) { best = d; bestY = y; } }
   return best > 18 ? bestY : 0;  // 뚜렷한 가로 경계가 상단에 있을 때만
 }
-let _stitchState = null;
+// 자동값(시작점) — 각 이미지의 상단 크롭(첫장=상태바, 이후=이전과 겹침)
+function autoCrops(norm) {
+  const crops = norm.map(() => ({ top: 0, bottom: 0 }));
+  crops[0].top = detectStatusBar(norm[0]);
+  for (let i = 1; i < norm.length; i++) crops[i].top = detectOverlap(norm[i - 1], norm[i]);
+  return crops;
+}
+let _editor = null;   // { norm, W, scale, dispW, crops, dispSrc }
 async function stitchInsights() {
   const urls = insightEditUrls.slice();
   if (urls.length < 2) return;
-  if (urls.some(u => !insightB64[u])) { alert('일부 이미지의 원본이 이 기기에 없어 정리할 수 없어요.\n해당 이미지를 이 기기에서 다시 추가한 뒤 시도해주세요.'); return; }
-  showToast('캡쳐 분석 중...');
+  if (urls.some(u => !insightB64[u])) { alert('일부 이미지의 원본이 이 기기에 없어 편집할 수 없어요.\n해당 이미지를 이 기기에서 다시 추가한 뒤 시도해주세요.'); return; }
+  showToast('불러오는 중...');
   try {
     const cvs = []; for (const u of urls) cvs.push(await dataUrlToCanvas(insightB64[u]));
     const W = Math.min(...cvs.map(c => c.width));
     const norm = cvs.map(c => c.width === W ? c : scaleCanvasW(c, W));
-    const overlaps = [0];
-    for (let i = 1; i < norm.length; i++) overlaps.push(detectOverlap(norm[i - 1], norm[i]));
-    _stitchState = { norm, overlaps, statusTop: detectStatusBar(norm[0]), W };
-    showStitchPreview(true);
-  } catch (e) { alert('정리 실패: ' + e.message); }
+    const dispW = Math.min(300, W), scale = dispW / W;
+    _editor = { norm, W, dispW, scale, crops: autoCrops(norm), dispSrc: norm.map(c => c.toDataURL('image/jpeg', 0.9)) };
+    openStitchEditor();
+  } catch (e) { alert('불러오기 실패: ' + e.message); }
 }
-function composeStitch(cropStatus) {
-  const { norm, overlaps, statusTop, W } = _stitchState;
-  const tops = overlaps.slice(); if (cropStatus) tops[0] = statusTop;
-  const totalH = norm.reduce((s, c, i) => s + (c.height - tops[i]), 0);
+function openStitchEditor() {
+  let ov = document.getElementById('stitchEditor');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'stitchEditor'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="modal" style="width:400px;max-width:96vw">
+    <div class="modal-head"><h3>✂️ 캡쳐 정리 (드래그로 조절)</h3><button class="icon-btn" onclick="document.getElementById('stitchEditor').classList.remove('open')">✕</button></div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">각 이미지의 <b style="color:#6aa8ff">위 손잡이</b>·<b style="color:#f2a24b">아래 손잡이</b>를 드래그해서 겹치는 부분·상단 표시줄을 잘라 맞춰주세요.</div>
+    <div class="se-stack" id="seStack"></div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn" style="font-size:11px;padding:5px 9px" onclick="editorAuto()">🔄 자동 맞춤</button>
+      <button class="btn" style="font-size:11px;padding:5px 9px" onclick="editorReset()">크롭 초기화</button>
+    </div>
+    <div class="modal-actions"><button class="btn" onclick="document.getElementById('stitchEditor').classList.remove('open')">취소</button>
+      <button class="btn btn-primary" onclick="applyStitchEditor()">한 장으로 적용</button></div></div>`;
+  renderEditorStack();
+  ov.classList.add('open');
+}
+function renderEditorStack() {
+  const { norm, crops, scale, dispW, dispSrc } = _editor;
+  const stack = document.getElementById('seStack');
+  stack.innerHTML = norm.map((c, i) => {
+    const cr = crops[i], h = Math.max(20, (c.height - cr.top - cr.bottom)) * scale;
+    return `<div class="se-img" data-idx="${i}" style="width:${dispW}px;height:${h}px">
+      <img src="${dispSrc[i]}" style="width:${dispW}px;margin-top:${-cr.top * scale}px"/>
+      <div class="se-handle top" data-idx="${i}" data-which="top">▲ 위 자르기</div>
+      <div class="se-handle bot" data-idx="${i}" data-which="bottom">아래 자르기 ▼</div>
+    </div>`;
+  }).join('');
+  stack.querySelectorAll('.se-handle').forEach(h => h.addEventListener('pointerdown', editorHandleDown));
+}
+let _drag = null;
+function editorHandleDown(e) {
+  e.preventDefault();
+  const idx = +this.dataset.idx, which = this.dataset.which;
+  _drag = { idx, which, startY: e.clientY, startVal: _editor.crops[idx][which], el: this.parentElement };
+  try { this.setPointerCapture(e.pointerId); } catch (_) {}
+  document.addEventListener('pointermove', editorHandleMove);
+  document.addEventListener('pointerup', editorHandleUp);
+}
+function editorHandleMove(e) {
+  if (!_drag) return;
+  const { norm, crops, scale } = _editor;
+  const c = norm[_drag.idx];
+  let delta = (e.clientY - _drag.startY) / scale;
+  if (_drag.which === 'bottom') delta = -delta;  // 아래 손잡이는 위로 끌면 증가
+  const other = _drag.which === 'top' ? crops[_drag.idx].bottom : crops[_drag.idx].top;
+  const v = Math.max(0, Math.min(Math.round(_drag.startVal + delta), c.height - other - 20));
+  crops[_drag.idx][_drag.which] = v;
+  const cr = crops[_drag.idx];
+  _drag.el.style.height = Math.max(20, (c.height - cr.top - cr.bottom)) * scale + 'px';
+  _drag.el.querySelector('img').style.marginTop = (-cr.top * scale) + 'px';
+}
+function editorHandleUp() { _drag = null; document.removeEventListener('pointermove', editorHandleMove); document.removeEventListener('pointerup', editorHandleUp); }
+function editorAuto() { _editor.crops = autoCrops(_editor.norm); renderEditorStack(); }
+function editorReset() { _editor.crops = _editor.norm.map(() => ({ top: 0, bottom: 0 })); renderEditorStack(); }
+function composeEditor() {
+  const { norm, crops, W } = _editor;
+  const totalH = norm.reduce((s, c, i) => s + Math.max(1, c.height - crops[i].top - crops[i].bottom), 0);
   const out = document.createElement('canvas'); out.width = W; out.height = totalH;
   const ctx = out.getContext('2d'); let y = 0;
-  norm.forEach((c, i) => { const h = c.height - tops[i]; ctx.drawImage(c, 0, tops[i], W, h, 0, y, W, h); y += h; });
+  norm.forEach((c, i) => { const h = Math.max(1, c.height - crops[i].top - crops[i].bottom); ctx.drawImage(c, 0, crops[i].top, W, h, 0, y, W, h); y += h; });
   return out.toDataURL('image/jpeg', 0.85);
-}
-function showStitchPreview(cropStatus) {
-  const dataUrl = composeStitch(cropStatus);
-  window._stitchDataUrl = dataUrl;
-  let ov = document.getElementById('stitchOverlay');
-  if (!ov) { ov = document.createElement('div'); ov.id = 'stitchOverlay'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
-  const removed = _stitchState.overlaps.filter(o => o > 0).length;
-  ov.innerHTML = `<div class="modal" style="width:520px;max-width:95vw">
-    <div class="modal-head"><h3>🧷 캡쳐 정리 미리보기</h3><button class="icon-btn" onclick="document.getElementById('stitchOverlay').classList.remove('open')">✕</button></div>
-    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">${_stitchState.norm.length}장 → 1장 · 겹침 제거 ${removed}곳${_stitchState.statusTop > 0 ? ' · 상단 상태바 감지됨' : ''}</div>
-    <div style="max-height:52vh;overflow:auto;background:#fff;border-radius:8px;padding:6px;text-align:center"><img src="${dataUrl}" style="max-width:100%;border:1px solid #e4e4e4"/></div>
-    <label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:13px;color:var(--text-2);cursor:pointer">
-      <input type="checkbox" id="stitchCropStatus" ${cropStatus ? 'checked' : ''} onchange="showStitchPreview(this.checked)" ${_stitchState.statusTop > 0 ? '' : 'disabled'} style="width:15px;height:15px"/>
-      상단 상태바(시간·배터리 표시줄) 자르기 ${_stitchState.statusTop > 0 ? '' : '<span style="color:var(--text-4)">(감지 안 됨)</span>'}
-    </label>
-    <div class="modal-actions"><button class="btn" onclick="document.getElementById('stitchOverlay').classList.remove('open')">취소</button>
-      <button class="btn btn-primary" onclick="applyStitch()">이 한 장으로 적용</button></div></div>`;
-  ov.classList.add('open');
 }
 async function uploadImageDataUrl(dataUrl, nameHint) {
   const raw = dataUrl.split(',')[1];
@@ -6813,10 +6861,9 @@ async function uploadImageDataUrl(dataUrl, nameHint) {
   if (r.ok && r.url) return r.url;
   throw new Error(r.error || '업로드 실패');
 }
-async function applyStitch() {
-  const dataUrl = window._stitchDataUrl;
-  if (!dataUrl) return;
+async function applyStitchEditor() {
   if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+  const dataUrl = composeEditor();
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   const title = document.getElementById('fTitle').value.trim() || '';
   showToast('📤 정리본 업로드 중...');
@@ -6825,8 +6872,8 @@ async function applyStitch() {
     insightEditUrls = [url];
     insightB64[url] = dataUrl; saveInsightB64();
     renderInsightThumbs();
-    document.getElementById('stitchOverlay').classList.remove('open');
-    showToast('✓ 한 장으로 정리 완료 (저장하려면 콘텐츠 저장)');
+    document.getElementById('stitchEditor').classList.remove('open');
+    showToast('✓ 한 장으로 정리 완료 (콘텐츠 저장하면 반영)');
   } catch (e) { alert('적용 실패: ' + e.message); }
 }
 
