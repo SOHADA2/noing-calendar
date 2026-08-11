@@ -2707,7 +2707,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.19.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.19.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2828,6 +2828,10 @@ function loadLocal() {
   } catch { return null; }
 }
 function saveLocal() { localStorage.setItem(STORAGE_DATA, JSON.stringify(contents)); }
+// 인사이트 이미지 URL 전용 보관 — 시트에 칸이 없어도 기기 내에서 유지 (시트 재동기화 시 병합)
+function loadInsightMap() { try { return JSON.parse(localStorage.getItem('cc-insight-map') || '{}'); } catch { return {}; } }
+function setInsightMap(id, urls) { const m = loadInsightMap(); if (urls) m[String(id)] = urls; else delete m[String(id)]; try { localStorage.setItem('cc-insight-map', JSON.stringify(m)); } catch (e) {} }
+function restoreInsightUrls() { const m = loadInsightMap(); contents.forEach(c => { const v = m[String(c.id)]; if (v && !((c.insight_urls || '').trim())) c.insight_urls = v; }); }
 
 // ── Sheet sync ──
 function normalizeDate(v) {
@@ -3183,7 +3187,7 @@ async function init() {
     };
 
     const pContents = fetchFromSheet()
-      .then(d => { contents = d; saveLocal(); render(); })
+      .then(d => { contents = d; restoreInsightUrls(); saveLocal(); render(); })
       .catch(e => { console.warn('Contents fetch failed:', e); anyFailed = true; })
       .finally(tick);
     const pOrders = fetchOrdersFromSheet()
@@ -7055,6 +7059,7 @@ async function _saveContent() {
   }
 
   saveLocal();
+  setInsightMap(item.id, insight_urls);   // 인사이트 URL 별도 보관 (시트에 칸 없어도 유지)
 
   // 모달 즉시 닫고 화면 갱신 (체감 빠른 응답)
   closeModal();
@@ -7124,6 +7129,7 @@ async function _saveSettings() {
         contents.push(item);
         await pushToSheet('add', item);
       }
+      restoreInsightUrls();
       setStatus('구글 시트 연결됨', 'ok');
     }
 
