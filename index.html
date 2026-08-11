@@ -2707,7 +2707,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.19.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.19.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6994,9 +6994,9 @@ async function exportInsight(mode) {
       showToast('✓ PDF 저장됨');
       return;
     }
-    if (typeof html2canvas === 'undefined') { alert('이미지 라이브러리 로드 실패 — PDF를 이용해주세요.'); return; }
     showToast('이미지 생성 중...');
-    const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    // html2pdf 번들에 내장된 html2canvas 재사용 (전역 html2canvas가 노출되지 않는 문제 대응)
+    const canvas = await html2pdf().set({ html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' } }).from(node).toCanvas().get('canvas');
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     const file = new File([blob], base + '.png', { type: 'image/png' });
     if (mode === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
