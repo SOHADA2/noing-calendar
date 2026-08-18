@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7057,7 +7057,9 @@ async function exportReportHtml(html, base, mode, title) {
         : new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 6000); })));
     await new Promise(r => setTimeout(r, 150));
     const h = node.scrollHeight;
-    const hc = { scale: 3, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 720, windowHeight: h, height: h };
+    // 캔버스 세로가 너무 크면 브라우저가 빈 이미지를 뱉음 → 높이에 맞춰 배율 자동조절(최대 3, 세로 상한 ~11000px)
+    const scale = Math.max(1.5, Math.min(3, 11000 / h));
+    const hc = { scale, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 720, windowHeight: h, height: h };
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
       await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: hc, jsPDF: { unit: 'px', format: [720, h], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
