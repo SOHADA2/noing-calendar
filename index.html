@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6714,12 +6714,31 @@ function closeModalOutside(e, overlayId, closer) {
 let insightEditUrls = [];   // 편집 중 콘텐츠의 인사이트 이미지 URL들
 let insightB64 = (() => { try { return JSON.parse(localStorage.getItem('cc-insight-b64') || '{}'); } catch { return {}; } })();  // {url: dataURL} 렌더용 캐시
 function saveInsightB64() { try { localStorage.setItem('cc-insight-b64', JSON.stringify(insightB64)); } catch (e) {} }
+// 드라이브 링크에서 파일 ID 추출
+function driveFileId(url) {
+  if (!url) return null; let m;
+  if ((m = url.match(/\/file\/d\/([-\w]{20,})/))) return m[1];
+  if ((m = url.match(/[?&]id=([-\w]{20,})/))) return m[1];
+  if ((m = url.match(/\/d\/([-\w]{20,})/))) return m[1];
+  if ((m = url.match(/([-\w]{28,})/))) return m[1];
+  return null;
+}
+// 표시/캡처 가능한 직접 이미지 URL로 변환(구글 이미지 CDN, CORS 허용)
+function driveImgSrc(url) {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  if (/drive\.google|googleusercontent|docs\.google/.test(url)) {
+    const id = driveFileId(url);
+    if (id) return `https://lh3.googleusercontent.com/d/${id}=w1600`;
+  }
+  return url;
+}
 
 function renderInsightThumbs() {
   const box = document.getElementById('insightThumbs');
   if (!box) return;
   box.innerHTML = insightEditUrls.map((u, i) => {
-    const src = insightB64[u] || u;
+    const src = insightB64[u] || driveImgSrc(u);
     return `<div class="insight-thumb"><img src="${escapeHtml(src)}" alt="" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeInsight(${i})">×</button></div>`;
   }).join('');
   const btn = document.getElementById('insightReportBtn');
@@ -6971,7 +6990,7 @@ function buildInsightReportHTML(d) {
   if (d.publish_url) rows.push(['발행 링크', d.publish_url]);
   const infoRows = rows.map(([k, v]) =>
     `<tr><td style="width:92px;background:#f4f4f4;font-weight:700;padding:8px 11px;border:1px solid #e4e4e4;white-space:nowrap">${k}</td><td style="padding:8px 11px;border:1px solid #e4e4e4;word-break:break-all">${escapeHtml(v)}</td></tr>`).join('');
-  const imgs = d.urls.map(u => `<img src="${escapeHtml(insightB64[u] || u)}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/>`).join('');
+  const imgs = d.urls.map(u => `<img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/>`).join('');
   const today = fmtDate(new Date());
   return `<div id="insightReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:18px">
@@ -7104,7 +7123,7 @@ function renderResvSlots() {
   box.innerHTML = RESV_LABELS.map((lbl, i) => {
     const u = reservationEditUrls[i];
     const cell = u
-      ? `<div class="insight-thumb"><img src="${escapeHtml(insightB64[u] || u)}" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeResv(${i})">×</button></div>`
+      ? `<div class="insight-thumb"><img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeResv(${i})">×</button></div>`
       : `<div class="resv-btns"><button type="button" class="btn resv-add" onclick="pasteResv(${i})" style="font-size:11px;padding:5px 8px" title="복사한 캡쳐 붙여넣기">📋 붙여넣기</button><button type="button" class="btn resv-add" onclick="pickResv(${i})" style="font-size:11px;padding:5px 8px">＋ 파일</button></div>`;
     return `<div class="resv-row"><div class="resv-lbl">${lbl}</div>${cell}</div>`;
   }).join('');
@@ -7193,7 +7212,7 @@ function buildReservationReportHTML(d) {
     return `<div style="margin-top:18px">
       <div style="font-size:14px;font-weight:800;margin-bottom:3px;color:#111">${lbl}</div>
       <div style="font-size:12.5px;font-weight:700;color:#c0392b;margin-bottom:8px">★ 검토사항 — ${RESV_ASK[i]}</div>
-      <img src="${escapeHtml(insightB64[u] || u)}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
+      <img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
   }).join('');
   const today = fmtDate(new Date());
   return `<div id="resvReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
