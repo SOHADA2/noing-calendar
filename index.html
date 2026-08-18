@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6713,7 +6713,13 @@ function closeModalOutside(e, overlayId, closer) {
 // ═══════════════ 콘텐츠 인사이트 이미지 + 보고서 ═══════════════
 let insightEditUrls = [];   // 편집 중 콘텐츠의 인사이트 이미지 URL들
 let insightB64 = (() => { try { return JSON.parse(localStorage.getItem('cc-insight-b64') || '{}'); } catch { return {}; } })();  // {url: dataURL} 렌더용 캐시
-function saveInsightB64() { try { localStorage.setItem('cc-insight-b64', JSON.stringify(insightB64)); } catch (e) {} }
+function saveInsightB64() {
+  try {
+    // 큰 원본은 영구 캐시에 넣지 않음(용량 초과 방지) — 표시/내보내기는 CDN(driveImgSrc)로 폴백
+    const slim = {}; for (const k in insightB64) { const v = insightB64[k]; if (v && v.length <= 1200000) slim[k] = v; }
+    localStorage.setItem('cc-insight-b64', JSON.stringify(slim));
+  } catch (e) {}
+}
 // 드라이브 링크에서 파일 ID 추출
 function driveFileId(url) {
   if (!url) return null; let m;
@@ -6767,6 +6773,15 @@ function downscaleToJpeg(file, maxW = 2000, q = 0.95) {
   });
 }
 
+function blobToDataURL(blob) {
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+}
+// 업로드용 데이터 준비: 원본이 과하게 크지 않으면 무손실 원본 그대로(화질 최상), 아주 클 때만 축소
+async function prepImageUpload(blob, maxBytes = 4 * 1024 * 1024) {
+  if (blob && blob.size && blob.size <= maxBytes) { try { return await blobToDataURL(blob); } catch (e) {} }
+  return await downscaleToJpeg(blob, 2500, 0.95);
+}
+
 function setInsightProgress(done, totalOrHide, label) {
   const box = document.getElementById('insightProgress');
   if (!box) return;
@@ -6790,18 +6805,11 @@ async function handleInsightUpload(files) {
   setInsightProgress(0, total, `인사이트 업로드 중... (${total}장)`);
   for (const file of imgFiles) {
     try {
-      const dataUrl = await downscaleToJpeg(file);
-      const raw = dataUrl.split(',')[1];
-      const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({
-        action: 'upload_biz_cert',
-        filename: `[인사이트] ${company}_${title}_${Date.now()}_${done + 1}.jpg`.replace(/[\\/:*?"<>|]/g, '_'),
-        mime_type: 'image/jpeg', file_base64: raw }) });
-      const result = await res.json();
-      if (result.ok && result.url) {
-        insightEditUrls.push(result.url);
-        insightB64[result.url] = dataUrl; saveInsightB64();
-        renderInsightThumbs();
-      } else { failed++; console.error('insight upload:', result.error); }
+      const dataUrl = await prepImageUpload(file);
+      const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`);
+      insightEditUrls.push(url);
+      insightB64[url] = dataUrl; saveInsightB64();
+      renderInsightThumbs();
     } catch (e) { failed++; console.error(e); }
     done++;
     setInsightProgress(done, total, `인사이트 업로드 중... (${total}장)`);
@@ -6944,8 +6952,11 @@ function composeEditor() {
   return out.toDataURL('image/jpeg', 0.95);
 }
 async function uploadImageDataUrl(dataUrl, nameHint) {
+  const mm = dataUrl.match(/^data:([^;]+);base64,/);
+  const mime = (mm && mm[1]) || 'image/jpeg';
+  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
   const raw = dataUrl.split(',')[1];
-  const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.jpg`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: 'image/jpeg', file_base64: raw }) });
+  const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.${ext}`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: mime, file_base64: raw }) });
   const r = await res.json();
   if (r.ok && r.url) return r.url;
   throw new Error(r.error || '업로드 실패');
@@ -7148,7 +7159,7 @@ async function uploadResvBlob(i, blob) {
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   showToast('📤 예약 이미지 업로드 중...');
   try {
-    const dataUrl = await downscaleToJpeg(blob);
+    const dataUrl = await prepImageUpload(blob);
     const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`);
     reservationEditUrls[i] = url;
     insightB64[url] = dataUrl; saveInsightB64();
@@ -7196,7 +7207,7 @@ async function insightHandleBlob(blob) {
   const title = document.getElementById('fTitle').value.trim() || '';
   showToast('📤 인사이트 업로드 중...');
   try {
-    const dataUrl = await downscaleToJpeg(blob);
+    const dataUrl = await prepImageUpload(blob);
     const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`);
     insightEditUrls.push(url); insightB64[url] = dataUrl; saveInsightB64(); renderInsightThumbs();
     showToast('✓ 인사이트 추가됨');
