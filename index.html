@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6749,7 +6749,7 @@ function renderInsightThumbs() {
 function removeInsight(i) { insightEditUrls.splice(i, 1); renderInsightThumbs(); }
 
 // 이미지 축소 + JPEG 압축 → dataURL (드라이브·캐시 용량 절감)
-function downscaleToJpeg(file, maxW = 1600, q = 0.92) {
+function downscaleToJpeg(file, maxW = 2000, q = 0.95) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
     fr.onload = () => {
@@ -6941,7 +6941,7 @@ function composeEditor() {
   const out = document.createElement('canvas'); out.width = W; out.height = totalH;
   const ctx = out.getContext('2d'); let y = 0;
   norm.forEach((c, i) => { const h = Math.max(1, c.height - crops[i].top - crops[i].bottom); ctx.drawImage(c, 0, crops[i].top, W, h, 0, y, W, h); y += h; });
-  return out.toDataURL('image/jpeg', 0.92);
+  return out.toDataURL('image/jpeg', 0.95);
 }
 async function uploadImageDataUrl(dataUrl, nameHint) {
   const raw = dataUrl.split(',')[1];
