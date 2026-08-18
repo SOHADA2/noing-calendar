@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.8';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.9';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7116,8 +7116,12 @@ async function exportReportHtml(html, base, mode, title) {
         : new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 8000); })));
     await new Promise(r => setTimeout(r, 150));
     const h = node.scrollHeight;
-    // 캔버스 세로가 너무 크면 브라우저가 빈 이미지를 뱉음 → 세로 ≤~11000px 유지되게 배율 자동조절(최대 3배)
-    const scale = Math.max(0.6, Math.min(3, 11000 / h));
+    // 기기별 캔버스 한계에 맞춰 배율 결정 (iOS Safari는 한 변 ~4096px·총 ~16.7M px 초과 시 백지가 됨)
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const MAXDIM = isIOS ? 4000 : 10000;                 // 캔버스 한 변 상한(px)
+    const MAXAREA = (isIOS ? 16 : 64) * 1000000;          // 캔버스 총면적 상한(px)
+    const scale = Math.max(0.4, Math.min(3, MAXDIM / h, Math.sqrt(MAXAREA / (720 * h))));
     const hc = { scale, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 720, windowHeight: h, height: h };
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
