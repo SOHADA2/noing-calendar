@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.10';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.11';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7124,8 +7124,9 @@ async function exportReportHtml(html, base, mode, title) {
     const MAXDIM = isIOS ? 4000 : 10000;                 // 캔버스 한 변 상한(px)
     const MAXAREA = (isIOS ? 16 : 64) * 1000000;          // 캔버스 총면적 상한(px)
     const scale = Math.max(0.4, Math.min(3, MAXDIM / h, Math.sqrt(MAXAREA / (nodeW * h))));
-    // ⚠ windowWidth/windowHeight/height 옵션은 고배율(dpr>1) 환경에서 내용을 좁게 몰아넣음 → 최소 옵션만 사용
-    const hc = { scale, useCORS: true, backgroundColor: '#ffffff' };
+    // ⚠ windowWidth 옵션이 고배율(dpr>1) 환경에서 내용을 좁은 왼쪽 띠로 몰아넣는 원인 → windowWidth만 제거.
+    //    height/windowHeight/scrollY는 유지해야 스크롤된 상태에서도 위빈공간·아래짤림 없이 전체가 캡쳐됨.
+    const hc = { scale, useCORS: true, backgroundColor: '#ffffff', height: h, windowHeight: h, scrollX: 0, scrollY: 0 };
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
       await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: hc, jsPDF: { unit: 'px', format: [nodeW, h], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
