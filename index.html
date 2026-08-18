@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.8';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6712,14 +6712,45 @@ function closeModalOutside(e, overlayId, closer) {
 
 // ═══════════════ 콘텐츠 인사이트 이미지 + 보고서 ═══════════════
 let insightEditUrls = [];   // 편집 중 콘텐츠의 인사이트 이미지 URL들
-let insightB64 = (() => { try { return JSON.parse(localStorage.getItem('cc-insight-b64') || '{}'); } catch { return {}; } })();  // {url: dataURL} 렌더용 캐시
-function saveInsightB64() {
+let insightB64 = (() => { try { return JSON.parse(localStorage.getItem('cc-insight-b64') || '{}'); } catch { return {}; } })();  // {url: dataURL} 렌더용 캐시(메모리)
+// ── 이미지 원본(base64) 영구 저장: IndexedDB(용량 넉넉) — 새로고침·다음 세션에도 내보내기 가능 ──
+let _idb = null;
+function idbOpen() {
+  if (_idb) return _idb;
+  _idb = new Promise((res) => {
+    try {
+      const rq = indexedDB.open('cc-img', 1);
+      rq.onupgradeneeded = () => { try { rq.result.createObjectStore('b64'); } catch (e) {} };
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+  return _idb;
+}
+async function idbPut(url, dataUrl) {
+  try { const db = await idbOpen(); if (!db) return; const tx = db.transaction('b64', 'readwrite'); tx.objectStore('b64').put(dataUrl, url); } catch (e) {}
+}
+async function idbGet(url) {
+  try { const db = await idbOpen(); if (!db) return null; return await new Promise(r => { const rq = db.transaction('b64', 'readonly').objectStore('b64').get(url); rq.onsuccess = () => r(rq.result || null); rq.onerror = () => r(null); }); } catch (e) { return null; }
+}
+async function idbLoadAll() {
   try {
-    // 큰 원본은 영구 캐시에 넣지 않음(용량 초과 방지) — 표시/내보내기는 CDN(driveImgSrc)로 폴백
+    const db = await idbOpen(); if (!db) return;
+    await new Promise(r => { const st = db.transaction('b64', 'readonly').objectStore('b64'); const kq = st.getAllKeys(), vq = st.getAll(); let k, v;
+      kq.onsuccess = () => { k = kq.result; if (v) done(); }; vq.onsuccess = () => { v = vq.result; if (k) done(); };
+      kq.onerror = vq.onerror = () => r(); function done() { for (let i = 0; i < k.length; i++) if (!insightB64[k[i]]) insightB64[k[i]] = v[i]; r(); } });
+  } catch (e) {}
+}
+idbLoadAll();  // 시작 시 IndexedDB의 원본들을 메모리 캐시로 병합
+function saveInsightB64() {
+  // 작은 것만 localStorage(빠른 시작), 모든 이미지는 IndexedDB에 영구 저장
+  try {
     const slim = {}; for (const k in insightB64) { const v = insightB64[k]; if (v && v.length <= 1200000) slim[k] = v; }
     localStorage.setItem('cc-insight-b64', JSON.stringify(slim));
   } catch (e) {}
 }
+// 업로드 직후 원본을 IndexedDB에 영구 저장(호출부에서 사용)
+function persistB64(url, dataUrl) { if (url && dataUrl) { insightB64[url] = dataUrl; idbPut(url, dataUrl); saveInsightB64(); } }
 // 드라이브 링크에서 파일 ID 추출
 function driveFileId(url) {
   if (!url) return null; let m;
@@ -6808,7 +6839,7 @@ async function handleInsightUpload(files) {
       const dataUrl = await prepImageUpload(file);
       const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`);
       insightEditUrls.push(url);
-      insightB64[url] = dataUrl; saveInsightB64();
+      persistB64(url, dataUrl);
       renderInsightThumbs();
     } catch (e) { failed++; console.error(e); }
     done++;
@@ -6982,7 +7013,7 @@ async function commitStitch() {
   try {
     const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_정리`);
     insightEditUrls = [url];
-    insightB64[url] = dataUrl; saveInsightB64();
+    persistB64(url, dataUrl);
     renderInsightThumbs();
     document.getElementById('stitchPreview').classList.remove('open');
     document.getElementById('stitchEditor').classList.remove('open');
@@ -7001,7 +7032,7 @@ function buildInsightReportHTML(d) {
   if (d.publish_url) rows.push(['발행 링크', d.publish_url]);
   const infoRows = rows.map(([k, v]) =>
     `<tr><td style="width:92px;background:#f4f4f4;font-weight:700;padding:8px 11px;border:1px solid #e4e4e4;white-space:nowrap">${k}</td><td style="padding:8px 11px;border:1px solid #e4e4e4;word-break:break-all">${escapeHtml(v)}</td></tr>`).join('');
-  const imgs = d.urls.map(u => `<img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/>`).join('');
+  const imgs = d.urls.map(u => `<img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" data-src-key="${escapeHtml(u)}" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/>`).join('');
   const today = fmtDate(new Date());
   return `<div id="insightReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:18px">
@@ -7053,6 +7084,21 @@ function showInsightReportOverlay(d) {
     </div></div>`;
   ov.classList.add('open');
 }
+// 이미지 <img>를 캡쳐 안전한 data URI로 변환 (메모리→IndexedDB→네트워크 순)
+async function ensureDataUrl(img) {
+  const cur = img.getAttribute('src') || '';
+  if (cur.startsWith('data:')) return;
+  const key = img.getAttribute('data-src-key') || cur;
+  let d = insightB64[key];
+  if (!d) { d = await idbGet(key); if (d) insightB64[key] = d; }
+  if (!d) {
+    const cands = [...new Set([cur, driveImgSrc(key), key].filter(Boolean))];
+    for (const c of cands) {
+      try { const res = await fetch(c, { mode: 'cors' }); if (!res.ok) continue; const b = await res.blob(); if (/^image\//.test(b.type)) { d = await blobToDataURL(b); break; } } catch (e) {}
+    }
+  }
+  if (d) { img.src = d; if (key) { insightB64[key] = d; idbPut(key, d); } }
+}
 // 리포트 노드 → PNG/PDF/공유 (인사이트·예약 공용)
 // 리포트 HTML을 화면 밖 전체높이 컨테이너에 렌더 후 캡쳐 → 상단여백/하단짤림 방지
 async function exportReportHtml(html, base, mode, title) {
@@ -7062,14 +7108,16 @@ async function exportReportHtml(html, base, mode, title) {
   document.body.appendChild(holder);
   const node = holder.firstElementChild;
   try {
+    // 캡쳐 전 모든 이미지를 data URI로 변환 (외부/CDN 이미지는 canvas 오염·로드실패로 백지가 되므로)
+    await Promise.all([...holder.querySelectorAll('img')].map(ensureDataUrl));
     // 이미지 로드 완료 대기 (높이 정확히 계산되도록)
     await Promise.all([...holder.querySelectorAll('img')].map(img =>
       (img.complete && img.naturalHeight) ? Promise.resolve()
-        : new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 6000); })));
+        : new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 8000); })));
     await new Promise(r => setTimeout(r, 150));
     const h = node.scrollHeight;
-    // 캔버스 세로가 너무 크면 브라우저가 빈 이미지를 뱉음 → 높이에 맞춰 배율 자동조절(최대 3, 세로 상한 ~11000px)
-    const scale = Math.max(1.5, Math.min(3, 11000 / h));
+    // 캔버스 세로가 너무 크면 브라우저가 빈 이미지를 뱉음 → 세로 ≤~11000px 유지되게 배율 자동조절(최대 3배)
+    const scale = Math.max(0.6, Math.min(3, 11000 / h));
     const hc = { scale, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 720, windowHeight: h, height: h };
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
@@ -7162,7 +7210,7 @@ async function uploadResvBlob(i, blob) {
     const dataUrl = await prepImageUpload(blob);
     const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`);
     reservationEditUrls[i] = url;
-    insightB64[url] = dataUrl; saveInsightB64();
+    persistB64(url, dataUrl);
     renderResvSlots();
     showToast('✓ 예약 이미지 추가됨');
   } catch (e) { alert('업로드 실패: ' + e.message); }
@@ -7209,7 +7257,7 @@ async function insightHandleBlob(blob) {
   try {
     const dataUrl = await prepImageUpload(blob);
     const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`);
-    insightEditUrls.push(url); insightB64[url] = dataUrl; saveInsightB64(); renderInsightThumbs();
+    insightEditUrls.push(url); persistB64(url, dataUrl); renderInsightThumbs();
     showToast('✓ 인사이트 추가됨');
   } catch (e) { alert('업로드 실패: ' + e.message); }
 }
@@ -7225,7 +7273,7 @@ function buildReservationReportHTML(d) {
     return `<div style="margin-top:18px">
       <div style="font-size:14px;font-weight:800;margin-bottom:3px;color:#111">${lbl}</div>
       <div style="font-size:12.5px;font-weight:700;color:#c0392b;margin-bottom:8px">★ 검토사항 — ${RESV_ASK[i]}</div>
-      <img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
+      <img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" data-src-key="${escapeHtml(u)}" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
   }).join('');
   const today = fmtDate(new Date());
   return `<div id="resvReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
