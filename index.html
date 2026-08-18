@@ -380,6 +380,9 @@
     #contentActionMenu .menu-status-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 7px; border-bottom: 1px solid var(--border); margin-bottom: 3px; }
     #contentActionMenu .menu-status-row .content-progress-tag { cursor: pointer; border: 1.5px solid transparent; text-decoration: none; }
     #contentActionMenu .menu-status-row .content-progress-tag.cur { border-color: var(--accent); }
+    #contentActionMenu .menu-status-row .content-progress-tag { overflow: visible; }
+    #contentActionMenu .resv-badge { position: absolute; top: -7px; right: -7px; font-size: 10px; line-height: 1; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.45); z-index: 2; }
+    #contentActionMenu .resv-badge:hover { background: var(--bg-3); transform: scale(1.12); }
     /* 인사이트 이미지 썸네일 */
     .insight-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
     .insight-thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg-3); }
@@ -2729,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3668,14 +3671,15 @@ function openContentActionMenu(id, x, y) {
     { k: 'contract', t: '계약서' },
     { k: 'invoice',  t: '세금계산서' },
   ] : [];
-  const statusPills = STATUS_KEYS.map(st =>
-    `<span class="content-progress-tag ${st}${c.status === st ? ' cur' : ''}" data-st="${st}">${st}</span>`).join('');
+  const statusPills = STATUS_KEYS.map(st => {
+    const badge = st === '예약완료' ? `<span class="resv-badge" title="예약 확인 보고서" onclick="event.stopPropagation(); enterReservation('${id}')">📄</span>` : '';
+    return `<span class="content-progress-tag ${st}${c.status === st ? ' cur' : ''}" data-st="${st}" style="position:relative">${st}${badge}</span>`;
+  }).join('');
   menu.innerHTML =
     `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
     `<div class="menu-status-label">상태 변경</div><div class="menu-status-row">${statusPills}</div>` +
     `<button class="bulk-menu-opt" data-act="edit">콘텐츠 수정</button>` +
     ((c.insight_urls || '').trim() ? `<button class="bulk-menu-opt" data-act="insight">📄 인사이트 보고서</button>` : '') +
-    ((c.reservation_urls || '').replace(/\|/g, '').trim() ? `<button class="bulk-menu-opt" data-act="resvreport">📅 예약 확인 보고서</button>` : '') +
     orderActs.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
     (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`);
   menu.style.display = 'block';
@@ -7020,35 +7024,72 @@ function showInsightReportOverlay(d) {
   ov.classList.add('open');
 }
 // 리포트 노드 → PNG/PDF/공유 (인사이트·예약 공용)
-async function exportReportDoc(nodeId, base, mode, title) {
-  const node = document.getElementById(nodeId);
-  if (!node) return;
+// 리포트 HTML을 화면 밖 전체높이 컨테이너에 렌더 후 캡쳐 → 상단여백/하단짤림 방지
+async function exportReportHtml(html, base, mode, title) {
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:0;top:0;z-index:-99999;opacity:0.001;pointer-events:none;background:#fff';
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  const node = holder.firstElementChild;
   try {
+    // 이미지 로드 완료 대기 (높이 정확히 계산되도록)
+    await Promise.all([...holder.querySelectorAll('img')].map(img =>
+      (img.complete && img.naturalHeight) ? Promise.resolve()
+        : new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 6000); })));
+    await new Promise(r => setTimeout(r, 150));
+    const h = node.scrollHeight;
+    const hc = { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 720, windowHeight: h, height: h };
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
-      await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'px', format: [720, node.scrollHeight], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
-      showToast('✓ PDF 저장됨');
-      return;
+      await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: hc, jsPDF: { unit: 'px', format: [720, h], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
+      showToast('✓ PDF 저장됨'); return true;
     }
     showToast('이미지 생성 중...');
-    const canvas = await html2pdf().set({ html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' } }).from(node).toCanvas().get('canvas');
+    const canvas = await html2pdf().set({ html2canvas: hc }).from(node).toCanvas().get('canvas');
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     const file = new File([blob], base + '.png', { type: 'image/png' });
     if (mode === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: title || '리포트' });
-      return;
+      await navigator.share({ files: [file], title: title || '리포트' }); return true;
     }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = base + '.png'; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     showToast('✓ 이미지 저장됨' + (mode === 'share' ? ' — 카톡에 첨부해주세요' : ''));
+    return true;
   } catch (e) {
     alert('생성 실패: ' + e.message + '\n\n※ 다른 기기에서 올린 이미지는 이 기기에 원본이 없어 실패할 수 있어요. 그 경우 이 기기에서 이미지를 다시 추가하면 됩니다.');
-  }
+    return false;
+  } finally { document.body.removeChild(holder); }
 }
 function exportInsight(mode) {
   const d = window._insightReportData || {};
   const base = (`인사이트_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '인사이트리포트';
-  return exportReportDoc('insightReportDoc', base, mode, '콘텐츠 인사이트 리포트');
+  return exportReportHtml(buildInsightReportHTML(d), base, mode, '콘텐츠 인사이트 리포트');
+}
+async function exportReservation(mode) {
+  const d = window._resvReportData || {};
+  const base = (`예약확인_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '예약확인서';
+  const ok = await exportReportHtml(buildReservationReportHTML(d), base, mode, '예약 확인서');
+  if (ok) markReserved(d.id);   // 예약 확인서 저장 시 자동으로 예약완료 처리
+}
+// 예약 확인서 생성 후 상태를 예약완료로
+function markReserved(id) {
+  if (!id) return;
+  const modal = document.getElementById('modalOverlay');
+  if (modal && modal.classList.contains('open') && String(editingId) === String(id)) {
+    setSegValue('fStatus', '예약완료');   // 모달 열려 있으면 저장 시 반영되게
+    showToast('상태를 예약완료로 설정했어요 (저장하면 반영)');
+  } else {
+    const c = contents.find(x => String(x.id) === String(id));
+    if (c && c.status !== '예약완료') { setContentStatus(id, '예약완료'); showToast('✓ 예약완료로 변경됨'); }
+  }
+}
+// 예약완료 pill의 📄 배지 클릭 → 예약 확인서(이미지 있으면) 또는 콘텐츠 모달(추가하러)
+function enterReservation(id) {
+  const menu = document.getElementById('contentActionMenu'); if (menu) menu.style.display = 'none';
+  const c = contents.find(x => String(x.id) === String(id));
+  if (!c) return;
+  if ((c.reservation_urls || '').replace(/\|/g, '').trim()) openReservationReportFor(id);
+  else openModal(c.date, id);
 }
 
 // ═══════════════ 예약 확인 (3지면) ═══════════════
@@ -7170,6 +7211,7 @@ function buildReservationReportHTML(d) {
 }
 function openReservationReport() {
   const d = {
+    id: editingId,
     company: document.getElementById('fCompany').value.trim(),
     title: document.getElementById('fTitle').value.trim(),
     channel: getSegValue('fChannel'),
@@ -7185,19 +7227,19 @@ function openReservationReportFor(id) {
   const c = contents.find(x => String(x.id) === String(id));
   const urls = padResv((c && c.reservation_urls || '').split('|'));
   if (!c || !urls.some(Boolean)) { alert('이 콘텐츠에 예약 확인 이미지가 없습니다.'); return; }
-  showReservationReportOverlay({ company: c.company, title: c.title, channel: c.channel, date: c.date, time: c.time, owner: c.owner, urls });
+  showReservationReportOverlay({ id: c.id, company: c.company, title: c.title, channel: c.channel, date: c.date, time: c.time, owner: c.owner, urls });
 }
 function showReservationReportOverlay(d) {
   let ov = document.getElementById('resvReportOverlay');
   if (!ov) { ov = document.createElement('div'); ov.id = 'resvReportOverlay'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
-  window._resvReportBase = (`예약확인_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '예약확인서';
+  window._resvReportData = d;
   ov.innerHTML = `<div class="modal" style="width:780px;max-width:96vw">
     <div class="modal-head"><h3>📅 예약 확인서</h3><button class="icon-btn" onclick="document.getElementById('resvReportOverlay').classList.remove('open')">✕</button></div>
     <div style="max-height:60vh;overflow:auto;background:#fff;border-radius:8px;padding:10px">${buildReservationReportHTML(d)}</div>
     <div class="modal-actions" style="flex-wrap:wrap;gap:8px">
-      <button class="btn" onclick="exportReportDoc('resvReportDoc', window._resvReportBase, 'png', '예약 확인서')">🖼 이미지(PNG) 저장</button>
-      <button class="btn" onclick="exportReportDoc('resvReportDoc', window._resvReportBase, 'pdf', '예약 확인서')">📄 PDF 저장</button>
-      <button class="btn btn-primary" onclick="exportReportDoc('resvReportDoc', window._resvReportBase, 'share', '예약 확인서')">💬 카톡/공유</button>
+      <button class="btn" onclick="exportReservation('png')">🖼 이미지(PNG) 저장</button>
+      <button class="btn" onclick="exportReservation('pdf')">📄 PDF 저장</button>
+      <button class="btn btn-primary" onclick="exportReservation('share')">💬 카톡/공유</button>
     </div></div>`;
   ov.classList.add('open');
 }
