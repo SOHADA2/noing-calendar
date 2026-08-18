@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.9';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.10';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7103,7 +7103,8 @@ async function ensureDataUrl(img) {
 // 리포트 HTML을 화면 밖 전체높이 컨테이너에 렌더 후 캡쳐 → 상단여백/하단짤림 방지
 async function exportReportHtml(html, base, mode, title) {
   const holder = document.createElement('div');
-  holder.style.cssText = 'position:fixed;left:0;top:0;z-index:-99999;opacity:0.001;pointer-events:none;background:#fff';
+  // 화면 밖 전체높이 컨테이너(고정폭 720px). position:absolute + 명시적 width로 캡쳐 안정화
+  holder.style.cssText = 'position:absolute;left:0;top:0;width:720px;z-index:-99999;opacity:0.001;pointer-events:none;background:#fff';
   holder.innerHTML = html;
   document.body.appendChild(holder);
   const node = holder.firstElementChild;
@@ -7116,16 +7117,18 @@ async function exportReportHtml(html, base, mode, title) {
         : new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 8000); })));
     await new Promise(r => setTimeout(r, 150));
     const h = node.scrollHeight;
+    const nodeW = Math.round(node.getBoundingClientRect().width) || 720;
     // 기기별 캔버스 한계에 맞춰 배율 결정 (iOS Safari는 한 변 ~4096px·총 ~16.7M px 초과 시 백지가 됨)
     const ua = navigator.userAgent || '';
     const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const MAXDIM = isIOS ? 4000 : 10000;                 // 캔버스 한 변 상한(px)
     const MAXAREA = (isIOS ? 16 : 64) * 1000000;          // 캔버스 총면적 상한(px)
-    const scale = Math.max(0.4, Math.min(3, MAXDIM / h, Math.sqrt(MAXAREA / (720 * h))));
-    const hc = { scale, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 720, windowHeight: h, height: h };
+    const scale = Math.max(0.4, Math.min(3, MAXDIM / h, Math.sqrt(MAXAREA / (nodeW * h))));
+    // ⚠ windowWidth/windowHeight/height 옵션은 고배율(dpr>1) 환경에서 내용을 좁게 몰아넣음 → 최소 옵션만 사용
+    const hc = { scale, useCORS: true, backgroundColor: '#ffffff' };
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
-      await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: hc, jsPDF: { unit: 'px', format: [720, h], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
+      await html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: hc, jsPDF: { unit: 'px', format: [nodeW, h], orientation: 'portrait', hotfixes: ['px_scaling'] } }).from(node).save(base + '.pdf');
       showToast('✓ PDF 저장됨'); return true;
     }
     showToast('이미지 생성 중...');
