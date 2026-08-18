@@ -386,10 +386,12 @@
     .insight-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .insight-thumb .rm { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 12px; line-height: 16px; padding: 0; text-align: center; }
     /* 예약 확인 3슬롯 */
-    #resvSlots { display: flex; flex-direction: column; gap: 8px; }
-    .resv-row { display: flex; align-items: center; gap: 10px; }
+    #resvSlots { display: flex; flex-direction: column; gap: 4px; }
+    .resv-row { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 2px 0; border-bottom: 1px solid var(--border); }
+    .resv-row:last-child { border-bottom: none; }
     .resv-lbl { flex: 1; font-size: 12.5px; color: var(--text-2); }
-    .resv-row .insight-thumb { width: 58px; height: 58px; flex-shrink: 0; }
+    .resv-row .insight-thumb { width: 44px; height: 44px; flex-shrink: 0; }
+    .resv-btns { display: flex; gap: 5px; flex-shrink: 0; }
     .resv-add { white-space: nowrap; }
     /* 캡쳐 정리 드래그 편집기 */
     #stitchEditor .se-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #2a2a2a; padding: 10px; border-radius: 8px; max-height: 62vh; overflow-y: auto; overflow-x: hidden; }
@@ -2727,7 +2729,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.20.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7050,7 +7052,8 @@ function exportInsight(mode) {
 }
 
 // ═══════════════ 예약 확인 (3지면) ═══════════════
-const RESV_LABELS = ['① 채널 · 카드뉴스 순서 · 태그 계정', '② 예약 날짜 · 시간', '③ 예약 멘션'];
+const RESV_LABELS = ['① 채널 · 카드뉴스 순서 · 태그 계정', '② 예약 날짜 · 시간', '③ 예약 멘션'];  // 모달 슬롯 라벨
+const RESV_ASK = ['카드뉴스 사진 순서 및 태그 계정을 확인해주세요', '예약 날짜와 시간을 확인해주세요', '예약 멘션을 확인해주세요'];  // 보고서 검토 요청
 let reservationEditUrls = ['', '', ''];
 let _resvSlot = 0;
 function padResv(arr) { const a = (arr || []).slice(0, 3); while (a.length < 3) a.push(''); return a; }
@@ -7061,7 +7064,7 @@ function renderResvSlots() {
     const u = reservationEditUrls[i];
     const cell = u
       ? `<div class="insight-thumb"><img src="${escapeHtml(insightB64[u] || u)}" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeResv(${i})">×</button></div>`
-      : `<button type="button" class="btn resv-add" onclick="pickResv(${i})" style="font-size:11px;padding:6px 10px">＋ 추가</button>`;
+      : `<div class="resv-btns"><button type="button" class="btn resv-add" onclick="pasteResv(${i})" style="font-size:11px;padding:5px 8px" title="복사한 캡쳐 붙여넣기">📋 붙여넣기</button><button type="button" class="btn resv-add" onclick="pickResv(${i})" style="font-size:11px;padding:5px 8px">＋ 파일</button></div>`;
     return `<div class="resv-row"><div class="resv-lbl">${lbl}</div>${cell}</div>`;
   }).join('');
   const btn = document.getElementById('resvReportBtn');
@@ -7074,18 +7077,68 @@ async function handleReservationUpload(files) {
   if (!files || !files.length) return;
   const file = files[0];
   if (!file.type.startsWith('image/')) { fileInput.value = ''; return; }
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); fileInput.value = ''; return; }
+  await uploadResvBlob(_resvSlot, file);
+  fileInput.value = '';
+}
+// 슬롯 i에 이미지 blob 업로드 (파일·붙여넣기 공용)
+async function uploadResvBlob(i, blob) {
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   showToast('📤 예약 이미지 업로드 중...');
   try {
-    const dataUrl = await downscaleToJpeg(file);
-    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${_resvSlot + 1}`);
-    reservationEditUrls[_resvSlot] = url;
+    const dataUrl = await downscaleToJpeg(blob);
+    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`);
+    reservationEditUrls[i] = url;
     insightB64[url] = dataUrl; saveInsightB64();
     renderResvSlots();
     showToast('✓ 예약 이미지 추가됨');
   } catch (e) { alert('업로드 실패: ' + e.message); }
-  fileInput.value = '';
+}
+// 클립보드 이미지 읽기 (버튼용)
+async function readClipboardImageBlob() {
+  if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('이 브라우저는 붙여넣기를 지원하지 않아요. Ctrl+V 또는 파일 업로드를 이용해주세요.');
+  const items = await navigator.clipboard.read();
+  for (const it of items) {
+    const t = it.types.find(x => x.startsWith('image/'));
+    if (t) return await it.getType(t);
+  }
+  throw new Error('클립보드에 이미지가 없어요. 캡쳐(복사) 후 다시 눌러주세요.');
+}
+async function pasteResv(i) {
+  try { const blob = await readClipboardImageBlob(); await uploadResvBlob(i, blob); }
+  catch (e) { alert('붙여넣기: ' + e.message); }
+}
+// Ctrl+V 전역 붙여넣기 — 콘텐츠 모달 열려 있을 때 예약 첫 빈 슬롯(없으면 인사이트)에 삽입
+document.addEventListener('paste', (e) => {
+  const modal = document.getElementById('modalOverlay');
+  if (!modal || !modal.classList.contains('open')) return;
+  const tag = (e.target && e.target.tagName || '').toUpperCase();
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;  // 텍스트칸 붙여넣기는 방해 안 함
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const it of items) {
+    if (it.type && it.type.startsWith('image/')) {
+      const blob = it.getAsFile();
+      if (!blob) continue;
+      e.preventDefault();
+      const slot = reservationEditUrls.findIndex(u => !u);
+      if (slot !== -1) uploadResvBlob(slot, blob);
+      else { insightHandleBlob(blob); }  // 예약 3칸 다 차면 인사이트로
+      return;
+    }
+  }
+});
+async function insightHandleBlob(blob) {
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
+  const title = document.getElementById('fTitle').value.trim() || '';
+  showToast('📤 인사이트 업로드 중...');
+  try {
+    const dataUrl = await downscaleToJpeg(blob);
+    const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`);
+    insightEditUrls.push(url); insightB64[url] = dataUrl; saveInsightB64(); renderInsightThumbs();
+    showToast('✓ 인사이트 추가됨');
+  } catch (e) { alert('업로드 실패: ' + e.message); }
 }
 function buildReservationReportHTML(d) {
   const C = QUOTE_COMPANY;
@@ -7096,7 +7149,10 @@ function buildReservationReportHTML(d) {
   const infoRows = rows.map(([k, v]) => `<tr><td style="width:96px;background:#f4f4f4;font-weight:700;padding:8px 11px;border:1px solid #e4e4e4;white-space:nowrap">${k}</td><td style="padding:8px 11px;border:1px solid #e4e4e4;word-break:break-all">${escapeHtml(v)}</td></tr>`).join('');
   const sections = RESV_LABELS.map((lbl, i) => {
     const u = d.urls[i]; if (!u) return '';
-    return `<div style="margin-top:16px"><div style="font-size:14px;font-weight:800;margin-bottom:8px;color:#111">${lbl}</div><img src="${escapeHtml(insightB64[u] || u)}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
+    return `<div style="margin-top:18px">
+      <div style="font-size:14px;font-weight:800;margin-bottom:3px;color:#111">${lbl}</div>
+      <div style="font-size:12.5px;font-weight:700;color:#c0392b;margin-bottom:8px">★ 검토사항 — ${RESV_ASK[i]}</div>
+      <img src="${escapeHtml(insightB64[u] || u)}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
   }).join('');
   const today = fmtDate(new Date());
   return `<div id="resvReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
@@ -7104,9 +7160,12 @@ function buildReservationReportHTML(d) {
       <div><div style="font-size:11px;color:#999;letter-spacing:1.5px">RESERVATION CONFIRMATION</div><div style="font-size:22px;font-weight:800;margin-top:3px">예약 확인서</div></div>
       <div style="text-align:right;font-size:12px;color:#555;line-height:1.5">${escapeHtml(C.name)}<br>${today}</div>
     </div>
+    <div style="font-size:13px;color:#222;line-height:1.7;margin-bottom:14px">발행 예약 상태를 확인하실 수 있도록 예약 캡쳐본을 공유드립니다. 각 캡쳐본의 <b>★ 검토사항</b>을 꼭 확인 부탁드립니다.</div>
     <table style="width:100%;border-collapse:collapse;font-size:13px">${infoRows}</table>
     ${sections}
-    <div style="margin-top:22px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:11px;color:#aaa;text-align:center">${escapeHtml(C.name)} · 콘텐츠 예약 확인</div>
+    <div style="margin-top:18px;background:#fbf3f2;border:1px solid #f0d5d1;border-radius:8px;padding:12px 14px;font-size:12px;color:#7a3b33;line-height:1.65">
+      ※ 발행 전 추가 수정사항은 반영 가능하나, <b>발행 후 이미지 변경·취소·재발행이 발생할 경우 추가 발행비용이 요청될 수 있습니다.</b> 발행 이후에도 수정으로 변경 가능한 부분(예: 멘션)은 언제든 요청 주셔도 됩니다.</div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:11px;color:#aaa;text-align:center">${escapeHtml(C.name)} · 콘텐츠 예약 확인</div>
   </div>`;
 }
 function openReservationReport() {
