@@ -385,6 +385,12 @@
     .insight-thumb { position: relative; width: 74px; height: 74px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-2); background: var(--bg-3); }
     .insight-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .insight-thumb .rm { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; border: none; cursor: pointer; font-size: 12px; line-height: 16px; padding: 0; text-align: center; }
+    /* 예약 확인 3슬롯 */
+    #resvSlots { display: flex; flex-direction: column; gap: 8px; }
+    .resv-row { display: flex; align-items: center; gap: 10px; }
+    .resv-lbl { flex: 1; font-size: 12.5px; color: var(--text-2); }
+    .resv-row .insight-thumb { width: 58px; height: 58px; flex-shrink: 0; }
+    .resv-add { white-space: nowrap; }
     /* 캡쳐 정리 드래그 편집기 */
     #stitchEditor .se-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #2a2a2a; padding: 10px; border-radius: 8px; max-height: 62vh; overflow-y: auto; overflow-x: hidden; }
     #stitchEditor .se-img { position: relative; background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.15); flex-shrink: 0; }
@@ -2575,6 +2581,15 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <label>📅 예약 확인 이미지 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">(예약완료 시 담당자 공유용 · 3지면)</span></label>
+      <div id="resvSlots"></div>
+      <div style="margin-top:8px">
+        <button type="button" class="btn" id="resvReportBtn" onclick="openReservationReport()" style="font-size:12px;padding:6px 10px;display:none" title="예약 확인서 생성">📄 예약 확인 보고서</button>
+      </div>
+      <input type="file" id="resvFile" accept="image/*" style="display:none" onchange="handleReservationUpload(this.files)" />
+    </div>
+
     <div class="form-group"><label>메모 (선택)</label><textarea id="fMemo" placeholder="비고"></textarea></div>
 
     <div class="modal-actions">
@@ -2712,7 +2727,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.19.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.20.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2837,6 +2852,10 @@ function saveLocal() { localStorage.setItem(STORAGE_DATA, JSON.stringify(content
 function loadInsightMap() { try { return JSON.parse(localStorage.getItem('cc-insight-map') || '{}'); } catch { return {}; } }
 function setInsightMap(id, urls) { const m = loadInsightMap(); if (urls) m[String(id)] = urls; else delete m[String(id)]; try { localStorage.setItem('cc-insight-map', JSON.stringify(m)); } catch (e) {} }
 function restoreInsightUrls() { const m = loadInsightMap(); contents.forEach(c => { const v = m[String(c.id)]; if (v && !((c.insight_urls || '').trim())) c.insight_urls = v; }); }
+// 예약 확인 이미지 URL 보관 (동일 방식)
+function loadResvMap() { try { return JSON.parse(localStorage.getItem('cc-reservation-map') || '{}'); } catch { return {}; } }
+function setResvMap(id, urls) { const m = loadResvMap(); if (urls && urls.replace(/\|/g, '')) m[String(id)] = urls; else delete m[String(id)]; try { localStorage.setItem('cc-reservation-map', JSON.stringify(m)); } catch (e) {} }
+function restoreResvUrls() { const m = loadResvMap(); contents.forEach(c => { const v = m[String(c.id)]; if (v && !((c.reservation_urls || '').replace(/\|/g, '').trim())) c.reservation_urls = v; }); }
 
 // ── Sheet sync ──
 function normalizeDate(v) {
@@ -2891,6 +2910,7 @@ async function fetchFromSheet() {
     order_id: r.order_id ? String(r.order_id) : '',
     publish_url: r.publish_url || '',
     insight_urls: r.insight_urls || '',   // 인사이트 이미지 드라이브 URL들 ('|' 구분)
+    reservation_urls: r.reservation_urls || '',   // 예약 확인 3지면 URL ('|' 구분, 3칸)
   }));
 }
 
@@ -3192,7 +3212,7 @@ async function init() {
     };
 
     const pContents = fetchFromSheet()
-      .then(d => { contents = d; restoreInsightUrls(); saveLocal(); render(); })
+      .then(d => { contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); })
       .catch(e => { console.warn('Contents fetch failed:', e); anyFailed = true; })
       .finally(tick);
     const pOrders = fetchOrdersFromSheet()
@@ -3653,6 +3673,7 @@ function openContentActionMenu(id, x, y) {
     `<div class="menu-status-label">상태 변경</div><div class="menu-status-row">${statusPills}</div>` +
     `<button class="bulk-menu-opt" data-act="edit">콘텐츠 수정</button>` +
     ((c.insight_urls || '').trim() ? `<button class="bulk-menu-opt" data-act="insight">📄 인사이트 보고서</button>` : '') +
+    ((c.reservation_urls || '').replace(/\|/g, '').trim() ? `<button class="bulk-menu-opt" data-act="resvreport">📅 예약 확인 보고서</button>` : '') +
     orderActs.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
     (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`);
   menu.style.display = 'block';
@@ -3667,6 +3688,7 @@ function openContentActionMenu(id, x, y) {
       const act = btn.dataset.act;
       if (act === 'edit') { openModal(c.date, id); return; }
       if (act === 'insight') { openInsightReportFor(id); return; }
+      if (act === 'resvreport') { openReservationReportFor(id); return; }
       if (!lo) return;
       if (act === 'order') { openOrderModal(lo.id); return; }
       editingOrderId = lo.id;  // 견적서/계약서 생성 함수가 editingOrderId를 사용
@@ -6595,6 +6617,8 @@ function openModal(dateStr, id) {
     document.getElementById('fUrl').value = c.publish_url || '';
     insightEditUrls = (c.insight_urls || '').split('|').filter(Boolean);
     renderInsightThumbs();
+    reservationEditUrls = padResv((c.reservation_urls || '').split('|'));
+    renderResvSlots();
     delBtn.style.display = 'inline-flex';
   } else {
     document.getElementById('modalTitle').textContent = '콘텐츠 추가';
@@ -6617,6 +6641,8 @@ function openModal(dateStr, id) {
     document.getElementById('fUrl').value = '';
     insightEditUrls = [];
     renderInsightThumbs();
+    reservationEditUrls = ['', '', ''];
+    renderResvSlots();
     delBtn.style.display = 'none';
   }
 
@@ -6991,11 +7017,10 @@ function showInsightReportOverlay(d) {
     </div></div>`;
   ov.classList.add('open');
 }
-async function exportInsight(mode) {
-  const node = document.getElementById('insightReportDoc');
+// 리포트 노드 → PNG/PDF/공유 (인사이트·예약 공용)
+async function exportReportDoc(nodeId, base, mode, title) {
+  const node = document.getElementById(nodeId);
   if (!node) return;
-  const d = window._insightReportData || {};
-  const base = (`인사이트_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '인사이트리포트';
   try {
     if (mode === 'pdf') {
       showToast('PDF 생성 중...');
@@ -7004,20 +7029,118 @@ async function exportInsight(mode) {
       return;
     }
     showToast('이미지 생성 중...');
-    // html2pdf 번들에 내장된 html2canvas 재사용 (전역 html2canvas가 노출되지 않는 문제 대응)
     const canvas = await html2pdf().set({ html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' } }).from(node).toCanvas().get('canvas');
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     const file = new File([blob], base + '.png', { type: 'image/png' });
     if (mode === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: '콘텐츠 인사이트 리포트' });
+      await navigator.share({ files: [file], title: title || '리포트' });
       return;
     }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = base + '.png'; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     showToast('✓ 이미지 저장됨' + (mode === 'share' ? ' — 카톡에 첨부해주세요' : ''));
   } catch (e) {
-    alert('생성 실패: ' + e.message + '\n\n※ 다른 기기에서 올린 이미지는 이 기기에 원본 캡쳐가 없어 실패할 수 있어요. 그 경우 이 기기에서 이미지를 다시 추가하면 됩니다.');
+    alert('생성 실패: ' + e.message + '\n\n※ 다른 기기에서 올린 이미지는 이 기기에 원본이 없어 실패할 수 있어요. 그 경우 이 기기에서 이미지를 다시 추가하면 됩니다.');
   }
+}
+function exportInsight(mode) {
+  const d = window._insightReportData || {};
+  const base = (`인사이트_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '인사이트리포트';
+  return exportReportDoc('insightReportDoc', base, mode, '콘텐츠 인사이트 리포트');
+}
+
+// ═══════════════ 예약 확인 (3지면) ═══════════════
+const RESV_LABELS = ['① 채널 · 카드뉴스 순서 · 태그 계정', '② 예약 날짜 · 시간', '③ 예약 멘션'];
+let reservationEditUrls = ['', '', ''];
+let _resvSlot = 0;
+function padResv(arr) { const a = (arr || []).slice(0, 3); while (a.length < 3) a.push(''); return a; }
+function renderResvSlots() {
+  const box = document.getElementById('resvSlots');
+  if (!box) return;
+  box.innerHTML = RESV_LABELS.map((lbl, i) => {
+    const u = reservationEditUrls[i];
+    const cell = u
+      ? `<div class="insight-thumb"><img src="${escapeHtml(insightB64[u] || u)}" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeResv(${i})">×</button></div>`
+      : `<button type="button" class="btn resv-add" onclick="pickResv(${i})" style="font-size:11px;padding:6px 10px">＋ 추가</button>`;
+    return `<div class="resv-row"><div class="resv-lbl">${lbl}</div>${cell}</div>`;
+  }).join('');
+  const btn = document.getElementById('resvReportBtn');
+  if (btn) btn.style.display = reservationEditUrls.some(Boolean) ? '' : 'none';
+}
+function pickResv(i) { _resvSlot = i; document.getElementById('resvFile').click(); }
+function removeResv(i) { reservationEditUrls[i] = ''; renderResvSlots(); }
+async function handleReservationUpload(files) {
+  const fileInput = document.getElementById('resvFile');
+  if (!files || !files.length) return;
+  const file = files[0];
+  if (!file.type.startsWith('image/')) { fileInput.value = ''; return; }
+  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); fileInput.value = ''; return; }
+  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
+  showToast('📤 예약 이미지 업로드 중...');
+  try {
+    const dataUrl = await downscaleToJpeg(file);
+    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${_resvSlot + 1}`);
+    reservationEditUrls[_resvSlot] = url;
+    insightB64[url] = dataUrl; saveInsightB64();
+    renderResvSlots();
+    showToast('✓ 예약 이미지 추가됨');
+  } catch (e) { alert('업로드 실패: ' + e.message); }
+  fileInput.value = '';
+}
+function buildReservationReportHTML(d) {
+  const C = QUOTE_COMPANY;
+  const chMap = { life: 'one_home_life', guide: 'one_home_guide', mag: 'one_home_mag' };
+  const chanText = String(d.channel || '').split(/[,\s]+/).filter(Boolean).map(c => `@${chMap[c.toLowerCase()] || c}`).join('  ·  ') || '-';
+  const dateStr = d.date ? `${d.date}${d.time ? ' ' + d.time : ''}` : '-';
+  const rows = [['회사', d.company || '-'], ['콘텐츠', d.title || '-'], ['채널', chanText], ['예약 일시', dateStr], ['담당자', d.owner || '-']];
+  const infoRows = rows.map(([k, v]) => `<tr><td style="width:96px;background:#f4f4f4;font-weight:700;padding:8px 11px;border:1px solid #e4e4e4;white-space:nowrap">${k}</td><td style="padding:8px 11px;border:1px solid #e4e4e4;word-break:break-all">${escapeHtml(v)}</td></tr>`).join('');
+  const sections = RESV_LABELS.map((lbl, i) => {
+    const u = d.urls[i]; if (!u) return '';
+    return `<div style="margin-top:16px"><div style="font-size:14px;font-weight:800;margin-bottom:8px;color:#111">${lbl}</div><img src="${escapeHtml(insightB64[u] || u)}" crossorigin="anonymous" style="width:100%;border:1px solid #e4e4e4;border-radius:6px;display:block"/></div>`;
+  }).join('');
+  const today = fmtDate(new Date());
+  return `<div id="resvReportDoc" style="width:720px;box-sizing:border-box;background:#fff;color:#111;font-family:'맑은 고딕',sans-serif;padding:34px 36px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px">
+      <div><div style="font-size:11px;color:#999;letter-spacing:1.5px">RESERVATION CONFIRMATION</div><div style="font-size:22px;font-weight:800;margin-top:3px">예약 확인서</div></div>
+      <div style="text-align:right;font-size:12px;color:#555;line-height:1.5">${escapeHtml(C.name)}<br>${today}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">${infoRows}</table>
+    ${sections}
+    <div style="margin-top:22px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:11px;color:#aaa;text-align:center">${escapeHtml(C.name)} · 콘텐츠 예약 확인</div>
+  </div>`;
+}
+function openReservationReport() {
+  const d = {
+    company: document.getElementById('fCompany').value.trim(),
+    title: document.getElementById('fTitle').value.trim(),
+    channel: getSegValue('fChannel'),
+    date: document.getElementById('fDate').value,
+    time: document.getElementById('fTime').value,
+    owner: document.getElementById('fOwner').value.trim(),
+    urls: reservationEditUrls.slice(),
+  };
+  if (!d.urls.some(Boolean)) { alert('예약 확인 이미지를 먼저 추가해주세요.'); return; }
+  showReservationReportOverlay(d);
+}
+function openReservationReportFor(id) {
+  const c = contents.find(x => String(x.id) === String(id));
+  const urls = padResv((c && c.reservation_urls || '').split('|'));
+  if (!c || !urls.some(Boolean)) { alert('이 콘텐츠에 예약 확인 이미지가 없습니다.'); return; }
+  showReservationReportOverlay({ company: c.company, title: c.title, channel: c.channel, date: c.date, time: c.time, owner: c.owner, urls });
+}
+function showReservationReportOverlay(d) {
+  let ov = document.getElementById('resvReportOverlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'resvReportOverlay'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
+  window._resvReportBase = (`예약확인_${(d.company || '').replace(/\s/g, '')}_${(d.title || '').replace(/\s/g, '')}`).slice(0, 60) || '예약확인서';
+  ov.innerHTML = `<div class="modal" style="width:780px;max-width:96vw">
+    <div class="modal-head"><h3>📅 예약 확인서</h3><button class="icon-btn" onclick="document.getElementById('resvReportOverlay').classList.remove('open')">✕</button></div>
+    <div style="max-height:60vh;overflow:auto;background:#fff;border-radius:8px;padding:10px">${buildReservationReportHTML(d)}</div>
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px">
+      <button class="btn" onclick="exportReportDoc('resvReportDoc', window._resvReportBase, 'png', '예약 확인서')">🖼 이미지(PNG) 저장</button>
+      <button class="btn" onclick="exportReportDoc('resvReportDoc', window._resvReportBase, 'pdf', '예약 확인서')">📄 PDF 저장</button>
+      <button class="btn btn-primary" onclick="exportReportDoc('resvReportDoc', window._resvReportBase, 'share', '예약 확인서')">💬 카톡/공유</button>
+    </div></div>`;
+  ov.classList.add('open');
 }
 
 async function saveContent() { return withSubmitGuard('saveContentBtn', _saveContent); }
@@ -7033,6 +7156,7 @@ async function _saveContent() {
   const memo    = document.getElementById('fMemo').value.trim();
   const publish_url = document.getElementById('fUrl').value.trim();
   const insight_urls = insightEditUrls.join('|');
+  const reservation_urls = reservationEditUrls.join('|');
 
   if (!date || !title) { alert('날짜와 제목을 입력해 주세요.'); return; }
 
@@ -7056,15 +7180,16 @@ async function _saveContent() {
   if (isEditing) {
     const idx = contents.findIndex(c => String(c.id) === String(editingId));
     if (idx === -1) return;
-    item = { ...contents[idx], date, time, company, title, channel, type, status, owner, memo, publish_url, insight_urls, due_storyboard, due_shoot, due_draft, order_id };
+    item = { ...contents[idx], date, time, company, title, channel, type, status, owner, memo, publish_url, insight_urls, reservation_urls, due_storyboard, due_shoot, due_draft, order_id };
     contents[idx] = item;
   } else {
-    item = { id: String(Date.now()), date, time, company, title, channel, type, status, owner, memo, publish_url, insight_urls, due_storyboard, due_shoot, due_draft, order_id };
+    item = { id: String(Date.now()), date, time, company, title, channel, type, status, owner, memo, publish_url, insight_urls, reservation_urls, due_storyboard, due_shoot, due_draft, order_id };
     contents.push(item);
   }
 
   saveLocal();
   setInsightMap(item.id, insight_urls);   // 인사이트 URL 별도 보관 (시트에 칸 없어도 유지)
+  setResvMap(item.id, reservation_urls);
 
   // 모달 즉시 닫고 화면 갱신 (체감 빠른 응답)
   closeModal();
@@ -7135,6 +7260,7 @@ async function _saveSettings() {
         await pushToSheet('add', item);
       }
       restoreInsightUrls();
+      restoreResvUrls();
       setStatus('구글 시트 연결됨', 'ok');
     }
 
