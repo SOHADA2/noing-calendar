@@ -2732,7 +2732,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2837,6 +2837,11 @@ function fmtDate(d) {
 }
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+// 링크를 인라인 JS 문자열에 넣지 않고 data-url 로 전달 → onclick XSS 방지. http(s)만 허용(javascript: 등 차단)
+function openUrlSafe(el) {
+  const u = (el && el.dataset && el.dataset.url) || '';
+  if (/^https?:\/\//i.test(u)) window.open(u, '_blank', 'noopener');
 }
 
 function setStatus(text, kind = '') {
@@ -3379,7 +3384,7 @@ let ORDER_COLUMNS = [
       }
       const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
       const onClick = firstUrl
-        ? ` style="cursor:pointer" onclick="event.stopPropagation(); window.open('${escapeHtml(firstUrl)}','_blank')"`
+        ? ` style="cursor:pointer" data-url="${escapeHtml(firstUrl)}" onclick="event.stopPropagation(); openUrlSafe(this)"`
         : '';
       return `<span class="content-progress-tag ${cp}"${titleAttr}${onClick}>${escapeHtml(cp)}</span>`;
   } },
@@ -3925,7 +3930,7 @@ function renderRecentQuotes() {
       <div class="upcoming-title" style="font-size:11px">${escapeHtml(q.quote_number)}</div>
       <div style="font-size:10.5px;color:var(--text-3);margin-top:2px">${escapeHtml(q.recipient || '')} · ${escapeHtml(q.subject || '')}</div>
       <div class="upcoming-meta" style="margin-top:5px">
-        <span class="meta-tag" onclick="window.open('${q.url}', '_blank')" style="cursor:pointer;font-size:9.5px">열기</span>
+        <span class="meta-tag" data-url="${escapeHtml(q.url)}" onclick="openUrlSafe(this)" style="cursor:pointer;font-size:9.5px">열기</span>
         <span class="meta-tag" onclick="downloadQuote('${q.id}')" style="cursor:pointer;font-size:9.5px">다운로드</span>
         <span class="meta-tag" onclick="shareQuote('${q.id}')" style="cursor:pointer;font-size:9.5px">공유</span>
       </div>
@@ -5319,7 +5324,7 @@ function renderQuoteHistoryForOrder(orderId) {
         <div class="linked-title">${escapeHtml(q.quote_number)} · ${escapeHtml(q.subject || q.recipient || '')}</div>
         <div class="linked-tags">
           <span class="linked-tag">${fmtMoney(q.total)}원</span>
-          <span class="linked-tag" onclick="window.open('${q.url}', '_blank')" style="cursor:pointer" title="새 탭에서 PDF 보기">👁️ 열기</span>
+          <span class="linked-tag" data-url="${escapeHtml(q.url)}" onclick="openUrlSafe(this)" style="cursor:pointer" title="새 탭에서 PDF 보기">👁️ 열기</span>
           <span class="linked-tag" onclick="downloadQuote('${q.id}')" style="cursor:pointer" title="PDF 직접 다운로드">💾 다운로드</span>
           <span class="linked-tag" onclick="shareQuote('${q.id}')" style="cursor:pointer" title="링크 복사 (카톡 공유용)">📤 공유</span>
           <span class="linked-tag" onclick="reissueQuote('${q.id}')" style="cursor:pointer" title="동일 내용으로 재발행 (자동 R{n})">🔄 재발행</span>
@@ -6776,7 +6781,7 @@ function renderInsightThumbs() {
   if (!box) return;
   box.innerHTML = insightEditUrls.map((u, i) => {
     const src = insightB64[u] || driveImgSrc(u);
-    return `<div class="insight-thumb"><img src="${escapeHtml(src)}" alt="" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeInsight(${i})">×</button></div>`;
+    return `<div class="insight-thumb"><img src="${escapeHtml(src)}" alt="" title="클릭: 원본 열기" data-url="${escapeHtml(u)}" onclick="openUrlSafe(this)" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeInsight(${i})">×</button></div>`;
   }).join('');
   const btn = document.getElementById('insightReportBtn');
   if (btn) btn.style.display = insightEditUrls.length ? '' : 'none';
@@ -7192,7 +7197,7 @@ function renderResvSlots() {
   box.innerHTML = RESV_LABELS.map((lbl, i) => {
     const u = reservationEditUrls[i];
     const cell = u
-      ? `<div class="insight-thumb"><img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" title="클릭: 원본 열기" onclick="window.open('${escapeHtml(u)}','_blank')" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeResv(${i})">×</button></div>`
+      ? `<div class="insight-thumb"><img src="${escapeHtml(insightB64[u] || driveImgSrc(u))}" title="클릭: 원본 열기" data-url="${escapeHtml(u)}" onclick="openUrlSafe(this)" style="cursor:zoom-in"/><button type="button" class="rm" onclick="removeResv(${i})">×</button></div>`
       : `<div class="resv-btns"><button type="button" class="btn resv-add" onclick="pasteResv(${i})" style="font-size:11px;padding:5px 8px" title="복사한 캡쳐 붙여넣기">📋 붙여넣기</button><button type="button" class="btn resv-add" onclick="pickResv(${i})" style="font-size:11px;padding:5px 8px">＋ 파일</button></div>`;
     return `<div class="resv-row"><div class="resv-lbl">${lbl}</div>${cell}</div>`;
   }).join('');
