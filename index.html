@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6852,8 +6852,8 @@ async function handleInsightUpload(files) {
   for (const file of imgFiles) {
     try {
       const dataUrl = await prepImageUpload(file);
-      const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`,
-        frac => setInsightProgress(done + frac, total, `인사이트 업로드 중... (${done + 1}/${total}장)`));
+      setInsightProgress(done, total, `인사이트 업로드 중... (${done + 1}/${total}장)`);
+      const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`);
       insightEditUrls.push(url);
       persistB64(url, dataUrl);
       renderInsightThumbs();
@@ -6998,32 +6998,25 @@ function composeEditor() {
   norm.forEach((c, i) => { const h = Math.max(1, c.height - crops[i].top - crops[i].bottom); ctx.drawImage(c, 0, crops[i].top, W, h, 0, y, W, h); y += h; });
   return out.toDataURL('image/jpeg', 0.95);
 }
-// onProgress(frac 0~1): 업로드 진행률 콜백(선택). XHR로 upload.onprogress 사용 → 실제 % 표시
-function uploadImageDataUrl(dataUrl, nameHint, onProgress) {
-  return new Promise((resolve, reject) => {
-    const mm = dataUrl.match(/^data:([^;]+);base64,/);
-    const mime = (mm && mm[1]) || 'image/jpeg';
-    const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
-    const raw = dataUrl.split(',')[1];
-    const body = JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.${ext}`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: mime, file_base64: raw });
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', apiUrl);   // Content-Type 지정 안 함(text/plain 유지 → CORS preflight 회피, 기존 fetch와 동일)
-      if (xhr.upload && onProgress) {
-        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.min(0.99, e.loaded / e.total)); };
-      }
-      xhr.onload = () => {
-        try {
-          const r = JSON.parse(xhr.responseText);
-          if (r.ok && r.url) { if (onProgress) onProgress(1); resolve(r.url); }
-          else reject(new Error(r.error || '업로드 실패'));
-        } catch (err) { reject(new Error('서버 응답 오류')); }
-      };
-      xhr.onerror = () => reject(new Error('네트워크 오류'));
-      xhr.ontimeout = () => reject(new Error('업로드 시간 초과'));
-      xhr.send(body);
-    } catch (e) { reject(e); }
-  });
+// ⚠ cross-origin XHR에 upload.onprogress 를 달면 CORS preflight 이 생겨 Apps Script 가 거부함 → fetch 사용(진행바는 시간기반 애니메이션)
+async function uploadImageDataUrl(dataUrl, nameHint) {
+  const mm = dataUrl.match(/^data:([^;]+);base64,/);
+  const mime = (mm && mm[1]) || 'image/jpeg';
+  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+  const raw = dataUrl.split(',')[1];
+  const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.${ext}`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: mime, file_base64: raw }) });
+  const r = await res.json();
+  if (r.ok && r.url) return r.url;
+  throw new Error(r.error || '업로드 실패');
+}
+// 실제 업로드 % 는 CORS 제약으로 못 얻으므로, 완료 때까지 부드럽게 92%까지 차오르는 진행바
+function startFakeProgress(setter, label) {
+  let p = 0.06; setter(p, 1, label);
+  const id = setInterval(() => { p += (0.92 - p) * 0.10; setter(Math.min(p, 0.92), 1, label); }, 220);
+  return {
+    done(setterHide) { clearInterval(id); setter(1, 1, label); setTimeout(() => setterHide(0, false), 300); },
+    fail(setterHide) { clearInterval(id); setterHide(0, false); }
+  };
 }
 function previewStitchResult() {
   const dataUrl = composeEditor();
@@ -7246,18 +7239,16 @@ async function handleReservationUpload(files) {
 async function uploadResvBlob(i, blob) {
   if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
-  setResvProgress(0, 1, `📋 예약 이미지 ${i + 1} 준비 중...`);
+  const prog = startFakeProgress(setResvProgress, `📤 예약 이미지 ${i + 1} 업로드 중...`);
   try {
     const dataUrl = await prepImageUpload(blob);
-    setResvProgress(0.02, 1, `📤 예약 이미지 ${i + 1} 업로드 중...`);
-    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`,
-      frac => setResvProgress(frac, 1, `📤 예약 이미지 ${i + 1} 업로드 중...`));
+    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`);
     reservationEditUrls[i] = url;
     persistB64(url, dataUrl);
     renderResvSlots();
-    setResvProgress(0, false);
+    prog.done(setResvProgress);
     showToast('✓ 예약 이미지 추가됨');
-  } catch (e) { setResvProgress(0, false); alert('업로드 실패: ' + e.message); }
+  } catch (e) { prog.fail(setResvProgress); alert('업로드 실패: ' + e.message); }
 }
 // 클립보드 이미지 읽기 (버튼용)
 async function readClipboardImageBlob() {
@@ -7297,16 +7288,14 @@ async function insightHandleBlob(blob) {
   if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   const title = document.getElementById('fTitle').value.trim() || '';
-  setInsightProgress(0, 1, '📋 붙여넣은 이미지 준비 중...');
+  const prog = startFakeProgress(setInsightProgress, '📤 인사이트 업로드 중...');
   try {
     const dataUrl = await prepImageUpload(blob);
-    setInsightProgress(0.02, 1, '📤 인사이트 업로드 중...');
-    const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`,
-      frac => setInsightProgress(frac, 1, '📤 인사이트 업로드 중...'));
+    const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`);
     insightEditUrls.push(url); persistB64(url, dataUrl); renderInsightThumbs();
-    setInsightProgress(0, false);
+    prog.done(setInsightProgress);
     showToast('✓ 인사이트 추가됨');
-  } catch (e) { setInsightProgress(0, false); alert('업로드 실패: ' + e.message); }
+  } catch (e) { prog.fail(setInsightProgress); alert('업로드 실패: ' + e.message); }
 }
 function buildReservationReportHTML(d) {
   const C = QUOTE_COMPANY;
