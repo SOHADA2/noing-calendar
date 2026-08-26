@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.9';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.10';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3258,27 +3258,21 @@ async function init() {
       targetPct = Math.round((done / total) * 95) + 5;
     };
 
-    // ⚠ Apps Script 는 요청을 하나씩만 처리 → 3개를 병렬로 던지면 서로 밀려 타임아웃(404)·지연 발생.
-    //    ① 서버가 지원하면 '한 번 요청(__all__)'으로 3개를 다 받아옴(가장 빠름).
-    //    ② 구버전 서버면 순차로, 달력에 필요한 '콘텐츠'부터 먼저 받아 화면을 빨리 띄운다.
+    // ⚠ Apps Script 는 요청을 하나씩만 처리 + 수주(1390건, ~19초)가 무거움.
+    //    무거운 수주에 달력이 묶이지 않게: ① 달력에 필요한 '콘텐츠'부터 개별로 먼저 받아 '연결됨'을 빠르게 띄우고,
+    //    ② 수주·견적·계약은 뒤에서 조용히 갱신(배지·달력 안 막음). 저장본은 이미 즉시 표시 중.
     (async () => {
-      // 통합요청(1번)이 오래 걸릴 때 진행바가 5%에 멈춰 보이지 않게, 기다리는 동안 서서히 올림
-      const rampId = setInterval(() => { targetPct = Math.min(92, targetPct + 4); }, 250);
-      await primeCombined();   // 성공 시 아래 fetch들은 네트워크 없이 캐시에서 즉시 반환
-      clearInterval(rampId);
       try { const d = await fetchFromSheet(); contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); }
       catch (e) { console.warn('Contents fetch failed:', e); anyFailed = true; }
-      tick();
-      try { const d = await fetchOrdersFromSheet(); orders = d; saveOrdersLocal(); renderOrders(); }
-      catch (e) { console.warn('Orders fetch failed:', e); anyFailed = true; }
-      tick();
-      try { await fetchQuoteHistory(); } catch (e) { console.warn('Quote history fetch failed:', e); }
-      tick();
-      try { await fetchContractHistory(); } catch (e) { console.warn('Contract history fetch failed:', e); }
-      _combinedRaw = null;   // 통합 캐시 소진 — 이후 개별 새로고침은 최신 데이터를 다시 받음
+      // 콘텐츠(달력)까지 되면 바로 완료 표시 — 무거운 수주 기다리지 않음
+      done = total;
       finished = true;
       targetPct = 100;
-      setTimeout(setFinalStatus, 1000);
+      setTimeout(setFinalStatus, 300);
+      // 백그라운드 순차 갱신 (실패해도 저장본 유지 · 배지 상태 안 바꿈)
+      try { const d = await fetchOrdersFromSheet(); orders = d; saveOrdersLocal(); renderOrders(); } catch (e) { console.warn('Orders fetch failed:', e); }
+      try { await fetchQuoteHistory(); } catch (e) { console.warn('Quote history fetch failed:', e); }
+      try { await fetchContractHistory(); } catch (e) { console.warn('Contract history fetch failed:', e); }
     })();
   }
   // 초기 달력 모드 적용 (UI 버튼 + 표시 토글)
