@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.8';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3257,7 +3257,10 @@ async function init() {
     //    ① 서버가 지원하면 '한 번 요청(__all__)'으로 3개를 다 받아옴(가장 빠름).
     //    ② 구버전 서버면 순차로, 달력에 필요한 '콘텐츠'부터 먼저 받아 화면을 빨리 띄운다.
     (async () => {
+      // 통합요청(1번)이 오래 걸릴 때 진행바가 5%에 멈춰 보이지 않게, 기다리는 동안 서서히 올림
+      const rampId = setInterval(() => { targetPct = Math.min(92, targetPct + 4); }, 250);
       await primeCombined();   // 성공 시 아래 fetch들은 네트워크 없이 캐시에서 즉시 반환
+      clearInterval(rampId);
       try { const d = await fetchFromSheet(); contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); }
       catch (e) { console.warn('Contents fetch failed:', e); anyFailed = true; }
       tick();
