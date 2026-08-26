@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6751,7 +6751,8 @@ async function idbLoadAll() {
       kq.onerror = vq.onerror = () => r(); function done() { for (let i = 0; i < k.length; i++) if (!insightB64[k[i]]) insightB64[k[i]] = v[i]; r(); } });
   } catch (e) {}
 }
-idbLoadAll();  // 시작 시 IndexedDB의 원본들을 메모리 캐시로 병합
+// ⚠ 시작 시 IndexedDB 전체(대용량 원본들)를 메모리로 올리면 로딩이 얼어붙음 → 즉시로드 제거.
+//    export/표시 때 ensureDataUrl 이 idbGet 으로 필요한 것만 개별 로드하므로 기능엔 영향 없음.
 function saveInsightB64() {
   // 작은 것만 localStorage(빠른 시작), 모든 이미지는 IndexedDB에 영구 저장
   try {
