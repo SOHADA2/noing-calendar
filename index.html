@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2894,12 +2894,34 @@ function normalizeTime(v) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
+// 서버가 지원하면 콘텐츠+수주+견적을 한 번에 받아옴(동기화 1회 요청). 구버전 서버면 null → 기존 개별요청으로 폴백
+let _combinedRaw = null;
+async function primeCombined() {
+  _combinedRaw = null;
+  if (!apiUrl) return false;
+  try {
+    const res = await fetch(apiUrl + (apiUrl.includes('?') ? '&' : '?') + 'sheet=__all__&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return false;
+    const d = await res.json();
+    // 신버전 서버는 {contents,orders,quotes} 객체 → 3개 모두 한 번에
+    if (d && !Array.isArray(d) && Array.isArray(d.contents) && Array.isArray(d.orders)) { _combinedRaw = d; return true; }
+    // 구버전 서버는 배열(첫 시트=콘텐츠) 반환 → 이 응답을 콘텐츠로 재활용(요청 낭비 없음). 수주·견적은 개별 요청으로.
+    if (Array.isArray(d)) { _combinedRaw = { contents: d }; return false; }
+  } catch (e) { console.warn('combined fetch failed:', e); }
+  return false;
+}
+
 async function fetchFromSheet() {
-  // 캐시 무력화 (브라우저/Apps Script 응답 캐시 회피)
-  const url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
+  let data;
+  if (_combinedRaw && Array.isArray(_combinedRaw.contents)) {
+    data = _combinedRaw.contents;
+  } else {
+    // 캐시 무력화 (브라우저/Apps Script 응답 캐시 회피)
+    const url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  }
   console.log('Fetched from sheet:', data.length, 'rows. Sample:', data[0]);
   // dedupe by id, keep last occurrence (latest update)
   const byId = new Map();
@@ -3043,9 +3065,14 @@ async function pushToSheet(action, item) {
 
 // ── Orders sheet sync ──
 async function fetchOrdersFromSheet() {
-  const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(ORDER_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
+  let data;
+  if (_combinedRaw && Array.isArray(_combinedRaw.orders)) {
+    data = _combinedRaw.orders;
+  } else {
+    const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(ORDER_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  }
   console.log('Fetched orders:', data.length, 'rows. Sample:', data[0]);
   const byId = new Map();
   data.forEach(r => byId.set(String(r.id), r));
@@ -3227,8 +3254,10 @@ async function init() {
     };
 
     // ⚠ Apps Script 는 요청을 하나씩만 처리 → 3개를 병렬로 던지면 서로 밀려 타임아웃(404)·지연 발생.
-    //    순차로, 달력에 필요한 '콘텐츠'부터 먼저 받아 화면을 빨리 띄운다.
+    //    ① 서버가 지원하면 '한 번 요청(__all__)'으로 3개를 다 받아옴(가장 빠름).
+    //    ② 구버전 서버면 순차로, 달력에 필요한 '콘텐츠'부터 먼저 받아 화면을 빨리 띄운다.
     (async () => {
+      await primeCombined();   // 성공 시 아래 fetch들은 네트워크 없이 캐시에서 즉시 반환
       try { const d = await fetchFromSheet(); contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); }
       catch (e) { console.warn('Contents fetch failed:', e); anyFailed = true; }
       tick();
@@ -3238,6 +3267,7 @@ async function init() {
       try { await fetchQuoteHistory(); } catch (e) { console.warn('Quote history fetch failed:', e); }
       tick();
       try { await fetchContractHistory(); } catch (e) { console.warn('Contract history fetch failed:', e); }
+      _combinedRaw = null;   // 통합 캐시 소진 — 이후 개별 새로고침은 최신 데이터를 다시 받음
       finished = true;
       targetPct = 100;
       setTimeout(setFinalStatus, 1000);
@@ -5282,9 +5312,14 @@ const QUOTE_SHEET = '견적서이력';
 async function fetchQuoteHistory() {
   if (!apiUrl) return;
   try {
-    const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(QUOTE_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
-    const data = await res.json();
+    let data;
+    if (_combinedRaw && Array.isArray(_combinedRaw.quotes)) {
+      data = _combinedRaw.quotes;
+    } else {
+      const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(QUOTE_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      data = await res.json();
+    }
     quoteHistory = data.map(r => ({
       id: String(r.id),
       order_id: String(r.order_id || ''),
