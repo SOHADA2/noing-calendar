@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.10';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.11';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2916,6 +2916,20 @@ async function primeCombined() {
   return false;
 }
 
+// Apps Script 는 일시적으로 404/실패를 반환할 수 있어 최대 3회 재시도(백오프)
+async function fetchSheetRaw(url) {
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) return await res.json();
+      lastErr = new Error('HTTP ' + res.status);
+    } catch (e) { lastErr = e; }
+    if (i < 2) await new Promise(r => setTimeout(r, 600 * (i + 1)));  // 0.6s, 1.2s 후 재시도
+  }
+  throw lastErr;
+}
+
 async function fetchFromSheet() {
   let data;
   if (_combinedRaw && Array.isArray(_combinedRaw.contents)) {
@@ -2923,9 +2937,7 @@ async function fetchFromSheet() {
   } else {
     // 캐시 무력화 (브라우저/Apps Script 응답 캐시 회피)
     const url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    data = await res.json();
+    data = await fetchSheetRaw(url);
   }
   console.log('Fetched from sheet:', data.length, 'rows. Sample:', data[0]);
   // dedupe by id, keep last occurrence (latest update)
@@ -3074,9 +3086,7 @@ async function fetchOrdersFromSheet() {
   if (_combinedRaw && Array.isArray(_combinedRaw.orders)) {
     data = _combinedRaw.orders;
   } else {
-    const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(ORDER_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    data = await res.json();
+    data = await fetchSheetRaw(apiUrl + '?sheet=' + encodeURIComponent(ORDER_SHEET) + '&_t=' + Date.now());
   }
   console.log('Fetched orders:', data.length, 'rows. Sample:', data[0]);
   const byId = new Map();
