@@ -2590,6 +2590,10 @@
     <div class="form-group">
       <label>📅 예약 확인 이미지 <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">(예약완료 시 담당자 공유용 · 3지면)</span></label>
       <div id="resvSlots"></div>
+      <div id="resvProgress" style="display:none;margin-top:8px;font-size:12px;color:var(--text-2)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span id="resvProgLabel">업로드 중...</span><span id="resvProgCount" style="font-variant-numeric:tabular-nums">0%</span></div>
+        <div style="height:7px;background:var(--bg-3);border-radius:4px;overflow:hidden"><div id="resvProgBar" style="height:100%;width:0%;background:var(--accent);transition:width .25s"></div></div>
+      </div>
       <div style="margin-top:8px">
         <button type="button" class="btn" id="resvReportBtn" onclick="openReservationReport()" style="font-size:12px;padding:6px 10px;display:none" title="예약 확인서 생성">📄 예약 확인 보고서</button>
       </div>
@@ -2733,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6819,16 +6823,21 @@ async function prepImageUpload(blob, maxBytes = 4 * 1024 * 1024) {
   return await downscaleToJpeg(blob, 2500, 0.95);
 }
 
-function setInsightProgress(done, totalOrHide, label) {
-  const box = document.getElementById('insightProgress');
+// 진행바 공통 렌더 (prefix = 'insight' 또는 'resv')
+function setProgBar(prefix, done, totalOrHide, label) {
+  const box = document.getElementById(prefix + 'Progress');
   if (!box) return;
   if (totalOrHide === false) { box.style.display = 'none'; return; }
   const total = totalOrHide;
   box.style.display = 'block';
-  document.getElementById('insightProgLabel').textContent = label || '인사이트 업로드 중...';
-  document.getElementById('insightProgCount').textContent = `${done} / ${total}`;
-  document.getElementById('insightProgBar').style.width = total ? Math.round(done / total * 100) + '%' : '0%';
+  const pct = total ? Math.max(0, Math.min(100, Math.round(done / total * 100))) : 0;
+  document.getElementById(prefix + 'ProgLabel').textContent = label || '업로드 중...';
+  // 단일 업로드(total=1)는 % 표시, 여러 장은 n / N 표시
+  document.getElementById(prefix + 'ProgCount').textContent = total === 1 ? pct + '%' : `${Math.min(total, Math.round(done))} / ${total}`;
+  document.getElementById(prefix + 'ProgBar').style.width = pct + '%';
 }
+function setInsightProgress(done, totalOrHide, label) { setProgBar('insight', done, totalOrHide, label || '인사이트 업로드 중...'); }
+function setResvProgress(done, totalOrHide, label) { setProgBar('resv', done, totalOrHide, label || '예약 이미지 업로드 중...'); }
 
 async function handleInsightUpload(files) {
   if (!files || !files.length) return;
@@ -6843,7 +6852,8 @@ async function handleInsightUpload(files) {
   for (const file of imgFiles) {
     try {
       const dataUrl = await prepImageUpload(file);
-      const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`);
+      const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`,
+        frac => setInsightProgress(done + frac, total, `인사이트 업로드 중... (${done + 1}/${total}장)`));
       insightEditUrls.push(url);
       persistB64(url, dataUrl);
       renderInsightThumbs();
@@ -6988,15 +6998,32 @@ function composeEditor() {
   norm.forEach((c, i) => { const h = Math.max(1, c.height - crops[i].top - crops[i].bottom); ctx.drawImage(c, 0, crops[i].top, W, h, 0, y, W, h); y += h; });
   return out.toDataURL('image/jpeg', 0.95);
 }
-async function uploadImageDataUrl(dataUrl, nameHint) {
-  const mm = dataUrl.match(/^data:([^;]+);base64,/);
-  const mime = (mm && mm[1]) || 'image/jpeg';
-  const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
-  const raw = dataUrl.split(',')[1];
-  const res = await fetch(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.${ext}`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: mime, file_base64: raw }) });
-  const r = await res.json();
-  if (r.ok && r.url) return r.url;
-  throw new Error(r.error || '업로드 실패');
+// onProgress(frac 0~1): 업로드 진행률 콜백(선택). XHR로 upload.onprogress 사용 → 실제 % 표시
+function uploadImageDataUrl(dataUrl, nameHint, onProgress) {
+  return new Promise((resolve, reject) => {
+    const mm = dataUrl.match(/^data:([^;]+);base64,/);
+    const mime = (mm && mm[1]) || 'image/jpeg';
+    const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+    const raw = dataUrl.split(',')[1];
+    const body = JSON.stringify({ action: 'upload_biz_cert', filename: `[인사이트] ${nameHint}_${Date.now()}.${ext}`.replace(/[\\/:*?"<>|]/g, '_'), mime_type: mime, file_base64: raw });
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', apiUrl);   // Content-Type 지정 안 함(text/plain 유지 → CORS preflight 회피, 기존 fetch와 동일)
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.min(0.99, e.loaded / e.total)); };
+      }
+      xhr.onload = () => {
+        try {
+          const r = JSON.parse(xhr.responseText);
+          if (r.ok && r.url) { if (onProgress) onProgress(1); resolve(r.url); }
+          else reject(new Error(r.error || '업로드 실패'));
+        } catch (err) { reject(new Error('서버 응답 오류')); }
+      };
+      xhr.onerror = () => reject(new Error('네트워크 오류'));
+      xhr.ontimeout = () => reject(new Error('업로드 시간 초과'));
+      xhr.send(body);
+    } catch (e) { reject(e); }
+  });
 }
 function previewStitchResult() {
   const dataUrl = composeEditor();
@@ -7219,15 +7246,18 @@ async function handleReservationUpload(files) {
 async function uploadResvBlob(i, blob) {
   if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
-  showToast('📤 예약 이미지 업로드 중...');
+  setResvProgress(0, 1, `📋 예약 이미지 ${i + 1} 준비 중...`);
   try {
     const dataUrl = await prepImageUpload(blob);
-    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`);
+    setResvProgress(0.02, 1, `📤 예약 이미지 ${i + 1} 업로드 중...`);
+    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`,
+      frac => setResvProgress(frac, 1, `📤 예약 이미지 ${i + 1} 업로드 중...`));
     reservationEditUrls[i] = url;
     persistB64(url, dataUrl);
     renderResvSlots();
+    setResvProgress(0, false);
     showToast('✓ 예약 이미지 추가됨');
-  } catch (e) { alert('업로드 실패: ' + e.message); }
+  } catch (e) { setResvProgress(0, false); alert('업로드 실패: ' + e.message); }
 }
 // 클립보드 이미지 읽기 (버튼용)
 async function readClipboardImageBlob() {
@@ -7267,13 +7297,16 @@ async function insightHandleBlob(blob) {
   if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   const title = document.getElementById('fTitle').value.trim() || '';
-  showToast('📤 인사이트 업로드 중...');
+  setInsightProgress(0, 1, '📋 붙여넣은 이미지 준비 중...');
   try {
     const dataUrl = await prepImageUpload(blob);
-    const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`);
+    setInsightProgress(0.02, 1, '📤 인사이트 업로드 중...');
+    const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`,
+      frac => setInsightProgress(frac, 1, '📤 인사이트 업로드 중...'));
     insightEditUrls.push(url); persistB64(url, dataUrl); renderInsightThumbs();
+    setInsightProgress(0, false);
     showToast('✓ 인사이트 추가됨');
-  } catch (e) { alert('업로드 실패: ' + e.message); }
+  } catch (e) { setInsightProgress(0, false); alert('업로드 실패: ' + e.message); }
 }
 function buildReservationReportHTML(d) {
   const C = QUOTE_COMPANY;
