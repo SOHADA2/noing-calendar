@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3226,25 +3226,22 @@ async function init() {
       targetPct = Math.round((done / total) * 95) + 5;
     };
 
-    const pContents = fetchFromSheet()
-      .then(d => { contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); })
-      .catch(e => { console.warn('Contents fetch failed:', e); anyFailed = true; })
-      .finally(tick);
-    const pOrders = fetchOrdersFromSheet()
-      .then(d => { orders = d; saveOrdersLocal(); renderOrders(); })
-      .catch(e => { console.warn('Orders fetch failed:', e); anyFailed = true; })
-      .finally(tick);
-    const pQuotes = fetchQuoteHistory()
-      .catch(e => { console.warn('Quote history fetch failed:', e); })
-      .finally(tick);
-    fetchContractHistory().catch(e => console.warn('Contract history fetch failed:', e));
-
-    Promise.all([pContents, pOrders, pQuotes]).finally(() => {
+    // ⚠ Apps Script 는 요청을 하나씩만 처리 → 3개를 병렬로 던지면 서로 밀려 타임아웃(404)·지연 발생.
+    //    순차로, 달력에 필요한 '콘텐츠'부터 먼저 받아 화면을 빨리 띄운다.
+    (async () => {
+      try { const d = await fetchFromSheet(); contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); }
+      catch (e) { console.warn('Contents fetch failed:', e); anyFailed = true; }
+      tick();
+      try { const d = await fetchOrdersFromSheet(); orders = d; saveOrdersLocal(); renderOrders(); }
+      catch (e) { console.warn('Orders fetch failed:', e); anyFailed = true; }
+      tick();
+      try { await fetchQuoteHistory(); } catch (e) { console.warn('Quote history fetch failed:', e); }
+      tick();
+      try { await fetchContractHistory(); } catch (e) { console.warn('Contract history fetch failed:', e); }
       finished = true;
       targetPct = 100;
-      // 안전망: 1초 후에도 animate가 100% 못 찍으면 강제로 최종 상태
       setTimeout(setFinalStatus, 1000);
-    });
+    })();
   }
   // 초기 달력 모드 적용 (UI 버튼 + 표시 토글)
   document.querySelectorAll('.cal-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === calMode));
