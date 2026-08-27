@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.22.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.22.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3150,6 +3150,8 @@ function saveOrdersLocal() { localStorage.setItem(STORAGE_ORDERS, JSON.stringify
 async function checkVersion() {
   const badge = document.getElementById('versionBadge');
   if (badge) badge.textContent = 'v' + APP_VERSION;
+  return;   // 서버가 버전을 제공하지 않음 → 불필요한 요청 제거(시작 속도 개선)
+  /* eslint-disable no-unreachable */
   if (!apiUrl) return;
   try {
     const res = await fetch(apiUrl + '?action=version');
@@ -3273,8 +3275,7 @@ async function init() {
       else anyFailed = true;
       tick();
 
-      await step('Quotes', fetchQuoteHistory);
-      tick();
+      tick();   // 견적서이력은 수주 화면 진입 시 지연 로딩 (ensureQuoteHistory)
 
       try { await fetchContractHistory(); } catch (e) { console.warn('Contract history fetch failed:', e); }
 
@@ -3309,7 +3310,7 @@ function switchView(view) {
   document.getElementById('viewOrders').classList.toggle('active', view === 'orders');
   document.getElementById('addBtn').textContent = view === 'calendar' ? '+ 콘텐츠 추가' : '+ 수주 추가';
   document.getElementById('filterBar').style.display = view === 'calendar' ? '' : 'none';
-  if (view === 'orders') renderOrders();
+  if (view === 'orders') { renderOrders(); ensureQuoteHistory().then(renderRecentQuotes); }
 }
 function openAddByView() {
   if (currentView === 'calendar') openModal(null);
@@ -4084,6 +4085,7 @@ function bindOrderUI() {
 let editingOrderId = null;
 function openOrderModal(id) {
   editingOrderId = id || null;
+  ensureQuoteHistory().then(() => { if (editingOrderId) renderQuoteHistoryForOrder(editingOrderId); });
   const today = fmtDate(new Date());
   const delBtn = document.getElementById('orderDeleteBtn');
   if (id) {
@@ -4469,10 +4471,11 @@ function generateNextQuoteNumber(orderId) {
   return `${prefix}${next}`;
 }
 
-function generateQuote() {
+async function generateQuote() {
   if (!editingOrderId) return;
   const o = orders.find(x => String(x.id) === String(editingOrderId));
   if (!o) return;
+  await ensureQuoteHistory();   // 번호 중복 방지: 이력 확보 후 채번
 
   // Pre-fill quote fields
   const today = fmtDate(new Date());
@@ -5319,6 +5322,18 @@ function numberToHangul(num) {
 
 // 견적서 이력 (메모리 캐시)
 let quoteHistory = [];
+let quotesLoaded = false, quotesLoading = null;
+// 견적서이력은 '광고 수주' 화면에서만 쓰이므로 그때 처음 한 번만 불러온다(시작 동기화 1건 감소)
+function ensureQuoteHistory() {
+  if (quotesLoaded) return Promise.resolve();
+  if (!quotesLoading) {
+    quotesLoading = fetchQuoteHistory()
+      .then(() => { quotesLoaded = true; })
+      .catch(e => { console.warn('Quote history fetch failed:', e); })
+      .finally(() => { quotesLoading = null; });
+  }
+  return quotesLoading;
+}
 const QUOTE_SHEET = '견적서이력';
 
 async function fetchQuoteHistory() {
