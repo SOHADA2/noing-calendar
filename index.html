@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.22.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.22.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3718,8 +3718,10 @@ function openContentActionMenu(id, x, y) {
     { k: 'contract', t: '계약서' },
     { k: 'invoice',  t: '세금계산서' },
   ] : [];
+  // 예약 확인 이미지를 실제로 넣어둔 콘텐츠만 📄 배지 표시 (없으면 열어봤자 빈 보고서)
+  const hasResv = !!(c.reservation_urls || '').replace(/\|/g, '').trim();
   const statusPills = STATUS_KEYS.map(st => {
-    const badge = st === '예약완료' ? `<span class="resv-badge" title="예약 확인 보고서" onclick="event.stopPropagation(); enterReservation('${id}')">📄</span>` : '';
+    const badge = (st === '예약완료' && hasResv) ? `<span class="resv-badge" title="예약 확인 보고서" onclick="event.stopPropagation(); enterReservation('${id}')">📄</span>` : '';
     return `<span class="content-progress-tag ${st}${c.status === st ? ' cur' : ''}" data-st="${st}" style="position:relative">${st}${badge}</span>`;
   }).join('');
   menu.innerHTML =
