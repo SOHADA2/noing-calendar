@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.15';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.16';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6782,15 +6782,24 @@ async function idbLoadAll() {
 }
 // ⚠ 시작 시 IndexedDB 전체(대용량 원본들)를 메모리로 올리면 로딩이 얼어붙음 → 즉시로드 제거.
 //    export/표시 때 ensureDataUrl 이 idbGet 으로 필요한 것만 개별 로드하므로 기능엔 영향 없음.
-function saveInsightB64() {
-  // 작은 것만 localStorage(빠른 시작), 모든 이미지는 IndexedDB에 영구 저장
-  try {
-    const slim = {}; for (const k in insightB64) { const v = insightB64[k]; if (v && v.length <= 1200000) slim[k] = v; }
-    localStorage.setItem('cc-insight-b64', JSON.stringify(slim));
-  } catch (e) {}
-}
+function saveInsightB64() {}   // 이미지 원본은 IndexedDB 에만 저장(구버전 호환용 빈 함수)
 // 업로드 직후 원본을 IndexedDB에 영구 저장(호출부에서 사용)
-function persistB64(url, dataUrl) { if (url && dataUrl) { insightB64[url] = dataUrl; idbPut(url, dataUrl); saveInsightB64(); } }
+function persistB64(url, dataUrl) {
+  // ⚠ 예전엔 이미지마다 localStorage 에 전체 캐시(수 MB)를 다시 썬다 → 화면 멈춤·용량초과.
+  //    이제 원본은 IndexedDB 에만 저장한다(용량 넘넘·비동기).
+  if (url && dataUrl) { insightB64[url] = dataUrl; idbPut(url, dataUrl); }
+}
+// 기존 localStorage 에 쌓여 있던 이미지 캐시를 IndexedDB 로 옮기고 비움(1회)
+(async function migrateB64Cache() {
+  try {
+    const raw = localStorage.getItem('cc-insight-b64');
+    if (!raw || raw.length < 100) return;
+    const obj = JSON.parse(raw);
+    for (const k in obj) { if (obj[k]) { insightB64[k] = obj[k]; idbPut(k, obj[k]); } }
+    localStorage.removeItem('cc-insight-b64');
+    console.log('image cache migrated to IndexedDB:', Object.keys(obj).length);
+  } catch (e) { try { localStorage.removeItem('cc-insight-b64'); } catch (e2) {} }
+})();
 // 드라이브 링크에서 파일 ID 추출
 function driveFileId(url) {
   if (!url) return null; let m;
@@ -6848,7 +6857,7 @@ function blobToDataURL(blob) {
   return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
 }
 // 업로드용 데이터 준비: 원본이 과하게 크지 않으면 무손실 원본 그대로(화질 최상), 아주 클 때만 축소
-async function prepImageUpload(blob, maxBytes = 4 * 1024 * 1024) {
+async function prepImageUpload(blob, maxBytes = 1.5 * 1024 * 1024) {
   if (blob && blob.size && blob.size <= maxBytes) { try { return await blobToDataURL(blob); } catch (e) {} }
   return await downscaleToJpeg(blob, 2500, 0.95);
 }
