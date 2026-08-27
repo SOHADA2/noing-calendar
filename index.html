@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.12';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.13';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3226,24 +3226,39 @@ async function init() {
       targetPct = Math.round((done / total) * 95) + 5;
     };
 
-    const pContents = fetchFromSheet()
-      .then(d => { contents = d; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); })
-      .catch(e => { console.warn('Contents fetch failed:', e); anyFailed = true; })
-      .finally(tick);
-    const pOrders = fetchOrdersFromSheet()
-      .then(d => { orders = d; saveOrdersLocal(); renderOrders(); })
-      .catch(e => { console.warn('Orders fetch failed:', e); anyFailed = true; })
-      .finally(tick);
-    const pQuotes = fetchQuoteHistory()
-      .catch(e => { console.warn('Quote history fetch failed:', e); })
-      .finally(tick);
-    fetchContractHistory().catch(e => console.warn('Contract history fetch failed:', e));
+    // ⚠ Apps Script 는 같은 사용자의 동시실행을 제한 → 3개를 한꺼번에 보내면 그중 하나가 밀려 실패(404)한다.
+    //    순차로 보내면 충돌이 없고, 서버 읽기가 빨라져(날짜변환 최적화) 순차여도 전체가 빠르다.
+    (async () => {
+      const step = async (label, fn) => {
+        for (let i = 0; i < 2; i++) {          // 일시적 실패는 1회 재시도
+          try { return { ok: true, data: await fn() }; }
+          catch (e) {
+            console.warn(label, 'fetch failed (try ' + (i + 1) + '):', e);
+            if (i === 0) await new Promise(r => setTimeout(r, 800));
+          }
+        }
+        return { ok: false };
+      };
 
-    Promise.all([pContents, pOrders, pQuotes]).finally(() => {
+      const c = await step('Contents', fetchFromSheet);
+      if (c.ok) { contents = c.data; restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); }
+      else anyFailed = true;
+      tick();
+
+      const o = await step('Orders', fetchOrdersFromSheet);
+      if (o.ok) { orders = o.data; saveOrdersLocal(); renderOrders(); }
+      else anyFailed = true;
+      tick();
+
+      await step('Quotes', fetchQuoteHistory);
+      tick();
+
+      try { await fetchContractHistory(); } catch (e) { console.warn('Contract history fetch failed:', e); }
+
       finished = true;
       targetPct = 100;
       setTimeout(setFinalStatus, 1000);
-    });
+    })();
   }
   // 초기 달력 모드 적용 (UI 버튼 + 표시 토글)
   document.querySelectorAll('.cal-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === calMode));
