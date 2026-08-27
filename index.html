@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.16';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.22.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2846,6 +2846,14 @@ function escapeHtml(s) {
 // 링크를 인라인 JS 문자열에 넣지 않고 data-url 로 전달 → onclick XSS 방지. http(s)만 허용(javascript: 등 차단)
 function openUrlSafe(el) {
   const u = (el && el.dataset && el.dataset.url) || '';
+  if (isLocalImage(u)) {                       // 로컬 보관 이미지 → 새 탭에 원본 보기
+    const d = insightB64[u];
+    if (!d) return;
+    const o = URL.createObjectURL(dataUrlToBlob(d));
+    window.open(o, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(o), 60000);
+    return;
+  }
   if (/^https?:\/\//i.test(u)) window.open(u, '_blank', 'noopener');
 }
 
@@ -6664,6 +6672,9 @@ function openModal(dateStr, id) {
     renderInsightThumbs();
     reservationEditUrls = padResv((c.reservation_urls || '').split('|'));
     renderResvSlots();
+    // 이전에 넣어둔 이미지 원본을 IndexedDB 에서 불러와 다시 그린다
+    hydrateB64([].concat(insightEditUrls, reservationEditUrls))
+      .then(n => { if (n) { renderInsightThumbs(); renderResvSlots(); } });
     delBtn.style.display = 'inline-flex';
   } else {
     document.getElementById('modalTitle').textContent = '콘텐츠 추가';
@@ -6800,6 +6811,27 @@ function persistB64(url, dataUrl) {
     console.log('image cache migrated to IndexedDB:', Object.keys(obj).length);
   } catch (e) { try { localStorage.removeItem('cc-insight-b64'); } catch (e2) {} }
 })();
+// ── 로컬 보관 이미지(드라이브 업로드 없이 이 기기에만 저장) ──
+function newLocalImageKey() { return 'local:' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
+function isLocalImage(u) { return typeof u === 'string' && u.indexOf('local:') === 0; }
+// 필요한 이미지 원본만 IndexedDB 에서 메모리로 불러온다(없는 것만)
+async function hydrateB64(keys) {
+  let loaded = 0;
+  for (const k of (keys || [])) {
+    if (!k || insightB64[k]) continue;
+    const d = await idbGet(k);
+    if (d) { insightB64[k] = d; loaded++; }
+  }
+  return loaded;
+}
+function dataUrlToBlob(d) {
+  const parts = String(d).split(',');
+  const mime = (parts[0].match(/data:([^;]+)/) || [])[1] || 'image/png';
+  const bin = atob(parts[1] || '');
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 // 드라이브 링크에서 파일 ID 추출
 function driveFileId(url) {
   if (!url) return null; let m;
@@ -6812,6 +6844,7 @@ function driveFileId(url) {
 // 표시/캡처 가능한 직접 이미지 URL로 변환(구글 이미지 CDN, CORS 허용)
 function driveImgSrc(url) {
   if (!url) return '';
+  if (isLocalImage(url)) return '';   // 로컬 보관 이미지는 insightB64 에서 직접 표시
   if (url.startsWith('data:')) return url;
   if (/drive\.google|googleusercontent|docs\.google/.test(url)) {
     const id = driveFileId(url);
@@ -6891,10 +6924,10 @@ async function handleInsightUpload(files) {
   for (const file of imgFiles) {
     try {
       const dataUrl = await prepImageUpload(file);
-      setInsightProgress(done, total, `인사이트 업로드 중... (${done + 1}/${total}장)`);
-      const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_${done + 1}`);
-      insightEditUrls.push(url);
-      persistB64(url, dataUrl);
+      setInsightProgress(done, total, `인사이트 저장 중... (${done + 1}/${total}장)`);
+      const key = newLocalImageKey();
+      persistB64(key, dataUrl);
+      insightEditUrls.push(key);
       renderInsightThumbs();
     } catch (e) { failed++; console.error(e); }
     done++;
@@ -7070,15 +7103,12 @@ function previewStitchResult() {
   ov.classList.add('open');
 }
 async function commitStitch() {
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
   const dataUrl = window._stitchResult; if (!dataUrl) return;
-  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
-  const title = document.getElementById('fTitle').value.trim() || '';
-  showToast('📤 정리본 업로드 중...');
+  showToast('정리본 저장 중...');
   try {
-    const url = await uploadImageDataUrl(dataUrl, `${company}_${title}_정리`);
-    insightEditUrls = [url];
-    persistB64(url, dataUrl);
+    const key = newLocalImageKey();
+    persistB64(key, dataUrl);          // 로컬 보관
+    insightEditUrls = [key];
     renderInsightThumbs();
     document.getElementById('stitchPreview').classList.remove('open');
     document.getElementById('stitchEditor').classList.remove('open');
@@ -7126,9 +7156,10 @@ function openInsightReport() {
   if (!d.urls.length) { alert('먼저 인사이트 이미지를 추가해주세요.'); return; }
   showInsightReportOverlay(d);
 }
-function openInsightReportFor(id) {
+async function openInsightReportFor(id) {
   const c = contents.find(x => String(x.id) === String(id));
   if (!c || !(c.insight_urls || '').trim()) { alert('이 콘텐츠에 인사이트 이미지가 없습니다.'); return; }
+  await hydrateB64((c.insight_urls || '').split('|').filter(Boolean));
   showInsightReportOverlay({ company: c.company, title: c.title, channel: c.channel, type: c.type, date: c.date, time: c.time, owner: c.owner, publish_url: c.publish_url, urls: (c.insight_urls || '').split('|').filter(Boolean) });
 }
 function showInsightReportOverlay(d) {
@@ -7276,18 +7307,16 @@ async function handleReservationUpload(files) {
 }
 // 슬롯 i에 이미지 blob 업로드 (파일·붙여넣기 공용)
 async function uploadResvBlob(i, blob) {
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); return; }
-  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
-  const prog = startFakeProgress(setResvProgress, `📤 예약 이미지 ${i + 1} 업로드 중...`);
+  const prog = startFakeProgress(setResvProgress, '예약 이미지 ' + (i + 1) + ' 저장 중...');
   try {
     const dataUrl = await prepImageUpload(blob);
-    const url = await uploadImageDataUrl(dataUrl, `${company}_예약${i + 1}`);
-    reservationEditUrls[i] = url;
-    persistB64(url, dataUrl);
+    const key = newLocalImageKey();
+    persistB64(key, dataUrl);            // 이 기기(IndexedDB)에만 보관 — 시트/드라이브 안 거침
+    reservationEditUrls[i] = key;
     renderResvSlots();
     prog.done(setResvProgress);
     showToast('✓ 예약 이미지 추가됨');
-  } catch (e) { prog.fail(setResvProgress); alert('업로드 실패: ' + e.message); }
+  } catch (e) { prog.fail(setResvProgress); alert('이미지 추가 실패: ' + e.message); }
 }
 // 클립보드 이미지 읽기 (버튼용)
 async function readClipboardImageBlob() {
@@ -7324,17 +7353,16 @@ document.addEventListener('paste', (e) => {
   }
 });
 async function insightHandleBlob(blob) {
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
-  const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
-  const title = document.getElementById('fTitle').value.trim() || '';
-  const prog = startFakeProgress(setInsightProgress, '📤 인사이트 업로드 중...');
+  const prog = startFakeProgress(setInsightProgress, '인사이트 저장 중...');
   try {
     const dataUrl = await prepImageUpload(blob);
-    const url = await uploadImageDataUrl(dataUrl, `인사이트_${company}_${title}`);
-    insightEditUrls.push(url); persistB64(url, dataUrl); renderInsightThumbs();
+    const key = newLocalImageKey();
+    persistB64(key, dataUrl);
+    insightEditUrls.push(key);
+    renderInsightThumbs();
     prog.done(setInsightProgress);
     showToast('✓ 인사이트 추가됨');
-  } catch (e) { prog.fail(setInsightProgress); alert('업로드 실패: ' + e.message); }
+  } catch (e) { prog.fail(setInsightProgress); alert('이미지 추가 실패: ' + e.message); }
 }
 function buildReservationReportHTML(d) {
   const C = QUOTE_COMPANY;
@@ -7378,10 +7406,11 @@ function openReservationReport() {
   if (!d.urls.some(Boolean)) { alert('예약 확인 이미지를 먼저 추가해주세요.'); return; }
   showReservationReportOverlay(d);
 }
-function openReservationReportFor(id) {
+async function openReservationReportFor(id) {
   const c = contents.find(x => String(x.id) === String(id));
   const urls = padResv((c && c.reservation_urls || '').split('|'));
   if (!c || !urls.some(Boolean)) { alert('이 콘텐츠에 예약 확인 이미지가 없습니다.'); return; }
+  await hydrateB64(urls);
   showReservationReportOverlay({ id: c.id, company: c.company, title: c.title, channel: c.channel, date: c.date, time: c.time, owner: c.owner, urls });
 }
 function showReservationReportOverlay(d) {
