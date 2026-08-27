@@ -2737,7 +2737,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.21.14';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.21.15';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2894,10 +2894,23 @@ function normalizeTime(v) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
+// 시트 읽기용 fetch — 응답이 안 오면 무한대기하지 않고 지정 시간 뒤 중단(후 재시도 가능)
+async function fetchWithTimeout(url, ms) {
+  ms = ms || 25000;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), ms);
+  try {
+    return await fetch(url, { cache: 'no-store', signal: ac.signal });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('응답 없음(' + Math.round(ms / 1000) + '초 초과)');
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+
 async function fetchFromSheet() {
   // 캐시 무력화 (브라우저/Apps Script 응답 캐시 회피)
   const url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   console.log('Fetched from sheet:', data.length, 'rows. Sample:', data[0]);
@@ -3043,7 +3056,7 @@ async function pushToSheet(action, item) {
 
 // ── Orders sheet sync ──
 async function fetchOrdersFromSheet() {
-  const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(ORDER_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
+  const res = await fetchWithTimeout(apiUrl + '?sheet=' + encodeURIComponent(ORDER_SHEET) + '&_t=' + Date.now());
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   console.log('Fetched orders:', data.length, 'rows. Sample:', data[0]);
@@ -3220,6 +3233,8 @@ async function init() {
       requestAnimationFrame(animate);
     };
     animate();
+    // 안전망: 90초 안에 끝나지 않으면 진행바를 강제로 마무리 (영원히 '연결 중' 방지)
+    setTimeout(() => { if (!finalSet) { anyFailed = true; finished = true; targetPct = 100; setFinalStatus(); } }, 90000);
 
     const tick = () => {
       done++;
@@ -5299,7 +5314,7 @@ const QUOTE_SHEET = '견적서이력';
 async function fetchQuoteHistory() {
   if (!apiUrl) return;
   try {
-    const res = await fetch(apiUrl + '?sheet=' + encodeURIComponent(QUOTE_SHEET) + '&_t=' + Date.now(), { cache: 'no-store' });
+    const res = await fetchWithTimeout(apiUrl + '?sheet=' + encodeURIComponent(QUOTE_SHEET) + '&_t=' + Date.now());
     if (!res.ok) return;
     const data = await res.json();
     quoteHistory = data.map(r => ({
