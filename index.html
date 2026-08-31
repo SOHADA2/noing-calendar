@@ -402,12 +402,20 @@
     #stitchEditor .se-img { position: relative; background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.15); flex-shrink: 0; }
     #stitchEditor .se-img > img { display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
     #stitchEditor .se-cut { position: absolute; left: 0; right: 0; overflow: hidden; pointer-events: none; z-index: 1;
-      background: repeating-linear-gradient(45deg, rgba(0,0,0,.72), rgba(0,0,0,.72) 9px, rgba(210,60,50,.72) 9px, rgba(210,60,50,.72) 18px); }
+      background: repeating-linear-gradient(45deg, rgba(0,0,0,.82), rgba(0,0,0,.82) 9px, rgba(210,60,50,.82) 9px, rgba(210,60,50,.82) 18px); }
     #stitchEditor .se-cut.top { top: 0; } #stitchEditor .se-cut.bot { bottom: 0; }
     #stitchEditor .se-cutlabel { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .5px; text-shadow: 0 1px 3px rgba(0,0,0,.9); white-space: nowrap; }
-    #stitchEditor .se-line { position: absolute; left: 0; right: 0; height: 22px; transform: translateY(-50%); cursor: ns-resize; z-index: 3; touch-action: none; font-size: 10px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
-    #stitchEditor .se-line.top { background: rgba(106,168,255,.9); border-top: 2px solid #6aa8ff; }
-    #stitchEditor .se-line.bot { transform: translateY(50%); background: rgba(242,162,75,.9); border-bottom: 2px solid #f2a24b; }
+    /* 경계선(자르는 위치) — 얇고 선명하게, 잘리는 영역과 겹치지 않음 */
+    #stitchEditor .se-edge { position: absolute; left: 0; right: 0; height: 0; z-index: 3; cursor: ns-resize; touch-action: none; }
+    #stitchEditor .se-edge::before { content: ''; position: absolute; left: 0; right: 0; top: -14px; height: 28px; }  /* 잡기 쉬운 영역 */
+    #stitchEditor .se-edge .se-bar { position: absolute; left: 0; right: 0; height: 2px; }
+    #stitchEditor .se-edge.top .se-bar { top: 0; background: #6aa8ff; box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 0 6px rgba(106,168,255,.8); }
+    #stitchEditor .se-edge.bot .se-bar { bottom: 0; background: #f2a24b; box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 0 6px rgba(242,162,75,.8); }
+    /* 손잡이는 '남는 쪽'에 붙여서 잘리는 영역을 가리지 않게 */
+    #stitchEditor .se-pill { position: absolute; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px;
+      font-size: 10.5px; font-weight: 800; color: #10202e; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.55); pointer-events: none; }
+    #stitchEditor .se-edge.top .se-pill { top: 5px; background: #6aa8ff; }
+    #stitchEditor .se-edge.bot .se-pill { bottom: 5px; background: #f2a24b; }
     #stitchEditor .se-num { position: absolute; top: 4px; left: 4px; z-index: 2; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
     /* 연도/월 기간 필터 바 */
@@ -2737,7 +2745,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.22.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.22.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7027,7 +7035,7 @@ function openStitchEditor() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'stitchEditor'; ov.className = 'modal-overlay'; ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); }; document.body.appendChild(ov); }
   ov.innerHTML = `<div class="modal" style="width:420px;max-width:96vw">
     <div class="modal-head"><h3>✂️ 캡쳐 정리</h3><button class="icon-btn" onclick="document.getElementById('stitchEditor').classList.remove('open')">✕</button></div>
-    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px"><b style="color:#6aa8ff">파란 선</b>(위 경계)·<b style="color:#f2a24b">주황 선</b>(아래 경계)을 드래그하면 <b>빗금친 부분이 잘려요</b>. 위/아래 각각 원하는 만큼 잘라 겹침·상단 표시줄을 맞추세요.</div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">선을 드래그해 자를 위치를 정하세요. <b style="color:#6aa8ff">파란 선</b> 위쪽 · <b style="color:#f2a24b">주황 선</b> 아래쪽의 <b style="color:#e06a60">빗금친 부분이 삭제</b>되고, 선 안쪽만 남습니다. (겹치는 부분·상단 표시줄 정리용)</div>
     <div class="se-stack" id="seStack"></div>
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
       <button class="btn" style="font-size:11px;padding:5px 9px" onclick="editorAuto()">🔄 자동 맞춤</button>
@@ -7045,14 +7053,14 @@ function renderEditorStack() {
     const cr = crops[i], imgH = Math.round(c.height * scale);
     return `<div class="se-img" data-idx="${i}" style="width:${dispW}px;height:${imgH}px">
       <img src="${dispSrc[i]}" style="width:${dispW}px;height:${imgH}px"/>
-      <div class="se-cut top" style="height:${cr.top * scale}px"><span class="se-cutlabel">✂ 잘리는 부분</span></div>
-      <div class="se-cut bot" style="height:${cr.bottom * scale}px"><span class="se-cutlabel">✂ 잘리는 부분</span></div>
-      <div class="se-line top" data-idx="${i}" data-which="top" style="top:${cr.top * scale}px">≡  ▲ 위쪽 잘라내기  ≡</div>
-      <div class="se-line bot" data-idx="${i}" data-which="bottom" style="bottom:${cr.bottom * scale}px">≡  ▼ 아래쪽 잘라내기  ≡</div>
+      <div class="se-cut top" style="height:${cr.top * scale}px">${cr.top ? '<span class="se-cutlabel">✕ 이 부분 삭제</span>' : ''}</div>
+      <div class="se-cut bot" style="height:${cr.bottom * scale}px">${cr.bottom ? '<span class="se-cutlabel">✕ 이 부분 삭제</span>' : ''}</div>
+      <div class="se-edge top" data-idx="${i}" data-which="top" style="top:${cr.top * scale}px"><div class="se-bar"></div><div class="se-pill">▲ 위 경계 ↕ 드래그</div></div>
+      <div class="se-edge bot" data-idx="${i}" data-which="bottom" style="bottom:${cr.bottom * scale}px"><div class="se-bar"></div><div class="se-pill">▼ 아래 경계 ↕ 드래그</div></div>
       <div class="se-num">${i + 1}</div>
     </div>`;
   }).join('');
-  stack.querySelectorAll('.se-line').forEach(g => g.addEventListener('pointerdown', editorHandleDown));
+  stack.querySelectorAll('.se-edge').forEach(g => g.addEventListener('pointerdown', editorHandleDown));
 }
 let _drag = null;
 function editorHandleDown(e) {
@@ -7073,8 +7081,11 @@ function editorHandleMove(e) {
   const v = Math.max(0, Math.min(Math.round(_drag.startVal + delta), c.height - other - 20));
   crops[_drag.idx][_drag.which] = v;
   const img = _drag.img, off = v * scale;
-  if (_drag.which === 'top') { img.querySelector('.se-cut.top').style.height = off + 'px'; _drag.line.style.top = off + 'px'; }
-  else { img.querySelector('.se-cut.bot').style.height = off + 'px'; _drag.line.style.bottom = off + 'px'; }
+  const cut = img.querySelector(_drag.which === 'top' ? '.se-cut.top' : '.se-cut.bot');
+  cut.style.height = off + 'px';
+  cut.innerHTML = v ? '<span class="se-cutlabel">✕ 이 부분 삭제</span>' : '';
+  if (_drag.which === 'top') _drag.line.style.top = off + 'px';
+  else _drag.line.style.bottom = off + 'px';
 }
 function editorHandleUp() { _drag = null; document.removeEventListener('pointermove', editorHandleMove); document.removeEventListener('pointerup', editorHandleUp); }
 function editorAuto() { _editor.crops = autoCrops(_editor.norm); renderEditorStack(); }
