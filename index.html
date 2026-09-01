@@ -2754,7 +2754,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.24.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.24.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -5777,11 +5777,15 @@ async function _saveQuoteToDrive() {
       items_json: JSON.stringify(data.items),
       created_at: new Date().toISOString(),
     };
-    await fetch(apiUrl, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'add', sheet: QUOTE_SHEET, ...record }),
-    });
-    quoteHistory.push(record);
+    if (USE_FB) {
+      await fbSave('quotes', record);          // Firestore 저장 (리스너가 목록 갱신)
+    } else {
+      await fetch(apiUrl, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'add', sheet: QUOTE_SHEET, ...record }),
+      });
+      quoteHistory.push(record);
+    }
 
     updateLoadingStatus('✓ 완료');
     setTimeout(() => {
@@ -6313,7 +6317,10 @@ async function importOrdersFromExcel() {
   let pushed = 0;
   for (const item of ORDER_SEED_DATA) {
     orders.push(item);
-    if (apiUrl) {
+    if (USE_FB) {
+      try { await fbSave('orders', item); pushed++; }
+      catch (e) { console.error('push failed for', item.id, e); }
+    } else if (apiUrl) {
       try {
         await fetch(apiUrl, {
           method: 'POST',
