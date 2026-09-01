@@ -1942,7 +1942,6 @@
     <span id="versionBadge" style="margin-left:8px;font-size:10px;color:var(--text-4);font-weight:500;cursor:pointer" title="버전 확인">v1.0</span>
   </div>
   <div class="header-actions">
-    <button class="btn btn-primary" id="addBtn" onclick="openAddByView()">+ 콘텐츠 추가</button>
     <button class="btn btn-icon" onclick="openSettings()" title="설정 · 계정">⚙</button>
   </div>
 </div>
@@ -2012,6 +2011,7 @@
             <button type="button" class="cal-mode-btn active" data-mode="grid" onclick="setCalMode('grid')" title="달력 보기"><span class="mode-icon-cal">📅</span></button>
             <button type="button" class="cal-mode-btn" data-mode="list" onclick="setCalMode('list')" title="목록 보기">≡</button>
           </div>
+          <button class="btn btn-primary" onclick="openModal(null)" style="white-space:nowrap">+ 콘텐츠 추가</button>
           <div class="alert-popover" id="alertPopover">
             <h5>곧 발행될 콘텐츠</h5>
             <div id="alertList"></div>
@@ -2685,7 +2685,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.27.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.27.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3452,9 +3452,8 @@ function switchView(view) {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   document.getElementById('viewCalendar').classList.toggle('active', view === 'calendar');
   document.getElementById('viewOrders').classList.toggle('active', view === 'orders');
-  const addBtn = document.getElementById('addBtn');
-  addBtn.textContent = '+ 콘텐츠 추가';
-  addBtn.style.display = view === 'calendar' ? '' : 'none';   // 수주 화면엔 표 위에 별도 버튼이 있음
+  const addBtn = document.getElementById('addBtn');            // 헤더 버튼은 제거됨(각 화면에 자체 버튼)
+  if (addBtn) addBtn.style.display = view === 'calendar' ? '' : 'none';
   document.getElementById('filterBar').style.display = view === 'calendar' ? '' : 'none';
   if (view === 'orders') { renderOrders(); ensureQuoteHistory().then(renderRecentQuotes); }
 }
