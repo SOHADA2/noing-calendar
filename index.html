@@ -2101,6 +2101,7 @@
         <div class="orders-toolbar-left">
           <div class="orders-title">광고 수주 관리</div>
           <span class="orders-count" id="ordersCount"></span>
+          <button class="btn" onclick="openDocs()" style="margin-left:10px;font-size:11.5px;padding:5px 10px;white-space:nowrap">📄 발행 문서</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div class="orders-search">
@@ -2684,7 +2685,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.26.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.27.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4075,6 +4076,84 @@ function renderOrderStats(filtered) {
 
   // 최근 발행 견적서
   renderRecentQuotes();
+}
+
+// ── 발행 문서(견적서·계약서) 모아보기 ──
+let _docsTab = 'quote';
+let _docsRows = [];
+function openDocs() {
+  ensureQuoteHistory();
+  const sc = document.getElementById('docsSearch'); if (sc) sc.value = '';
+  setDocsTab('quote');
+  document.getElementById('docsOverlay').classList.add('open');
+}
+function closeDocs() { document.getElementById('docsOverlay').classList.remove('open'); }
+function setDocsTab(t) {
+  _docsTab = t;
+  document.getElementById('docsTabQuote').classList.toggle('btn-primary', t === 'quote');
+  document.getElementById('docsTabContract').classList.toggle('btn-primary', t === 'contract');
+  renderDocs();
+}
+function docsList() {
+  if (_docsTab === 'contract') {
+    return contractHistory.map(c => ({
+      type: '계약서', no: c.contract_number || '', date: c.date || '',
+      who: c.client_name || '', subject: c.subject || '', total: c.total || 0,
+      url: c.url || '', created: c.created_at || c.date || ''
+    }));
+  }
+  return quoteHistory.map(q => ({
+    type: '견적서', no: q.quote_number || '', date: q.date || '',
+    who: q.recipient || '', subject: q.subject || '', total: q.total || 0,
+    url: q.url || '', created: q.created_at || q.date || ''
+  }));
+}
+function renderDocs() {
+  const body = document.getElementById('docsBody');
+  if (!body) return;
+  document.getElementById('docsCntQ').textContent = quoteHistory.length ? quoteHistory.length : '';
+  document.getElementById('docsCntC').textContent = contractHistory.length ? contractHistory.length : '';
+  const kw = (document.getElementById('docsSearch').value || '').trim().toLowerCase();
+  _docsRows = docsList()
+    .filter(d => !kw || (d.no + ' ' + d.who + ' ' + d.subject).toLowerCase().includes(kw))
+    .sort((a, b) => String(b.created).localeCompare(String(a.created)));
+  if (!_docsRows.length) {
+    body.innerHTML = '<p class="empty-text">' + (kw ? '검색 결과 없음' : '발행한 문서 없음') + '</p>';
+    return;
+  }
+  body.innerHTML = _docsRows.map((d, i) => `
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 4px;border-bottom:1px solid var(--border)">
+      <div style="min-width:0">
+        <div style="font-size:11px;color:var(--text-3)">${escapeHtml(String(d.date).replace(/-/g, '.'))} · ${escapeHtml(d.no)}</div>
+        <div style="font-size:12.5px;font-weight:600;margin-top:2px;word-break:break-all">${escapeHtml(d.who)}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:1px;word-break:break-all">${escapeHtml(d.subject)}</div>
+      </div>
+      <div style="text-align:right;white-space:nowrap">
+        <div style="font-weight:700;font-size:12.5px">${fmtMoney(d.total)}원</div>
+        <div style="margin-top:6px;display:flex;gap:5px;justify-content:flex-end">
+          <span class="meta-tag" data-url="${escapeHtml(d.url)}" onclick="openUrlSafe(this)" style="cursor:pointer;font-size:9.5px">열기</span>
+          <span class="meta-tag" onclick="docsDownload(${i})" style="cursor:pointer;font-size:9.5px">다운로드</span>
+          <span class="meta-tag" onclick="docsShare(${i})" style="cursor:pointer;font-size:9.5px">공유</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function docsDownload(i) {
+  const d = _docsRows[i];
+  if (!d || !d.url) { alert('링크가 없습니다.'); return; }
+  const fileId = getFileIdFromDriveUrl(d.url);          // 예전 드라이브 파일
+  window.open(fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : d.url, '_blank', 'noopener');
+}
+async function docsShare(i) {
+  const d = _docsRows[i];
+  if (!d || !d.url) { alert('링크가 없습니다.'); return; }
+  const text = `📄 ${d.type} ${d.no}\n${d.who ? '수신: ' + d.who + '\n' : ''}${d.subject ? d.subject + '\n' : ''}금액: ${fmtMoney(d.total)}원\n\n${d.url}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: `${d.type} ${d.no}`, text, url: d.url }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); showToast('✓ 링크가 복사되었습니다'); }
+  catch (e) { prompt('아래 내용을 복사해서 붙여넣어주세요:', text); }
 }
 
 function renderRecentQuotes() {
@@ -8194,6 +8273,21 @@ init();
     <input id="lgPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
     <button onclick="doLogin()">로그인</button>
     <div class="lg-err" id="lgErr"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="docsOverlay" onclick="closeModalOutside(event, 'docsOverlay', closeDocs)">
+  <div class="modal lg">
+    <div class="modal-head">
+      <h3>📄 발행 문서</h3>
+      <button class="icon-btn" onclick="closeDocs()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="docsTabQuote" onclick="setDocsTab('quote')">견적서 <span id="docsCntQ" style="opacity:.7"></span></button>
+      <button class="btn" id="docsTabContract" onclick="setDocsTab('contract')">계약서 <span id="docsCntC" style="opacity:.7"></span></button>
+      <input type="text" id="docsSearch" placeholder="업체 · 제목 · 번호 검색" oninput="renderDocs()" style="flex:1;min-width:170px" />
+    </div>
+    <div id="docsBody" style="max-height:60vh;overflow-y:auto"></div>
   </div>
 </div>
 </body>
