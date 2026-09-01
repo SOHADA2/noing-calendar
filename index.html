@@ -2685,7 +2685,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.27.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.27.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7167,9 +7167,9 @@ function blobToDataURL(blob) {
   return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
 }
 // 업로드용 데이터 준비: 원본이 과하게 크지 않으면 무손실 원본 그대로(화질 최상), 아주 클 때만 축소
-async function prepImageUpload(blob, maxBytes = 1.5 * 1024 * 1024) {
+async function prepImageUpload(blob, maxBytes = 8 * 1024 * 1024) {
   if (blob && blob.size && blob.size <= maxBytes) { try { return await blobToDataURL(blob); } catch (e) {} }
-  return await downscaleToJpeg(blob, 2500, 0.95);
+  return await downscaleToJpeg(blob, 3200, 0.96);
 }
 
 // 진행바 공통 렌더 (prefix = 'insight' 또는 'resv')
@@ -7498,8 +7498,8 @@ async function exportReportHtml(html, base, mode, title) {
     // 기기별 캔버스 한계에 맞춰 배율 결정 (iOS Safari는 한 변 ~4096px·총 ~16.7M px 초과 시 백지가 됨)
     const ua = navigator.userAgent || '';
     const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const MAXDIM = isIOS ? 4000 : 10000;                 // 캔버스 한 변 상한(px)
-    const MAXAREA = (isIOS ? 16 : 64) * 1000000;          // 캔버스 총면적 상한(px)
+    const MAXDIM = isIOS ? 4000 : 14000;                 // 캔버스 한 변 상한(px)
+    const MAXAREA = (isIOS ? 16 : 90) * 1000000;          // 캔버스 총면적 상한(px)
     const scale = Math.max(0.4, Math.min(3, MAXDIM / h, Math.sqrt(MAXAREA / (nodeW * h))));
     // ⚠ windowWidth 옵션이 고배율(dpr>1) 환경에서 내용을 좁은 왼쪽 띠로 몰아넣는 원인 → windowWidth만 제거.
     //    height/windowHeight/scrollY는 유지해야 스크롤된 상태에서도 위빈공간·아래짤림 없이 전체가 캡쳐됨.
