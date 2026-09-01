@@ -397,6 +397,15 @@
     .resv-row .insight-thumb { width: 44px; height: 44px; flex-shrink: 0; }
     .resv-btns { display: flex; gap: 5px; flex-shrink: 0; }
     .resv-add { white-space: nowrap; }
+    /* 로그인 화면 */
+    #loginGate { position: fixed; inset: 0; z-index: 9999; background: var(--bg-1, #1a1a1a); display: none; align-items: center; justify-content: center; }
+    #loginGate.on { display: flex; }
+    #loginGate .lg-box { width: 320px; max-width: 92vw; background: var(--bg-2, #232323); border: 1px solid var(--border, #333); border-radius: 14px; padding: 26px 24px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+    #loginGate h2 { font-size: 16px; text-align: center; margin: 0 0 4px; color: var(--text, #eee); }
+    #loginGate p { font-size: 12px; text-align: center; color: var(--text-3, #999); margin: 0 0 18px; }
+    #loginGate input { width: 100%; box-sizing: border-box; margin-bottom: 9px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-2, #444); background: var(--bg-3, #2b2b2b); color: var(--text, #eee); font-size: 13px; }
+    #loginGate button { width: 100%; padding: 11px; border-radius: 8px; border: 0; background: var(--accent, #FFB020); color: #1a1a1a; font-weight: 700; font-size: 13px; cursor: pointer; }
+    #loginGate .lg-err { font-size: 12px; color: #e06a60; margin-top: 10px; text-align: center; min-height: 16px; }
     /* 캡쳐 정리 드래그 편집기 */
     #stitchEditor .se-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #2a2a2a; padding: 10px; border-radius: 8px; max-height: 62vh; overflow-y: auto; overflow-x: hidden; }
     #stitchEditor .se-img { position: relative; background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.15); flex-shrink: 0; }
@@ -2745,7 +2754,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.23.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.24.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2840,6 +2849,79 @@ let activeFilters = {
   ty: new Set(TYPE_KEYS),
   st: new Set(STATUS_KEYS),
 };
+
+const USE_FB = true;   // Firestore 사용 (false 로 두면 예전 구글시트 방식)
+// ── Firestore 저장/삭제 (기존 pushToSheet 계열이 호출) ──
+async function fbSave(col, item) {
+  const FB = await fbReady();
+  if (!FB.user) return { ok: false, reason: '로그인 필요' };
+  const id = String(item.id || '').trim();
+  if (!id) return { ok: false, reason: 'id 없음' };
+  await FB.setDoc(FB.doc(FB.db, col, id), fbClean(Object.assign({}, item, { id })));
+  return { ok: true };
+}
+async function fbRemove(col, id) {
+  const FB = await fbReady();
+  if (!FB.user) return { ok: false, reason: '로그인 필요' };
+  await FB.deleteDoc(FB.doc(FB.db, col, String(id)));
+  return { ok: true };
+}
+// ── 실시간 동기화 (캐시에서 즉시 표시 → 변경분만 수신) ──
+let _fbSynced = { contents: false, orders: false };
+let _fbStarted = false;
+async function startFirestoreSync() {
+  if (_fbStarted) return;
+  const FB = await fbReady();
+  if (!FB.user) return;
+  _fbStarted = true;
+  const mark = (k) => {
+    _fbSynced[k] = true;
+    if (_fbSynced.contents && _fbSynced.orders) setStatus('연결됨 (실시간)', 'ok');
+  };
+  setStatus('불러오는 중...', 'busy');
+  FB.onSnapshot(FB.collection(FB.db, 'contents'), snap => {
+    contents = snap.docs.map(d => d.data());
+    restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); mark('contents');
+  }, err => { console.error('contents sync:', err); setStatus('동기화 오류', 'err'); });
+  FB.onSnapshot(FB.collection(FB.db, 'orders'), snap => {
+    orders = snap.docs.map(d => d.data());
+    saveOrdersLocal(); renderOrders(); mark('orders');
+  }, err => { console.error('orders sync:', err); setStatus('동기화 오류', 'err'); });
+  FB.onSnapshot(FB.collection(FB.db, 'quotes'), snap => {
+    quoteHistory = snap.docs.map(d => d.data());
+    quotesLoaded = true;
+    if (currentView === 'orders') renderRecentQuotes();
+  }, err => console.error('quotes sync:', err));
+}
+// ── 로그인 화면 ──
+function showLoginGate(show) {
+  const g = document.getElementById('loginGate');
+  if (g) g.classList.toggle('on', !!show);
+}
+async function doLogin() {
+  const em = document.getElementById('lgEmail').value.trim();
+  const pw = document.getElementById('lgPw').value;
+  const err = document.getElementById('lgErr');
+  err.textContent = '';
+  if (!em || !pw) { err.textContent = '이메일과 비밀번호를 입력하세요.'; return; }
+  try {
+    await fbLogin(em, pw);
+    document.getElementById('lgPw').value = '';
+  } catch (e) {
+    err.textContent = /password|credential|invalid/i.test(e.message)
+      ? '이메일 또는 비밀번호가 맞지 않습니다.' : ('로그인 실패: ' + e.message);
+  }
+}
+window.addEventListener('fb-auth', (ev) => {
+  if (!USE_FB) return;
+  if (ev.detail) { showLoginGate(false); startFirestoreSync(); }
+  else { showLoginGate(true); setStatus('로그인 필요', 'warn'); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const g = document.getElementById('loginGate');
+  if (g && g.classList.contains('on')) doLogin();
+});
 
 // ── Firebase 헬퍼 (로그인 / 데이터 이전) ──
 function fbReady() {
@@ -3100,6 +3182,14 @@ async function withSubmitGuard(btnId, fn) {
 }
 
 async function pushToSheet(action, item) {
+  if (USE_FB) {
+    setStatus('저장 중...', 'busy');
+    try {
+      const r = action === 'delete' ? await fbRemove('contents', item.id) : await fbSave('contents', item);
+      setStatus(r.ok ? '저장됨' : '저장 실패', r.ok ? 'ok' : 'err');
+      return r;
+    } catch (e) { console.error('firestore save', e); setStatus('저장 실패', 'err'); return { ok: false, reason: String(e) }; }
+  }
   if (!apiUrl) return { ok: false, reason: '시트 미연결' };
   pendingSyncCount++;
   try {
@@ -3160,6 +3250,14 @@ async function fetchOrdersFromSheet() {
 }
 
 async function pushOrderToSheet(action, item) {
+  if (USE_FB) {
+    setStatus('저장 중...', 'busy');
+    try {
+      const r = action === 'delete' ? await fbRemove('orders', item.id) : await fbSave('orders', item);
+      setStatus(r.ok ? '저장됨' : '저장 실패', r.ok ? 'ok' : 'err');
+      return r;
+    } catch (e) { console.error('firestore save', e); setStatus('저장 실패', 'err'); return { ok: false, reason: String(e) }; }
+  }
   if (!apiUrl) return { ok: false, reason: '시트 미연결' };
   pendingSyncCount++;
   try {
@@ -3265,14 +3363,15 @@ async function init() {
   }
   orders = localOrders;
 
-  if (apiUrl) setStatus('연결 중... 0% (0/3)', 'busy');
+  if (USE_FB) setStatus('로그인 확인 중...', 'busy');
+  else if (apiUrl) setStatus('연결 중... 0% (0/3)', 'busy');
   else setStatus('로컬 모드 (시트 미연결)', 'warn');
 
   render();
   renderOrders();
 
   // 2) 백그라운드에서 시트 3개 동시 요청 + 부드러운 진행률 (애니메이션 카운터)
-  if (apiUrl) {
+  if (!USE_FB && apiUrl) {
     const total = 3;
     let done = 0;
     let anyFailed = false;
@@ -5387,6 +5486,7 @@ let quoteHistory = [];
 let quotesLoaded = false, quotesLoading = null;
 // 견적서이력은 '광고 수주' 화면에서만 쓰이므로 그때 처음 한 번만 불러온다(시작 동기화 1건 감소)
 function ensureQuoteHistory() {
+  if (USE_FB) return Promise.resolve();   // 실시간 리스너가 항상 최신 유지
   if (quotesLoaded) return Promise.resolve();
   if (!quotesLoading) {
     quotesLoading = fetchQuoteHistory()
@@ -8064,7 +8164,8 @@ init();
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence }
     from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-  import { getFirestore, collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc }
+  import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+           collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot }
     from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
   const firebaseConfig = {
@@ -8077,9 +8178,13 @@ init();
   };
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  // 오프라인 캐시: 새로고침 시 캐시에서 즉시 표시 + 변경분만 서버에서 수신(속도·비용 절감)
+  let db;
+  try {
+    db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  } catch (e) { db = initializeFirestore(app, {}); }
   try { await setPersistence(auth, browserLocalPersistence); } catch (e) {}
-  window.FB = { app, auth, db, collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc,
+  window.FB = { app, auth, db, collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot,
     signIn: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), user: null };
   onAuthStateChanged(auth, u => {
     window.FB.user = u;
@@ -8089,5 +8194,16 @@ init();
   window.dispatchEvent(new Event('fb-ready'));
   console.log('[Firebase] 준비됨 — project:', firebaseConfig.projectId);
 </script>
+
+<div id="loginGate">
+  <div class="lg-box">
+    <h2>노잉 콘텐츠 달력</h2>
+    <p>계속하려면 로그인하세요</p>
+    <input id="lgEmail" type="email" placeholder="이메일" autocomplete="username" />
+    <input id="lgPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+    <button onclick="doLogin()">로그인</button>
+    <div class="lg-err" id="lgErr"></div>
+  </div>
+</div>
 </body>
 </html>
