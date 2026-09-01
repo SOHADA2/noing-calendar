@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://drive.google.com; font-src 'self' data:; connect-src 'self' https://script.google.com https://cdnjs.cloudflare.com https://*.googleusercontent.com https://drive.google.com https://sheets.google.com; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://drive.google.com; font-src 'self' data:; connect-src 'self' https://script.google.com https://cdnjs.cloudflare.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleusercontent.com https://drive.google.com https://sheets.google.com; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>노잉 달력</title>
   <meta name="version" content="v2"/>
@@ -2745,7 +2745,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.22.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.23.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2840,6 +2840,60 @@ let activeFilters = {
   ty: new Set(TYPE_KEYS),
   st: new Set(STATUS_KEYS),
 };
+
+// ── Firebase 헬퍼 (로그인 / 데이터 이전) ──
+function fbReady() {
+  return window.FB ? Promise.resolve(window.FB)
+    : new Promise(r => window.addEventListener('fb-ready', () => r(window.FB), { once: true }));
+}
+async function fbLogin(email, pw) {
+  const FB = await fbReady();
+  const c = await FB.signIn(email, pw);
+  return '로그인됨: ' + c.user.email;
+}
+async function fbLogout() { const FB = await fbReady(); await FB.signOut(); return '로그아웃됨'; }
+function fbWho() { return window.FB && window.FB.user ? window.FB.user.email : '(로그아웃 상태)'; }
+function fbClean(o) {
+  const out = {};
+  for (const k in o) { const v = o[k]; out[k] = (v === undefined || v === null) ? '' : v; }
+  return out;
+}
+// 시트 데이터를 Firestore 로 1회 이전 (기존 시트는 그대로 보존)
+async function migrateToFirestore() {
+  const FB = await fbReady();
+  if (!FB.user) throw new Error('먼저 로그인하세요 →  await fbLogin("이메일","비밀번호")');
+  await ensureQuoteHistory();
+  const sets = [['contents', contents], ['orders', orders], ['quotes', quoteHistory]];
+  const report = [];
+  for (const [name, arr] of sets) {
+    let n = 0;
+    for (let i = 0; i < arr.length; i += 400) {
+      const chunk = arr.slice(i, i + 400);
+      const batch = FB.writeBatch(FB.db);
+      chunk.forEach(item => {
+        const id = String(item.id || '').trim();
+        if (!id) return;
+        batch.set(FB.doc(FB.db, name, id), fbClean(Object.assign({}, item, { id })));
+      });
+      await batch.commit();
+      n += chunk.length;
+      console.log('[이전]', name, n, '/', arr.length);
+    }
+    report.push(name + ': ' + n + '건');
+  }
+  return '이전 완료\n' + report.join('\n');
+}
+// Firestore 실제 저장 건수 확인
+async function fbCounts() {
+  const FB = await fbReady();
+  if (!FB.user) throw new Error('먼저 로그인하세요');
+  const out = [];
+  for (const name of ['contents', 'orders', 'quotes']) {
+    const snap = await FB.getDocs(FB.collection(FB.db, name));
+    out.push(name + ': ' + snap.size + '건');
+  }
+  return out.join('\n');
+}
 
 // ── Utils ──
 function fmtDate(d) {
@@ -8004,5 +8058,36 @@ init();
     </div>
   </div>
 </div>
+
+<script type="module">
+  // ── Firebase 연결 (로그인 + 데이터 이전) ──
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence }
+    from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+  import { getFirestore, collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc }
+    from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkPN6xRkO0r9Idc84MV9QVRBY4zIdoNv4",
+    authDomain: "noing-calendar.firebaseapp.com",
+    projectId: "noing-calendar",
+    storageBucket: "noing-calendar.firebasestorage.app",
+    messagingSenderId: "511910681269",
+    appId: "1:511910681269:web:cd0efba8cb5bfa67f93cfc"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  try { await setPersistence(auth, browserLocalPersistence); } catch (e) {}
+  window.FB = { app, auth, db, collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc,
+    signIn: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), user: null };
+  onAuthStateChanged(auth, u => {
+    window.FB.user = u;
+    console.log('[Firebase] 로그인 상태:', u ? u.email : '(로그아웃)');
+    window.dispatchEvent(new CustomEvent('fb-auth', { detail: u }));
+  });
+  window.dispatchEvent(new Event('fb-ready'));
+  console.log('[Firebase] 준비됨 — project:', firebaseConfig.projectId);
+</script>
 </body>
 </html>
