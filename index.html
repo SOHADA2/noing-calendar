@@ -2685,7 +2685,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.27.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.27.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4099,7 +4099,7 @@ function docsList() {
     return contractHistory.map(c => ({
       type: '계약서', no: c.contract_number || '', date: c.date || '',
       who: c.client_name || '', subject: c.subject || '', total: c.total || 0,
-      url: c.url || '', created: c.created_at || c.date || ''
+      url: c.url || '', created: c.created_at || c.date || '', raw: c
     }));
   }
   return quoteHistory.map(q => ({
@@ -4130,10 +4130,10 @@ function renderDocs() {
       </div>
       <div style="text-align:right;white-space:nowrap">
         <div style="font-weight:700;font-size:12.5px">${fmtMoney(d.total)}원</div>
-        <div style="margin-top:6px;display:flex;gap:5px;justify-content:flex-end">
+        <div style="margin-top:6px;display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
           <span class="meta-tag" data-url="${escapeHtml(d.url)}" onclick="openUrlSafe(this)" style="cursor:pointer;font-size:9.5px">열기</span>
-          <span class="meta-tag" onclick="docsDownload(${i})" style="cursor:pointer;font-size:9.5px">다운로드</span>
-          <span class="meta-tag" onclick="docsShare(${i})" style="cursor:pointer;font-size:9.5px">공유</span>
+          <span class="meta-tag" onclick="docsDownload(${i})" style="cursor:pointer;font-size:9.5px">PDF 다운로드</span>
+          ${d.type === '계약서' ? `<span class="meta-tag" onclick="docsWord(${i})" style="cursor:pointer;font-size:9.5px">Word 다운로드</span>` : ''}
         </div>
       </div>
     </div>`).join('');
@@ -4144,16 +4144,42 @@ function docsDownload(i) {
   const fileId = getFileIdFromDriveUrl(d.url);          // 예전 드라이브 파일
   window.open(fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : d.url, '_blank', 'noopener');
 }
-async function docsShare(i) {
-  const d = _docsRows[i];
-  if (!d || !d.url) { alert('링크가 없습니다.'); return; }
-  const text = `📄 ${d.type} ${d.no}\n${d.who ? '수신: ' + d.who + '\n' : ''}${d.subject ? d.subject + '\n' : ''}금액: ${fmtMoney(d.total)}원\n\n${d.url}`;
-  if (navigator.share) {
-    try { await navigator.share({ title: `${d.type} ${d.no}`, text, url: d.url }); return; }
-    catch (e) { if (e.name === 'AbortError') return; }
+// 계약서를 Word(.docx) 로 다시 만들어 다운로드 — 상대방이 수정해서 회신할 수 있게
+async function docsWord(i) {
+  const row = _docsRows[i];
+  const c = row && row.raw;
+  if (!c) { alert('계약서 정보를 찾을 수 없습니다.'); return; }
+  showToast('📝 Word 파일 생성 중...');
+  let X;
+  try { X = await ensureDocxLib(); }
+  catch (e) { alert('Word 생성 라이브러리 로드 실패 — 인터넷 연결을 확인해주세요.'); return; }
+  try {
+    const dObj = c.date ? new Date(c.date) : new Date();
+    const ko = (sep) => `${dObj.getFullYear()}년${sep}${String(dObj.getMonth() + 1).padStart(2, '0')}월${sep}${String(dObj.getDate()).padStart(2, '0')}일`;
+    let items = [];
+    try { items = JSON.parse(c.items_json || '[]'); } catch (e) {}
+    const d = {
+      cNumber: c.contract_number || '', cDate: c.date || '',
+      dateKo: ko('  '), startDate: c.start_date || ko(' '),
+      subject: c.subject || '', contentType: c.content_type || '', pubDate: c.pub_date || '',
+      clientName: c.client_name || '', clientRep: c.client_rep || '',
+      clientBizNo: c.client_bizno || '', clientAddr: c.client_addr || '',
+      clientBizCertUrl: '', baseTitle: c.base_title || '',
+      items, total: Number(c.total) || 0,
+    };
+    const blob = await X.Packer.toBlob(buildContractDocx(X, d));
+    const sanitize = (v, n) => String(v || '').replace(/[\/\\:?*"<>|]/g, '_').slice(0, n);
+    const fname = ['계약서', d.cNumber, sanitize(d.clientName, 20), sanitize(d.subject, 24)].filter(Boolean).join('_') + '.docx';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
+    showToast('✓ Word 다운로드 완료 — 상대방이 수정 가능');
+  } catch (e) {
+    console.error(e);
+    alert('Word 생성 실패: ' + e.message);
   }
-  try { await navigator.clipboard.writeText(text); showToast('✓ 링크가 복사되었습니다'); }
-  catch (e) { prompt('아래 내용을 복사해서 붙여넣어주세요:', text); }
 }
 
 function renderRecentQuotes() {
@@ -5452,6 +5478,8 @@ async function _saveContractToDrive() {
       contract_number: d.cNumber, date: d.cDate,
       client_name: d.clientName, client_rep: d.clientRep, client_bizno: d.clientBizNo, client_addr: d.clientAddr,
       subject: d.subject, total: d.total, url: result.url,
+      content_type: d.contentType || '', pub_date: d.pubDate || '',
+      start_date: d.startDate || '', base_title: d.baseTitle || '',
       items_json: JSON.stringify(d.items), created_at: new Date().toISOString(),
     };
     contractHistory.push(record);
