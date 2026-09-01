@@ -2106,6 +2106,7 @@
           <div class="orders-search">
             <input type="text" id="ordersSearch" placeholder="업체, 제목, 담당자, 상태 검색..." />
           </div>
+          <button class="btn btn-primary" onclick="openOrderModal(null)" style="white-space:nowrap">+ 수주 추가</button>
         </div>
       </div>
 
@@ -2683,7 +2684,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.26.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.26.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3432,7 +3433,9 @@ function switchView(view) {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   document.getElementById('viewCalendar').classList.toggle('active', view === 'calendar');
   document.getElementById('viewOrders').classList.toggle('active', view === 'orders');
-  document.getElementById('addBtn').textContent = view === 'calendar' ? '+ 콘텐츠 추가' : '+ 수주 추가';
+  const addBtn = document.getElementById('addBtn');
+  addBtn.textContent = '+ 콘텐츠 추가';
+  addBtn.style.display = view === 'calendar' ? '' : 'none';   // 수주 화면엔 표 위에 별도 버튼이 있음
   document.getElementById('filterBar').style.display = view === 'calendar' ? '' : 'none';
   if (view === 'orders') { renderOrders(); ensureQuoteHistory().then(renderRecentQuotes); }
 }
