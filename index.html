@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://drive.google.com; font-src 'self' data:; connect-src 'self' https://script.google.com https://cdnjs.cloudflare.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleusercontent.com https://drive.google.com https://sheets.google.com; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://drive.google.com; font-src 'self' data:; connect-src 'self' https://script.google.com https://cdnjs.cloudflare.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.googleusercontent.com https://drive.google.com https://sheets.google.com; frame-src 'self' blob: data:; child-src 'self' blob: data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>노잉 달력</title>
   <meta name="version" content="v2"/>
@@ -2651,7 +2651,7 @@
 
     <div class="info-box">
       <strong style="color:var(--text)">데이터(콘텐츠·수주·견적 이력)는 Firebase에 저장</strong>됩니다. 실시간으로 동기화되며 로그인한 사람만 볼 수 있습니다.<br>
-      아래 주소는 <strong style="color:var(--text)">견적서 PDF 파일을 구글 드라이브에 올릴 때만</strong> 사용합니다. 지우면 견적서 생성이 안 되니 그대로 두세요.
+      견적서·계약서 PDF도 이제 <strong style="color:var(--text)">Firebase에 저장</strong>됩니다. 아래 주소(구글 Apps Script)는 <strong style="color:var(--text)">더 이상 사용하지 않습니다</strong> — 예전 방식으로 되돌릴 때만 필요합니다.
     </div>
 
     <div class="form-group">
@@ -2759,7 +2759,7 @@ function doPost(e) {
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.24.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.25.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2871,6 +2871,24 @@ async function fbRemove(col, id) {
   await FB.deleteDoc(FB.doc(FB.db, col, String(id)));
   return { ok: true };
 }
+// ── PDF를 Firebase Storage 에 올리고 공유 링크 반환 ──
+// 반환 형태는 기존 Apps Script 응답과 동일: { ok, url } / { ok:false, error }
+async function fbUploadPdf(filename, base64) {
+  try {
+    const FB = await fbReady();
+    if (!FB.user) return { ok: false, error: '로그인이 필요합니다.' };
+    const safe = String(filename || 'file.pdf').replace(/[^\w.\-가-힣]/g, '_');
+    const path = 'quotes/' + Date.now() + '_' + safe;          // 이름 겹쳐도 덮어쓰지 않게
+    const r = FB.storageRef(FB.storage, path);
+    await FB.uploadString(r, base64, 'base64', { contentType: 'application/pdf' });
+    const url = await FB.getDownloadURL(r);
+    return { ok: true, url };
+  } catch (e) {
+    console.error('storage upload', e);
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+
 // ── 실시간 동기화 (캐시에서 즉시 표시 → 변경분만 수신) ──
 let _fbSynced = { contents: false, orders: false };
 let _fbStarted = false;
@@ -5396,12 +5414,13 @@ async function _saveContractToDrive() {
 
   try {
     const blob = await htmlToPdfBlob(buildContractHTML(d));
-    upd('드라이브에 업로드 중...');
+    upd('업로드 중...');
     const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
     const sanitize = (s, n) => String(s || '').replace(/[\/\\:?*"<>|]/g, '_').slice(0, n);
     const filename = ['계약서', d.cNumber, sanitize(d.clientName, 20), sanitize(d.subject, 30), (d.cDate||'').replace(/-/g,'')].filter(Boolean).join('_') + '.pdf';
-    const upRes = await fetch(apiUrl, { method:'POST', body: JSON.stringify({ action:'upload_quote', filename, file_base64: base64 }) });
-    const result = await upRes.json();
+    const result = USE_FB
+      ? await fbUploadPdf(filename, base64)
+      : await (await fetch(apiUrl, { method:'POST', body: JSON.stringify({ action:'upload_quote', filename, file_base64: base64 }) })).json();
     if (!result.ok || !result.url) { document.body.removeChild(overlay); alert('업로드 실패: ' + (result.error || '')); return; }
 
     upd('이력 기록 중...');
@@ -5738,7 +5757,7 @@ async function _saveQuoteToDrive() {
     });
 
     // Upload to Drive — 파일명을 의미있게: 견적서_번호_업체_제목_날짜.pdf
-    updateLoadingStatus('드라이브에 업로드 중...');
+    updateLoadingStatus('업로드 중...');
     const sanitize = (s, max) => String(s || '').replace(/[\/\\:?*"<>|]/g, '_').slice(0, max);
     const safeRecipient = sanitize(data.qRecipient, 20);
     const safeSubject = sanitize(data.qSubject, 30);
@@ -5750,15 +5769,12 @@ async function _saveQuoteToDrive() {
       safeSubject || '제목없음',
       dateStr,
     ].filter(Boolean).join('_') + '.pdf';
-    const uploadRes = await fetch(apiUrl, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'upload_quote',
-        filename: filename,
-        file_base64: base64,
-      }),
-    });
-    const result = await uploadRes.json();
+    const result = USE_FB
+      ? await fbUploadPdf(filename, base64)
+      : await (await fetch(apiUrl, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'upload_quote', filename: filename, file_base64: base64 }),
+        })).json();
     if (!result.ok || !result.url) {
       document.body.removeChild(overlay);
       alert('업로드 실패: ' + (result.error || ''));
@@ -8140,6 +8156,8 @@ init();
   import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
            collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot }
     from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+  import { getStorage, ref as storageRef, uploadString, getDownloadURL }
+    from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyDkPN6xRkO0r9Idc84MV9QVRBY4zIdoNv4",
@@ -8157,7 +8175,9 @@ init();
     db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   } catch (e) { db = initializeFirestore(app, {}); }
   try { await setPersistence(auth, browserLocalPersistence); } catch (e) {}
-  window.FB = { app, auth, db, collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot,
+  const storage = getStorage(app);
+  window.FB = { app, auth, db, storage, storageRef, uploadString, getDownloadURL,
+    collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot,
     signIn: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), user: null };
   onAuthStateChanged(auth, u => {
     window.FB.user = u;
