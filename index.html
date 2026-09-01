@@ -2685,7 +2685,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.27.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.27.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2797,16 +2797,31 @@ async function fbRemove(col, id) {
   await FB.deleteDoc(FB.doc(FB.db, col, String(id)));
   return { ok: true };
 }
+// 저장 경로용 짧은 키 — 문서번호(있으면) + 시간 기반. 한글이 URL 에서 9배로 늘어나는 것을 피한다
+function shortKey(filename) {
+  const m = String(filename || '').match(/([QC]-\d{4}-\d+(?:-R\d+)?)/);   // Q-2026-0022 / C-2026-0004
+  const base = m ? m[1] : 'f';
+  return base + '-' + Date.now().toString(36);
+}
+// 내려받을 때 보이는 파일 이름(한글 유지) — 브라우저에서는 그대로 열람
+function dispositionFor(filename) {
+  const name = String(filename || 'file').replace(/["\r\n]/g, '');
+  return "inline; filename*=UTF-8''" + encodeURIComponent(name);
+}
+
 // ── PDF를 Firebase Storage 에 올리고 공유 링크 반환 ──
 // 반환 형태는 기존 Apps Script 응답과 동일: { ok, url } / { ok:false, error }
 async function fbUploadPdf(filename, base64) {
   try {
     const FB = await fbReady();
     if (!FB.user) return { ok: false, error: '로그인이 필요합니다.' };
-    const safe = String(filename || 'file.pdf').replace(/[^\w.\-가-힣]/g, '_');
-    const path = 'quotes/' + Date.now() + '_' + safe;          // 이름 겹쳐도 덮어쓰지 않게
+    // 저장 경로는 짧은 영문/숫자만 사용 → 링크가 짧아지고 업체명이 주소에 드러나지 않음
+    const path = 'quotes/' + shortKey(filename) + '.pdf';
     const r = FB.storageRef(FB.storage, path);
-    await FB.uploadString(r, base64, 'base64', { contentType: 'application/pdf' });
+    await FB.uploadString(r, base64, 'base64', {
+      contentType: 'application/pdf',
+      contentDisposition: dispositionFor(filename),            // 내려받을 때 원래 한글 이름 유지
+    });
     const url = await FB.getDownloadURL(r);
     return { ok: true, url };
   } catch (e) {
@@ -2820,9 +2835,12 @@ async function fbUploadFile(folder, filename, base64, contentType) {
   try {
     const FB = await fbReady();
     if (!FB.user) return { ok: false, error: '로그인이 필요합니다.' };
-    const safe = String(filename || 'file').replace(/[^\w.\-가-힣]/g, '_');
-    const r = FB.storageRef(FB.storage, folder + '/' + Date.now() + '_' + safe);
-    await FB.uploadString(r, base64, 'base64', { contentType: contentType || 'application/octet-stream' });
+    const ext = (String(filename || '').match(/\.([A-Za-z0-9]{1,5})$/) || [, 'bin'])[1].toLowerCase();
+    const r = FB.storageRef(FB.storage, folder + '/' + shortKey(filename) + '.' + ext);
+    await FB.uploadString(r, base64, 'base64', {
+      contentType: contentType || 'application/octet-stream',
+      contentDisposition: dispositionFor(filename),
+    });
     const url = await FB.getDownloadURL(r);
     return { ok: true, url };
   } catch (e) {
