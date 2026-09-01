@@ -1942,7 +1942,6 @@
     <span id="versionBadge" style="margin-left:8px;font-size:10px;color:var(--text-4);font-weight:500;cursor:pointer" title="버전 확인">v1.0</span>
   </div>
   <div class="header-actions">
-    <button class="btn" onclick="exportCSV()">CSV 내보내기</button>
     <button class="btn btn-primary" id="addBtn" onclick="openAddByView()">+ 콘텐츠 추가</button>
     <button class="btn btn-icon" onclick="openSettings()" title="설정 · 계정">⚙</button>
   </div>
@@ -2658,6 +2657,15 @@
     </div>
 
     <div class="form-group">
+      <label>데이터 내보내기 (엑셀용 CSV)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="exportCSV()">📅 콘텐츠 (이 달)</button>
+        <button class="btn" onclick="exportOrdersCSV()">📁 광고 수주 (전체)</button>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-3);margin-top:4px">엑셀에서 열어 분석·보관용으로 쓰세요. 한글이 깨지지 않게 저장됩니다.</div>
+    </div>
+
+    <div class="form-group">
       <label>저장된 이미지 (이 기기)</label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="imgCacheInfo" readonly value="(확인 중...)" style="flex:1" />
@@ -2675,7 +2683,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.25.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.26.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7721,16 +7729,37 @@ function disconnectApi() {
 }
 
 // ── CSV ──
+function csvDownload(rows, filename) {
+  const csv = rows.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+// 광고 수주 전체 내보내기 (엑셀 분석용)
+function exportOrdersCSV() {
+  const rows = [['수주일', '업체', '제목', '유형', '채널', '금액', 'VAT포함', '세금계산서', '입금', '담당자', '콘텐츠진행', '계산서상호', '계산서담당', '계산서이메일', '발행일', '지급기한', '메모']];
+  orders.slice()
+    .sort((a, b) => String(a.order_date || '').localeCompare(String(b.order_date || '')))
+    .forEach(o => rows.push([
+      o.order_date, o.company, o.title, o.ad_type, o.channels,
+      o.amount, o.amount_inc_vat, o.invoice_status, o.payment_status, o.owner,
+      getContentProgress(o.id),
+      o.inv_company, o.inv_owner, o.inv_email, o.inv_issue_date, o.inv_payment_due,
+      o.memo || o.amount_memo || ''
+    ]));
+  csvDownload(rows, `광고수주_전체_${fmtDate(new Date())}.csv`);
+  showToast(`✓ 광고수주 ${orders.length}건 내보냄`);
+}
 function exportCSV() {
   const rows = [['날짜','시간','업체','제목','채널','유형','담당자','상태','콘티','촬영','초안','메모','발행URL']];
   contents.slice()
     .sort((a,b) => String(a.date+a.time).localeCompare(String(b.date+b.time)))
     .forEach(c => rows.push([c.date, c.time, c.company, c.title, c.channel, c.type, c.owner, c.status, c.due_storyboard || '', c.due_shoot || '', c.due_draft || '', c.memo || '', c.publish_url || '']));
-  const csv = rows.map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `content-calendar-${currentYear}-${String(currentMonth+1).padStart(2,'0')}.csv`;
-  a.click();
+  csvDownload(rows, `콘텐츠_${currentYear}-${String(currentMonth+1).padStart(2,'0')}.csv`);
+  showToast('✓ 콘텐츠 CSV 내보냄');
 }
 
 function copyText(btn, text) {
