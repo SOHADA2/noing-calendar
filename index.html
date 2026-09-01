@@ -2106,7 +2106,6 @@
           <div class="orders-search">
             <input type="text" id="ordersSearch" placeholder="업체, 제목, 담당자, 상태 검색..." />
           </div>
-          <button class="btn btn-primary" onclick="openOrderModal(null)" style="white-space:nowrap">+ 수주 추가</button>
         </div>
       </div>
 
@@ -2145,6 +2144,7 @@
           <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
           <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
         </select>
+        <button class="btn btn-primary" onclick="openOrderModal(null)" style="margin-left:auto;white-space:nowrap">+ 수주 추가</button>
       </div>
 
       <div class="orders-table-wrap">
@@ -2684,7 +2684,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.26.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.26.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
