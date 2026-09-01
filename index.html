@@ -1944,7 +1944,7 @@
   <div class="header-actions">
     <button class="btn" onclick="exportCSV()">CSV 내보내기</button>
     <button class="btn btn-primary" id="addBtn" onclick="openAddByView()">+ 콘텐츠 추가</button>
-    <button class="btn btn-icon" onclick="openSettings()" title="구글 시트 연결 설정">⚙</button>
+    <button class="btn btn-icon" onclick="openSettings()" title="설정 · 계정">⚙</button>
   </div>
 </div>
 
@@ -2645,26 +2645,34 @@
 <div class="modal-overlay" id="settingsOverlay" onclick="closeModalOutside(event, 'settingsOverlay', closeSettings)">
   <div class="modal lg">
     <div class="modal-head">
-      <h3>구글 시트 연결</h3>
+      <h3>설정</h3>
       <button class="icon-btn" onclick="closeSettings()">✕</button>
     </div>
 
     <div class="info-box">
-      구글 시트를 데이터 저장소로 사용합니다. 한 번 셋업하면 어느 기기에서나 같은 데이터를 보고, 시트에서 직접 수정도 가능합니다.
+      <strong style="color:var(--text)">데이터(콘텐츠·수주·견적 이력)는 Firebase에 저장</strong>됩니다. 실시간으로 동기화되며 로그인한 사람만 볼 수 있습니다.<br>
+      아래 주소는 <strong style="color:var(--text)">견적서 PDF 파일을 구글 드라이브에 올릴 때만</strong> 사용합니다. 지우면 견적서 생성이 안 되니 그대로 두세요.
     </div>
 
     <div class="form-group">
-      <label>Web App URL</label>
+      <label>계정</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="acctInfo" readonly value="(확인 중...)" style="flex:1" />
+        <button class="btn" onclick="doLogout()" style="white-space:nowrap">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>견적서 PDF 업로드 주소 (Apps Script)</label>
       <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
     </div>
 
     <div class="modal-actions" style="margin-bottom: 24px;">
-      <button class="btn" onclick="disconnectApi()">연결 해제</button>
-      <button class="btn btn-primary" id="saveSettingsBtn" onclick="saveSettings()">저장 후 동기화</button>
+      <button class="btn btn-primary" id="saveSettingsBtn" onclick="saveSettings()">주소 저장</button>
     </div>
 
-    <div class="help-section">
-      <h4>처음 셋업하는 방법 (약 5분)</h4>
+    <details class="help-section">
+      <summary style="cursor:pointer;font-size:12px;color:var(--text-3);margin-bottom:10px">예전 구글 시트 방식 안내 (지금은 사용하지 않음)</summary>
 
       <p style="margin-bottom: 10px;"><strong style="color:var(--text)">1.</strong> 구글 시트 새로 만들기 → <a href="https://sheets.google.com" target="_blank" style="color:var(--accent-2)">sheets.google.com</a></p>
 
@@ -2745,16 +2753,13 @@ function doPost(e) {
 
       <p style="margin-bottom: 10px;"><strong style="color:var(--text)">5.</strong> 위 입력칸에 URL 붙여넣기 → <strong style="color:var(--text)">"저장 후 동기화"</strong></p>
 
-      <div class="info-box" style="margin-top: 18px; border-left-color: var(--warn);">
-        <strong style="color:var(--text)">참고:</strong> 처음 동기화 시, 현재 화면에 있는 76건(2026년 데이터)이 시트에 자동 업로드됩니다. 시트가 비어있어야 깔끔하게 들어갑니다.
-      </div>
-    </div>
+    </details>
   </div>
 </div>
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.24.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.24.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -5343,7 +5348,7 @@ async function exportContractWord() {
 // 계약서 모달용 사업자등록증 업로드 (드라이브 저장 → URL)
 async function uploadContractBizCert(file) {
   if (!file) return;
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); return; }
+  if (!apiUrl) { alert('견적서 PDF 업로드 주소가 필요합니다 (⚙ 설정).'); return; }
   if (file.size > 10 * 1024 * 1024) { alert('파일이 10MB를 초과합니다.'); return; }
   showToast(`📤 업로드 중... (${(file.size/1024).toFixed(0)}KB)`);
   const company = document.getElementById('cClientName').value.trim() || '거래처';
@@ -5371,7 +5376,7 @@ function openContractBizCert() {
 
 async function saveContractToDrive() { return withSubmitGuard('saveContractBtn', _saveContractToDrive); }
 async function _saveContractToDrive() {
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다.'); return; }
+  if (!apiUrl) { alert('견적서 PDF 업로드 주소가 필요합니다 (⚙ 설정).'); return; }
   const d = collectContractData();
   if (!d.clientName || !d.clientBizNo || !d.clientRep || !d.clientAddr) {
     alert('갑(상대방) 정보 필수 항목을 입력해주세요.\n(상호 / 사업자등록번호 / 대표이사 / 주소)');
@@ -5619,7 +5624,7 @@ function reissueQuote(historyId) {
 async function saveQuoteToDrive() { return withSubmitGuard('saveQuoteBtn', _saveQuoteToDrive); }
 async function _saveQuoteToDrive() {
   if (!apiUrl) {
-    alert('구글 시트 연결이 필요합니다.');
+    alert('견적서 PDF 업로드 주소가 필요합니다 (⚙ 설정).');
     return;
   }
   if (!quoteItems.length || quoteItems.every(i => !i.price)) {
@@ -6220,7 +6225,7 @@ function initBizCertDropZone() {
 
 async function uploadBizCert(file) {
   if (!file) return;
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); return; }
+  if (!apiUrl) { alert('견적서 PDF 업로드 주소가 필요합니다 (⚙ 설정).'); return; }
   // Size check (10MB safe limit)
   if (file.size > 10 * 1024 * 1024) {
     alert('파일이 10MB를 초과합니다. 더 작은 파일을 사용해주세요.');
@@ -7100,7 +7105,7 @@ function setResvProgress(done, totalOrHide, label) { setProgBar('resv', done, to
 async function handleInsightUpload(files) {
   if (!files || !files.length) return;
   const fileInput = document.getElementById('insightFile');
-  if (!apiUrl) { alert('구글 시트 연결이 필요합니다 (⚙ 설정).'); if (fileInput) fileInput.value = ''; return; }
+  if (!apiUrl) { alert('견적서 PDF 업로드 주소가 필요합니다 (⚙ 설정).'); if (fileInput) fileInput.value = ''; return; }
   const company = document.getElementById('fCompany').value.trim() || '콘텐츠';
   const title = document.getElementById('fTitle').value.trim() || '';
   const imgFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
@@ -7695,7 +7700,15 @@ async function deleteContent() {
 }
 
 // ── Settings ──
+function doLogout() {
+  if (!confirm('로그아웃할까요?')) return;
+  fbLogout();
+}
 function openSettings() {
+  try {
+    const el = document.getElementById('acctInfo');
+    if (el) el.value = (window.FB && window.FB.user) ? window.FB.user.email : '(로그아웃 상태)';
+  } catch (e) {}
   document.getElementById('apiUrlInput').value = apiUrl;
   document.getElementById('settingsOverlay').classList.add('open');
 }
@@ -7712,56 +7725,9 @@ async function _saveSettings() {
   }
   apiUrl = newUrl;
   localStorage.setItem(STORAGE_API, apiUrl);
-
-  setStatus('연결 중...', 'busy');
-  try {
-    const sheetData = await fetchFromSheet();
-    const sheetIds = new Set(sheetData.map(r => String(r.id)));
-    const localOnly = contents.filter(c => !sheetIds.has(String(c.id)));
-
-    if (sheetData.length === 0 && contents.length > 0) {
-      // empty sheet, push all local data
-      if (confirm(`시트가 비어있습니다. 현재 ${contents.length}건을 시트에 업로드할까요?`)) {
-        for (const item of contents) {
-          await pushToSheet('add', item);
-        }
-        setStatus(`${contents.length}건 업로드 완료`, 'ok');
-      }
-    } else {
-      contents = sheetData;
-      for (const item of localOnly) {
-        contents.push(item);
-        await pushToSheet('add', item);
-      }
-      restoreInsightUrls();
-      restoreResvUrls();
-      setStatus('구글 시트 연결됨', 'ok');
-    }
-
-    saveLocal();
-
-    // 광고 수주 + 견적서 이력도 함께 가져오기
-    try {
-      orders = await fetchOrdersFromSheet();
-      saveOrdersLocal();
-    } catch (oe) {
-      console.warn('광고수주 시트 로딩 실패:', oe);
-    }
-    try { await fetchContractHistory(); } catch (ce) { console.warn('계약서이력 로딩 실패:', ce); }
-    try {
-      await fetchQuoteHistory();
-    } catch (qe) {
-      console.warn('견적서이력 로딩 실패:', qe);
-    }
-
-    closeSettings();
-    render();
-    renderOrders();
-  } catch (e) {
-    console.error(e);
-    setStatus('연결 실패', 'err');
-    alert('연결에 실패했습니다.\n\n확인사항:\n1. Apps Script가 "웹 앱"으로 배포되었는지\n2. "액세스 권한이 있는 사용자: 모든 사용자"로 설정되었는지\n3. URL이 .../exec 로 끝나는지\n4. 시트 1행이 id, date, time, company, title, channel, type, owner, status, memo 헤더로 시작하는지');
-  }
+  // ⚠ 데이터는 Firebase 가 관리한다. 여기서 시트를 읽어 화면을 덮어쓰면 안 됨(예전 데이터로 오염).
+  showToast('✓ 주소 저장됨 (견적서 PDF 업로드용)');
+  closeSettings();
 }
 
 function disconnectApi() {
