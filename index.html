@@ -2649,11 +2649,6 @@
       <button class="icon-btn" onclick="closeSettings()">✕</button>
     </div>
 
-    <div class="info-box">
-      <strong style="color:var(--text)">데이터(콘텐츠·수주·견적 이력)는 Firebase에 저장</strong>됩니다. 실시간으로 동기화되며 로그인한 사람만 볼 수 있습니다.<br>
-      견적서·계약서 PDF도 이제 <strong style="color:var(--text)">Firebase에 저장</strong>됩니다. 아래 주소(구글 Apps Script)는 <strong style="color:var(--text)">더 이상 사용하지 않습니다</strong> — 예전 방식으로 되돌릴 때만 필요합니다.
-    </div>
-
     <div class="form-group">
       <label>계정</label>
       <div style="display:flex;gap:8px;align-items:center">
@@ -2663,103 +2658,24 @@
     </div>
 
     <div class="form-group">
-      <label>견적서 PDF 업로드 주소 (Apps Script)</label>
-      <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+      <label>저장된 이미지 (이 기기)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="imgCacheInfo" readonly value="(확인 중...)" style="flex:1" />
+        <button class="btn" onclick="clearImageCache()" style="white-space:nowrap">비우기</button>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-3);margin-top:4px">인사이트·예약 캡쳐는 이 브라우저에만 저장됩니다. 비우면 예전 보고서의 이미지가 사라집니다.</div>
     </div>
 
-    <div class="modal-actions" style="margin-bottom: 24px;">
-      <button class="btn btn-primary" id="saveSettingsBtn" onclick="saveSettings()">주소 저장</button>
+    <div class="info-box" style="margin-top:4px">
+      데이터·PDF는 모두 <strong style="color:var(--text)">Firebase</strong>에 저장되며 실시간으로 동기화됩니다. 로그인한 사람만 볼 수 있습니다.
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px">앱 버전 <span id="setVer"></span> · 프로젝트 noing-calendar</div>
     </div>
-
-    <details class="help-section">
-      <summary style="cursor:pointer;font-size:12px;color:var(--text-3);margin-bottom:10px">예전 구글 시트 방식 안내 (지금은 사용하지 않음)</summary>
-
-      <p style="margin-bottom: 10px;"><strong style="color:var(--text)">1.</strong> 구글 시트 새로 만들기 → <a href="https://sheets.google.com" target="_blank" style="color:var(--accent-2)">sheets.google.com</a></p>
-
-      <p style="margin-bottom: 10px;"><strong style="color:var(--text)">2.</strong> 시트 1행(헤더)에 다음 텍스트를 복사해서 A1에 붙여넣기 (10개 칸에 자동 분배):</p>
-      <div class="code-block" style="margin-bottom: 14px;">id	date	time	company	title	channel	type	owner	status	memo<button class="copy-btn" onclick="copyText(this, 'id\tdate\ttime\tcompany\ttitle\tchannel\ttype\towner\tstatus\tmemo')">복사</button></div>
-
-      <p style="margin-bottom: 10px;"><strong style="color:var(--text)">3.</strong> 시트 메뉴 <code>확장 프로그램 → Apps Script</code> → 기존 코드 모두 지우고 아래 붙여넣은 뒤 저장(💾):</p>
-
-      <div class="code-block" style="margin-bottom: 14px;" id="scriptCode">function getSheet_(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (name) {
-    const s = ss.getSheetByName(name);
-    if (s) return s;
-  }
-  return ss.getSheets()[0];
-}
-
-function doGet(e) {
-  const sheetName = e &amp;&amp; e.parameter ? e.parameter.sheet : null;
-  const sheet = getSheet_(sheetName);
-  const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  const rows = data
-    .filter(r =&gt; r[0] !== '' &amp;&amp; r[0] !== null)
-    .map(r =&gt; {
-      const o = {};
-      headers.forEach((h, i) =&gt; {
-        let v = r[i];
-        if (v instanceof Date) {
-          v = (h === 'time')
-            ? Utilities.formatDate(v, 'Asia/Seoul', 'HH:mm')
-            : Utilities.formatDate(v, 'Asia/Seoul', 'yyyy-MM-dd');
-        }
-        o[h] = v;
-      });
-      return o;
-    });
-  return ContentService.createTextOutput(JSON.stringify(rows))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doPost(e) {
-  const body = JSON.parse(e.postData.contents);
-  const sheet = getSheet_(body.sheet);
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const row = headers.map(h =&gt; body[h] !== undefined ? body[h] : '');
-
-  if (body.action === 'add') {
-    sheet.appendRow(row);
-  } else if (body.action === 'update') {
-    for (let i = 1; i &lt; data.length; i++) {
-      if (String(data[i][0]) === String(body.id)) {
-        sheet.getRange(i + 1, 1, 1, headers.length).setValues([row]);
-        break;
-      }
-    }
-  } else if (body.action === 'delete') {
-    for (let i = 1; i &lt; data.length; i++) {
-      if (String(data[i][0]) === String(body.id)) {
-        sheet.deleteRow(i + 1);
-        break;
-      }
-    }
-  }
-  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}<button class="copy-btn" onclick="copyScriptCode(this)">복사</button></div>
-
-      <p style="margin-bottom: 10px;"><strong style="color:var(--text)">4.</strong> Apps Script 우측 상단 <code>배포 → 새 배포</code></p>
-      <ul style="padding-left: 22px; font-size: 12.5px; color: var(--text-2); line-height: 1.7; margin-bottom: 14px;">
-        <li>유형(톱니바퀴) → <strong style="color:var(--text)">웹 앱</strong></li>
-        <li>다음 사용자 인증으로 실행: <strong style="color:var(--text)">나</strong></li>
-        <li>액세스 권한이 있는 사용자: <strong style="color:var(--text)">모든 사용자</strong></li>
-        <li>배포 → 권한 승인 ("고급" → "안전하지 않은 페이지로 이동" → 허용)</li>
-        <li>표시되는 <strong style="color:var(--text)">웹 앱 URL</strong> 복사</li>
-      </ul>
-
-      <p style="margin-bottom: 10px;"><strong style="color:var(--text)">5.</strong> 위 입력칸에 URL 붙여넣기 → <strong style="color:var(--text)">"저장 후 동기화"</strong></p>
-
-    </details>
   </div>
 </div>
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.25.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.25.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7739,12 +7655,41 @@ function doLogout() {
   if (!confirm('로그아웃할까요?')) return;
   fbLogout();
 }
+async function imageCacheSize() {
+  try {
+    const db = await idbOpen(); if (!db) return '사용 불가';
+    return await new Promise(r => {
+      const st = db.transaction('b64', 'readonly').objectStore('b64');
+      const kq = st.getAllKeys(), vq = st.getAll(); let k, v;
+      kq.onsuccess = () => { k = kq.result; if (v) done(); };
+      vq.onsuccess = () => { v = vq.result; if (k) done(); };
+      kq.onerror = vq.onerror = () => r('확인 실패');
+      function done() {
+        let by = 0; for (const x of v) by += (x || '').length;
+        r(k.length + '장 · 약 ' + (by / 1048576).toFixed(1) + 'MB');
+      }
+    });
+  } catch (e) { return '확인 실패'; }
+}
+async function clearImageCache() {
+  if (!confirm('이 기기에 저장된 인사이트·예약 이미지를 모두 지울까요?\n예전 보고서의 이미지가 보이지 않게 됩니다.')) return;
+  try {
+    const db = await idbOpen();
+    if (db) { const tx = db.transaction('b64', 'readwrite'); tx.objectStore('b64').clear(); await new Promise(r => { tx.oncomplete = r; tx.onerror = r; }); }
+    for (const k in insightB64) delete insightB64[k];
+    showToast('✓ 이미지 캐시를 비웠습니다');
+    const el = document.getElementById('imgCacheInfo'); if (el) el.value = await imageCacheSize();
+  } catch (e) { alert('실패: ' + e.message); }
+}
 function openSettings() {
   try {
     const el = document.getElementById('acctInfo');
     if (el) el.value = (window.FB && window.FB.user) ? window.FB.user.email : '(로그아웃 상태)';
+    const v = document.getElementById('setVer'); if (v) v.textContent = 'v' + APP_VERSION;
+    imageCacheSize().then(t => { const c = document.getElementById('imgCacheInfo'); if (c) c.value = t; });
   } catch (e) {}
-  document.getElementById('apiUrlInput').value = apiUrl;
+  const au = document.getElementById('apiUrlInput');   // 지금 UI 에는 없음(폴백 전용)
+  if (au) au.value = apiUrl;
   document.getElementById('settingsOverlay').classList.add('open');
 }
 function closeSettings() {
@@ -7753,7 +7698,9 @@ function closeSettings() {
 
 async function saveSettings() { return withSubmitGuard('saveSettingsBtn', _saveSettings); }
 async function _saveSettings() {
-  const newUrl = document.getElementById('apiUrlInput').value.trim();
+  const au = document.getElementById('apiUrlInput');
+  if (!au) return;                                     // UI 제거됨(폴백 전용)
+  const newUrl = au.value.trim();
   if (!newUrl) { alert('URL을 입력해 주세요.'); return; }
   if (!newUrl.startsWith('https://script.google.com/')) {
     if (!confirm('구글 Apps Script URL이 아닌 것 같습니다. 그래도 진행할까요?')) return;
