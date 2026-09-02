@@ -401,11 +401,7 @@
     /* 일정이 많은 날: 칸을 늘리지 않고 위아래로 천천히 밀어 나머지를 보여줌 */
     .chips-wrap { position: relative; }
     .chips-wrap.cs-scroll { overflow: hidden; }
-    .chips-wrap.cs-scroll .chips { animation: cs-loop var(--cs-dur, 8s) linear infinite; }
-    @keyframes cs-loop {
-      from { transform: translateY(0); }
-      to   { transform: translateY(var(--cs-shift, 0px)); }
-    }
+    .chips-wrap.cs-scroll { overflow: hidden; }
     @media (prefers-reduced-motion: reduce) {
       .chips-wrap.cs-scroll .chips { animation: none; }
     }
@@ -2744,7 +2740,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.30.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.30.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4178,8 +4174,7 @@ function applyChipsMarquee() {
     const oneH = inner.scrollHeight;
     if (oneH - wrap.clientHeight <= 2) {                          // 안 넘치면 그대로
       wrap.classList.remove('cs-scroll');
-      wrap.style.removeProperty('--cs-shift');
-      wrap.style.removeProperty('--cs-dur');
+      if (inner._csAnim) { inner._csAnim.cancel(); inner._csAnim = null; }
       return;
     }
     originals.forEach(ch => {
@@ -4190,8 +4185,12 @@ function applyChipsMarquee() {
     });
     const period = inner.scrollHeight - oneH;                     // 한 바퀴 이동량
     wrap.classList.add('cs-scroll');
-    wrap.style.setProperty('--cs-shift', -period + 'px');
-    wrap.style.setProperty('--cs-dur', Math.max(5, period / 9).toFixed(1) + 's');
+    if (inner._csAnim) inner._csAnim.cancel();
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      inner._csAnim = inner.animate(
+        [{ transform: 'translateY(0)' }, { transform: `translateY(${-period}px)` }],
+        { duration: Math.max(5000, period * 110), iterations: Infinity, easing: 'linear' });
+    }
   });
 }
 
