@@ -397,6 +397,13 @@
     .resv-row .insight-thumb { width: 44px; height: 44px; flex-shrink: 0; }
     .resv-btns { display: flex; gap: 5px; flex-shrink: 0; }
     .resv-add { white-space: nowrap; }
+    /* 날짜 상세 (모바일) */
+    #dayOverlay .day-item { display: flex; gap: 8px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    #dayOverlay .day-item:hover { background: var(--bg-2); }
+    #dayOverlay .day-time { font-size: 11.5px; font-weight: 700; color: var(--text-2); white-space: nowrap; min-width: 42px; }
+    #dayOverlay .day-main { min-width: 0; flex: 1; }
+    #dayOverlay .day-title { font-size: 13px; font-weight: 600; word-break: break-all; }
+    #dayOverlay .day-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; word-break: break-all; }
     /* 발행 문서 모아보기 */
     #docsOverlay #docsSearch {
       padding: 7px 12px; border: 1px solid var(--border-2); border-radius: 8px;
@@ -1733,7 +1740,18 @@
       /* 수주: 기간 선택 줄의 추가 버튼 */
       .orders-period-bar .btn.btn-primary { padding: 6px 12px; font-size: 12px; margin-left: auto; }
       /* 필터: 상단 공간 절약 + 구분선 제거 */
-      .filter-bar { padding: 4px 12px 6px; border-bottom: 0; }
+      .filter-bar { padding: 4px 12px 4px; border-bottom: 0; }
+      .main { margin: 8px auto; }            /* 필터 ↔ 달력 간격 축소 */
+      .cal-nav { margin-bottom: 8px; }
+      /* 달력 축약: 시간(채널)만 보여 한 눈에 */
+      .chip { padding: 2px 4px; margin-bottom: 2px; border-radius: 4px; }
+      .chip .chip-title { display: none; }
+      .chip .chip-type { display: none; }
+      .chip .chip-row1 { gap: 3px; }
+      .chip-time { font-size: 9.5px; }
+      .chip-channel { font-size: 9px; padding: 0 3px; }
+      .cal-cell { min-height: 62px; }
+      .day-header .add-btn { display: none; }   /* 날짜 눌러 상세에서 추가 */
       /* ── 달력 네비/타이틀 (모바일: 한 줄에 모두) ── */
       .cal-nav { flex-wrap: nowrap; gap: 4px; align-items: center; }
       .cal-title { font-size: 14px; white-space: nowrap; }
@@ -1743,7 +1761,7 @@
       .nav-right { gap: 3px; flex: 0 0 auto; min-width: 0; justify-content: flex-end; flex-wrap: nowrap; margin-left: auto; }
       .nav-right .btn.btn-primary { padding: 5px 8px; font-size: 11.5px; flex-shrink: 0; }
       .deadline-toggle { padding: 4px 6px; }
-      .nav-btn { padding: 3px 7px; font-size: 13px; }
+      .nav-btn { padding: 2px 5px; font-size: 12px; min-width: 0; }
       .today-btn { padding: 4px 7px; font-size: 11px; flex-shrink: 0; }
       /* 임박 알림: 톤다운 + 단일 라인 */
       .alert-pill {
@@ -2701,7 +2719,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.28.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.29.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4122,6 +4140,33 @@ function renderOrderStats(filtered) {
   // 최근 발행 견적서
   renderRecentQuotes();
 }
+
+// ── 날짜 상세 (모바일에서 날짜를 누르면 그 날 일정만 크게 보기) ──
+function isMobileView() { return window.matchMedia('(max-width: 640px)').matches; }
+function openDayDetail(dateStr) {
+  const items = contents.filter(c => c.date === dateStr && passesFilter(c))
+    .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+  const d = new Date(dateStr + 'T00:00:00');
+  const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+  document.getElementById('dayTitle').textContent =
+    `${d.getMonth() + 1}월 ${d.getDate()}일 (${wd}) · ${items.length}건`;
+  const body = document.getElementById('dayBody');
+  body.innerHTML = items.length ? items.map(c => {
+    const sCls = STATUS_CLASS[c.status] || '';
+    return `<div class="day-item" onclick="closeDayDetail(); openModal('${c.date}', '${c.id}')">
+      <div class="day-time">${escapeHtml(c.time || '-')}</div>
+      <div class="day-main">
+        <div class="day-title">${escapeHtml(c.title || '(제목 없음)')}</div>
+        <div class="day-sub">${escapeHtml(c.company || '')}${c.company ? ' · ' : ''}${escapeHtml(c.channel || '')} · ${escapeHtml(c.type || '')}${c.owner ? ' · ' + escapeHtml(c.owner) : ''}</div>
+      </div>
+      <span class="content-progress-tag ${sCls}" style="flex-shrink:0">${escapeHtml(c.status || '')}</span>
+    </div>`;
+  }).join('') : '<p class="empty-text">이 날엔 콘텐츠가 없습니다.</p>';
+  const addBtn = document.getElementById('dayAddBtn');
+  addBtn.onclick = () => { closeDayDetail(); openModal(dateStr); };
+  document.getElementById('dayOverlay').classList.add('open');
+}
+function closeDayDetail() { document.getElementById('dayOverlay').classList.remove('open'); }
 
 // ── 발행 문서(견적서·계약서) 모아보기 ──
 let _docsTab = 'quote';
@@ -6682,6 +6727,7 @@ function render() {
       </div>
       <div class="chips" id="chips-${dateStr}"></div>
     `;
+    if (cell.type === 'cur') div.onclick = () => { if (isMobileView()) openDayDetail(dateStr); };
     grid.appendChild(div);
   });
 
@@ -6708,7 +6754,10 @@ function render() {
         </div>
         <div class="chip-title">${escapeHtml(c.title)}</div>
       `;
-      chip.onclick = (e) => openContentActionMenu(c.id, e.clientX, e.clientY);
+      chip.onclick = (e) => {
+        if (isMobileView()) { e.stopPropagation(); openDayDetail(c.date); return; }   // 모바일은 날짜 상세로
+        openContentActionMenu(c.id, e.clientX, e.clientY);
+      };
       container.appendChild(chip);
     });
 
@@ -8367,6 +8416,19 @@ init();
       <input type="text" id="docsSearch" placeholder="업체 · 제목 · 번호 검색" oninput="renderDocs()" style="flex:1;min-width:170px" />
     </div>
     <div id="docsBody" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dayOverlay" onclick="closeModalOutside(event, 'dayOverlay', closeDayDetail)">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="dayTitle">날짜</h3>
+      <button class="icon-btn" onclick="closeDayDetail()">✕</button>
+    </div>
+    <div id="dayBody" style="max-height:56vh;overflow-y:auto"></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn btn-primary" id="dayAddBtn">+ 이 날짜에 콘텐츠 추가</button>
+    </div>
   </div>
 </div>
 </body>
