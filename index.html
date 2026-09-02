@@ -401,11 +401,10 @@
     /* 일정이 많은 날: 칸을 늘리지 않고 위아래로 천천히 밀어 나머지를 보여줌 */
     .chips-wrap { position: relative; }
     .chips-wrap.cs-scroll { overflow: hidden; }
-    .chips-wrap.cs-scroll .chips { animation: cs-marquee var(--cs-dur, 7s) ease-in-out infinite; }
-    @keyframes cs-marquee {
-      0%, 16%   { transform: translateY(0); }
-      54%, 72%  { transform: translateY(var(--cs-shift, 0px)); }
-      100%      { transform: translateY(0); }
+    .chips-wrap.cs-scroll .chips { animation: cs-loop var(--cs-dur, 8s) linear infinite; }
+    @keyframes cs-loop {
+      from { transform: translateY(0); }
+      to   { transform: translateY(var(--cs-shift, 0px)); }
     }
     @media (prefers-reduced-motion: reduce) {
       .chips-wrap.cs-scroll .chips { animation: none; }
@@ -413,11 +412,10 @@
     /* 긴 휴일/일정 글자: 잘림(…) 대신 천천히 밀어서 뒷부분까지 보여줌 */
     .holiday-label .hl-in { display: inline-block; will-change: transform; }
     .holiday-label.hl-scroll { text-overflow: clip; }
-    .holiday-label.hl-scroll .hl-in { animation: hl-marquee var(--hl-dur, 6s) ease-in-out infinite; }
-    @keyframes hl-marquee {
-      0%, 18%   { transform: translateX(0); }
-      58%, 76%  { transform: translateX(var(--hl-shift, 0px)); }
-      100%      { transform: translateX(0); }
+    .holiday-label.hl-scroll .hl-in { animation: hl-loop var(--hl-dur, 7s) linear infinite; white-space: pre; }
+    @keyframes hl-loop {
+      from { transform: translateX(0); }
+      to   { transform: translateX(var(--hl-shift, 0px)); }
     }
     @media (prefers-reduced-motion: reduce) {
       .holiday-label.hl-scroll .hl-in { animation: none; }
@@ -2746,7 +2744,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.30.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.30.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4175,34 +4173,49 @@ function applyChipsMarquee() {
   document.querySelectorAll('.chips-wrap').forEach(wrap => {
     const inner = wrap.querySelector('.chips');
     if (!inner) return;
-    const over = inner.scrollHeight - wrap.clientHeight;
-    if (over > 2) {
-      wrap.classList.add('cs-scroll');
-      wrap.style.setProperty('--cs-shift', -(over + 1) + 'px');
-      wrap.style.setProperty('--cs-dur', Math.max(6, 5 + over / 8).toFixed(1) + 's');
-    } else {
+    inner.querySelectorAll('.cs-dup').forEach(d => d.remove());   // 이전 복제본 제거
+    const originals = [...inner.children];
+    const oneH = inner.scrollHeight;
+    if (oneH - wrap.clientHeight <= 2) {                          // 안 넘치면 그대로
       wrap.classList.remove('cs-scroll');
       wrap.style.removeProperty('--cs-shift');
       wrap.style.removeProperty('--cs-dur');
+      return;
     }
+    originals.forEach(ch => {
+      const d = ch.cloneNode(true);
+      d.classList.add('cs-dup');
+      d.setAttribute('aria-hidden', 'true');
+      inner.appendChild(d);
+    });
+    const period = inner.scrollHeight - oneH;                     // 한 바퀴 이동량
+    wrap.classList.add('cs-scroll');
+    wrap.style.setProperty('--cs-shift', -period + 'px');
+    wrap.style.setProperty('--cs-dur', Math.max(5, period / 9).toFixed(1) + 's');
   });
 }
 
 // 칸보다 긴 라벨은 잘라내는 대신 좌우로 천천히 밀어 전체를 보여준다
 function applyLabelMarquee() {
+  const SEP = '\u00A0\u00A0\u00A0\u00A0';        // 두 벌 사이 간격
   document.querySelectorAll('.holiday-label').forEach(el => {
     const inner = el.querySelector('.hl-in');
     if (!inner) return;
-    const over = inner.scrollWidth - el.clientWidth;
-    if (over > 2) {
-      el.classList.add('hl-scroll');
-      el.style.setProperty('--hl-shift', -(over + 2) + 'px');
-      el.style.setProperty('--hl-dur', Math.max(5, 4 + over / 12).toFixed(1) + 's');
-    } else {
+    const text = el.dataset.hlText || inner.textContent;
+    el.dataset.hlText = text;
+    inner.textContent = text;                     // 한 벌 기준으로 폭 측정
+    const oneW = inner.scrollWidth;
+    if (oneW - el.clientWidth <= 2) {             // 안 넘치면 그대로
       el.classList.remove('hl-scroll');
       el.style.removeProperty('--hl-shift');
       el.style.removeProperty('--hl-dur');
+      return;
     }
+    inner.textContent = text + SEP + text;        // 두 벌 이어붙이기
+    const period = inner.scrollWidth - oneW;      // 한 바퀴 이동량
+    el.classList.add('hl-scroll');
+    el.style.setProperty('--hl-shift', -period + 'px');
+    el.style.setProperty('--hl-dur', Math.max(4, period / 14).toFixed(1) + 's');
   });
 }
 window.addEventListener('resize', () => requestAnimationFrame(() => { applyLabelMarquee(); applyChipsMarquee(); }));
