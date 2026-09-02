@@ -1884,11 +1884,13 @@
 
       /* 1행: 업체(왼쪽) + 금액(오른쪽) */
       .orders-table tbody td[data-label="업체"] {
-        order: 1; font-size: 13.5px; font-weight: 700; color: var(--text);
-        max-width: 60%; overflow: hidden; text-overflow: ellipsis;
+        order: 1; flex: 1 1 0; min-width: 0;
+        font-size: 13.5px; font-weight: 700; color: var(--text);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
       .orders-table tbody td[data-label="금액"] {
-        order: 2; margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text);
+        order: 2; flex: 0 0 auto; margin-left: auto;
+        font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap;
       }
       /* 2행: 제목 */
       .orders-table tbody td.title {
@@ -1905,6 +1907,7 @@
       .orders-table tbody td[data-label="입금"]   { order: 8; }
       .orders-table tbody td[data-label="콘텐츠 진행"] { order: 9; }
       .orders-table tbody td[data-label="발행 채널"]   { order: 10; }
+      .orders-table tbody td[data-label="발행 채널"] > div { max-width: none !important; flex-wrap: nowrap !important; }
       .orders-table tbody td .invoice-badge,
       .orders-table tbody td .payment-badge,
       .orders-table tbody td .content-progress-tag { font-size: 10px; padding: 1px 6px; }
@@ -2754,7 +2757,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
