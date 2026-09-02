@@ -1910,9 +1910,11 @@
       /* 3줄: 날짜 · 유형 · 담당자 (담당자가 남는 폭을 채워 배지를 다음 줄로 내림) */
       .orders-table tbody td[data-label="수주일"] { order: 4; color: var(--text-3); }
       .orders-table tbody td[data-label="유형"]   { order: 5; }
-      .orders-table tbody td[data-label="담당자"] { order: 6; flex: 1 1 auto; }
+      .orders-table tbody td[data-label="담당자"] {
+        order: 6; flex: 0 0 auto; margin-right: 100%;   /* 이 뒤(배지)는 다음 줄로 */
+      }
       /* 4줄(하단): 상태 배지들을 같은 크기로 정렬 */
-      .orders-table tbody td[data-label="세금계산서"] { order: 7; }
+      .orders-table tbody td[data-label="세금계산서"] { order: 7; margin-top: 2px; }
       .orders-table tbody td[data-label="입금"]       { order: 8; }
       .orders-table tbody td[data-label="콘텐츠 진행"] { order: 9; }
       .orders-table tbody td[data-label="발행 채널"]   { order: 10; margin-left: auto; }
@@ -2770,7 +2772,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
