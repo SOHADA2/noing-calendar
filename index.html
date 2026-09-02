@@ -1830,6 +1830,11 @@
       .orders-main { width: 100%; }
       .orders-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
       .orders-toolbar-left { display: flex; gap: 8px; align-items: baseline; }
+      /* 연도 필터: 줄바꿈 없이 한 줄 (넘치면 좌우로 밀어서 봄) */
+      .period-years { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .period-years::-webkit-scrollbar { display: none; }
+      .period-year-btn { padding: 5px 9px; font-size: 11.5px; flex-shrink: 0; }
+      .orders-period-bar { flex-wrap: nowrap; gap: 8px; }
       .orders-title { font-size: 16px; }
       .orders-search { width: 100%; }
       .orders-search input { width: 100%; }
@@ -1854,46 +1859,55 @@
       .orders-table tr,
       .orders-table td { display: block; min-width: 0 !important; width: auto !important; }
       .orders-table thead { display: none; }  /* 헤더 숨김 */
+      /* 표에 가까운 조밀한 3줄 구성: [업체 … 금액] / [제목] / [날짜·유형·담당·상태] */
       .orders-table tbody tr {
+        display: flex; flex-wrap: wrap; align-items: baseline;
+        gap: 2px 8px;
         background: var(--bg-2);
         border: 1px solid var(--border);
-        border-radius: 10px;
-        margin-bottom: 10px;
-        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        padding: 8px 10px;
         cursor: pointer;
         transition: background .15s;
       }
-      .orders-table tbody tr:hover, .orders-table tbody tr:active {
-        background: var(--bg-3);
-      }
+      .orders-table tbody tr:hover, .orders-table tbody tr:active { background: var(--bg-3); }
       .orders-table tbody td {
-        text-align: left !important;
-        padding: 4px 0;
-        font-size: 13px;
-        border: none;
-        white-space: normal;
-      }
-      .orders-table tbody td::before {
-        content: attr(data-label) " · ";
-        font-weight: 600;
-        color: var(--muted);
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .3px;
-        margin-right: 6px;
         display: inline-block;
-        min-width: 70px;
+        text-align: left !important;
+        padding: 0; border: none;
+        font-size: 11.5px;
+        color: var(--text-3);
+        white-space: nowrap;
       }
-      /* 회사명(title 컬럼) 강조: 카드 상단에 큼직하게 */
+      .orders-table tbody td::before { display: none; }   /* 라벨 숨김 — 값만 조밀하게 */
+
+      /* 1행: 업체(왼쪽) + 금액(오른쪽) */
+      .orders-table tbody td[data-label="업체"] {
+        order: 1; font-size: 13.5px; font-weight: 700; color: var(--text);
+        max-width: 60%; overflow: hidden; text-overflow: ellipsis;
+      }
+      .orders-table tbody td[data-label="금액"] {
+        order: 2; margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text);
+      }
+      /* 2행: 제목 */
       .orders-table tbody td.title {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 4px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid var(--border);
+        order: 3; flex: 1 1 100%;
+        font-size: 12px; font-weight: 500; color: var(--text-2);
+        white-space: normal; word-break: break-all;
+        margin: 1px 0 3px;
       }
-      .orders-table tbody td.title::before { display: none; }
+      /* 3행: 나머지 정보(날짜·유형·담당·상태 배지) */
+      .orders-table tbody td[data-label="수주일"] { order: 4; }
+      .orders-table tbody td[data-label="유형"]   { order: 5; }
+      .orders-table tbody td[data-label="담당자"] { order: 6; }
+      .orders-table tbody td[data-label="세금계산서"] { order: 7; }
+      .orders-table tbody td[data-label="입금"]   { order: 8; }
+      .orders-table tbody td[data-label="콘텐츠 진행"] { order: 9; }
+      .orders-table tbody td[data-label="발행 채널"]   { order: 10; }
+      .orders-table tbody td .invoice-badge,
+      .orders-table tbody td .payment-badge,
+      .orders-table tbody td .content-progress-tag { font-size: 10px; padding: 1px 6px; }
 
       /* ── 터치 타깃 ── */
       .icon-btn { width: 36px; height: 36px; }
@@ -2740,7 +2754,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.30.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
