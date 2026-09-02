@@ -1698,7 +1698,16 @@
       .view-tab { padding: 8px 12px; font-size: 12.5px; }
 
       .filter-bar { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
-      .pill { padding: 6px 10px; font-size: 11.5px; }
+      .pill { padding: 4px 8px; font-size: 10.5px; border-radius: 10px; }
+      /* 필터 각 묶음은 한 줄 유지 — 넘치면 좌우로 밀어서 본다 */
+      #ordersFilterBar .filter-row { flex-direction: column; align-items: stretch; gap: 6px; }
+      #ordersFilterBar .filter-group {
+        flex-wrap: nowrap; gap: 5px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; padding-bottom: 1px;
+      }
+      #ordersFilterBar .filter-group::-webkit-scrollbar { display: none; }
+      #ordersFilterBar .filter-group .pill { flex-shrink: 0; }
+      #ordersFilterBar .filter-label { flex-shrink: 0; font-size: 10px; min-width: 52px; }
 
       .main { padding: 0 8px; }
 
@@ -2776,7 +2785,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
