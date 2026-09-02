@@ -397,6 +397,7 @@
     .resv-row .insight-thumb { width: 44px; height: 44px; flex-shrink: 0; }
     .resv-btns { display: flex; gap: 5px; flex-shrink: 0; }
     .resv-add { white-space: nowrap; }
+    .chip-ch-short { display: none; }
     /* 날짜 상세 (모바일) */
     #dayOverlay .day-item { display: flex; gap: 8px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
     #dayOverlay .day-item:hover { background: var(--bg-2); }
@@ -1749,7 +1750,8 @@
       .chip .chip-type { display: none; }
       .chip .chip-row1 { gap: 3px; }
       .chip-time { font-size: 9.5px; }
-      .chip-channel { font-size: 9px; padding: 0 3px; }
+      .chip-channel { display: none; }
+      .chip-ch-short { display: inline-block; font-size: 9px; font-weight: 800; padding: 0 3px; border-radius: 3px; }
       .cal-cell { min-height: 62px; }
       .day-header .add-btn { display: none; }   /* 날짜 눌러 상세에서 추가 */
       /* ── 달력 네비/타이틀 (모바일: 한 줄에 모두) ── */
@@ -2719,7 +2721,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.29.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.29.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -6749,7 +6751,7 @@ function render() {
       chip.innerHTML = `
         <div class="chip-row1">
           ${c.time ? `<span class="chip-time">${escapeHtml(c.time)}</span>` : ''}
-          ${c.channel ? `<span class="chip-channel ch-${c.channel}">${escapeHtml(c.channel)}</span>` : ''}
+          ${c.channel ? `<span class="chip-channel ch-${c.channel}">${escapeHtml(c.channel)}</span><span class="chip-ch-short ch-${c.channel}">${escapeHtml((c.channel || '').charAt(0).toUpperCase())}</span>` : ''}
           <span class="chip-type ${tCls}">${TYPE_SHORT[c.type] || (c.type ? c.type.slice(0,4) : '?')}</span>
         </div>
         <div class="chip-title">${escapeHtml(c.title)}</div>
