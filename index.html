@@ -2733,7 +2733,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.29.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.29.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2802,6 +2802,7 @@ function setCalMode(mode) {
   document.getElementById('calendarGridView').style.display = mode === 'grid' ? '' : 'none';
   document.getElementById('calendarListView').style.display = mode === 'list' ? '' : 'none';
   render();
+  setTimeout(applyLabelMarquee, 60);     // 보이게 된 뒤 라벨 폭 다시 계산
 }
 // 다중 컬럼 정렬: [{key, dir}, ...] 순서대로 우선순위 적용
 let orderSort = [
@@ -3516,6 +3517,7 @@ function switchView(view) {
   if (addBtn) addBtn.style.display = view === 'calendar' ? '' : 'none';
   document.getElementById('filterBar').style.display = view === 'calendar' ? '' : 'none';
   if (view === 'orders') { renderOrders(); ensureQuoteHistory().then(renderRecentQuotes); }
+  else setTimeout(applyLabelMarquee, 60);
 }
 function openAddByView() {
   if (currentView === 'calendar') openModal(null);
@@ -6764,6 +6766,7 @@ function render() {
     grid.appendChild(div);
   });
   requestAnimationFrame(applyLabelMarquee);   // 잘리는 라벨만 밀어서 보여주기
+  setTimeout(applyLabelMarquee, 120);         // 표시 지연 대비 재계산
 
   contents
     .filter(passesFilter)
