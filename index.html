@@ -1732,16 +1732,17 @@
 
       /* 수주: 기간 선택 줄의 추가 버튼 */
       .orders-period-bar .btn.btn-primary { padding: 6px 12px; font-size: 12px; margin-left: auto; }
-      /* ── 달력 네비/타이틀 (모바일: 2행 정렬) ── */
-      .cal-nav { flex-wrap: wrap; gap: 6px 8px; align-items: center; }
-      .cal-title { font-size: 14.5px; white-space: nowrap; }
-      .cal-title-en { display: none; }  /* "May" 등 영문 숨김 → 한 줄 보장 */
-      /* 1행: ‹ 월 ›  ……  오늘 · 데드라인 (오른쪽 정렬) */
-      .nav-left { gap: 4px; align-items: center; flex: 1 1 100%; flex-wrap: nowrap; }
-      .nav-left .today-btn:not(.deadline-toggle) { margin-left: auto; }
-      /* 2행: 임박 · 보기전환 · 추가 (좌우로 고르게) */
-      .nav-right { gap: 6px; flex: 1 1 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; }
-      .nav-right .btn.btn-primary { padding: 5px 11px; font-size: 11.5px; flex-shrink: 0; }
+      /* 필터: 상단 공간 절약 + 구분선 제거 */
+      .filter-bar { padding: 4px 12px 6px; border-bottom: 0; }
+      /* ── 달력 네비/타이틀 (모바일: 한 줄에 모두) ── */
+      .cal-nav { flex-wrap: nowrap; gap: 4px; align-items: center; }
+      .cal-title { font-size: 14px; white-space: nowrap; }
+      .cal-title-en { display: none; }  /* "September" 등 영문 숨김 */
+      .nav-lbl { display: none; }       /* 버튼 글자 숨기고 아이콘만 → 한 줄 확보 */
+      .nav-left { gap: 3px; align-items: center; flex: 0 1 auto; flex-wrap: nowrap; min-width: 0; }
+      .nav-right { gap: 4px; flex: 1 1 auto; min-width: 0; justify-content: flex-end; flex-wrap: nowrap; }
+      .nav-right .btn.btn-primary { padding: 5px 9px; font-size: 11.5px; flex-shrink: 0; }
+      .deadline-toggle { padding: 4px 7px; }
       .nav-btn { padding: 3px 7px; font-size: 13px; }
       .today-btn { padding: 4px 9px; font-size: 11px; flex-shrink: 0; }
       /* 임박 알림: 톤다운 + 단일 라인 */
@@ -1760,7 +1761,7 @@
         border-color: var(--err);
         color: var(--err);
       }
-      .alert-pill #alertText { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; display: inline-block; }
+      .alert-pill #alertText { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 62px; display: inline-block; }
       .alert-pill .alert-icon { width: 5px; height: 5px; }
       /* 모드 토글 */
       .cal-mode-btn { padding: 3px 7px; font-size: 11px; }
@@ -2015,7 +2016,7 @@
           <div class="cal-title" id="calTitle"></div>
           <button class="nav-btn" onclick="changeMonth(1)">›</button>
           <button class="today-btn" onclick="goToday()">오늘</button>
-          <button class="today-btn deadline-toggle active" id="deadlineToggle" onclick="toggleDeadlines()" title="콘티·촬영·초안 마감일 표시 켜기/끄기">📋 데드라인</button>
+          <button class="today-btn deadline-toggle active" id="deadlineToggle" onclick="toggleDeadlines()" title="콘티·촬영·초안 마감일 표시 켜기/끄기">📋<span class="nav-lbl"> 데드라인</span></button>
         </div>
         <div class="nav-right">
           <button class="alert-pill" id="alertPill" onclick="toggleAlertPopover(event)">
@@ -2026,7 +2027,7 @@
             <button type="button" class="cal-mode-btn active" data-mode="grid" onclick="setCalMode('grid')" title="달력 보기"><span class="mode-icon-cal">📅</span></button>
             <button type="button" class="cal-mode-btn" data-mode="list" onclick="setCalMode('list')" title="목록 보기">≡</button>
           </div>
-          <button class="btn btn-primary" onclick="openModal(null)" style="white-space:nowrap">+ 콘텐츠 추가</button>
+          <button class="btn btn-primary" onclick="openModal(null)" style="white-space:nowrap">+<span class="nav-lbl"> 콘텐츠</span> 추가</button>
           <div class="alert-popover" id="alertPopover">
             <h5>곧 발행될 콘텐츠</h5>
             <div id="alertList"></div>
@@ -2700,7 +2701,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.28.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.28.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
