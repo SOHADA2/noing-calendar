@@ -1907,12 +1907,16 @@
         margin: 1px 0 3px;
       }
       /* 3행: 나머지 정보(날짜·유형·담당·상태 배지) */
-      /* 3줄: 날짜 · 유형 · 담당자 (담당자가 남는 폭을 채워 배지를 다음 줄로 내림) */
+      /* 3줄: 날짜 · 유형 · 담당자 — 셋이 한 줄을 균등하게 채워 배지가 하단으로 내려감 */
+      .orders-table tbody td[data-label="수주일"],
+      .orders-table tbody td[data-label="유형"],
+      .orders-table tbody td[data-label="담당자"] {
+        flex: 1 1 30%; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
       .orders-table tbody td[data-label="수주일"] { order: 4; color: var(--text-3); }
       .orders-table tbody td[data-label="유형"]   { order: 5; }
-      .orders-table tbody td[data-label="담당자"] {
-        order: 6; flex: 0 0 auto; margin-right: 100%;   /* 이 뒤(배지)는 다음 줄로 */
-      }
+      .orders-table tbody td[data-label="담당자"] { order: 6; }
       /* 4줄(하단): 상태 배지들을 같은 크기로 정렬 */
       .orders-table tbody td[data-label="세금계산서"] { order: 7; margin-top: 2px; }
       .orders-table tbody td[data-label="입금"]       { order: 8; }
@@ -2772,7 +2776,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
