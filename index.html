@@ -2694,7 +2694,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.27.5';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.28.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2889,6 +2889,12 @@ async function startFirestoreSync() {
 function showLoginGate(show) {
   const g = document.getElementById('loginGate');
   if (g) g.classList.toggle('on', !!show);
+  if (show) {
+    const k = document.getElementById('lgKeep');
+    if (k) k.checked = localStorage.getItem('cc-keep-signin') !== '0';
+    const em = document.getElementById('lgEmail');
+    if (em && !em.value) em.value = localStorage.getItem('cc-last-email') || '';
+  }
 }
 async function doLogin() {
   const em = document.getElementById('lgEmail').value.trim();
@@ -2897,6 +2903,11 @@ async function doLogin() {
   err.textContent = '';
   if (!em || !pw) { err.textContent = '이메일과 비밀번호를 입력하세요.'; return; }
   try {
+    const keepEl = document.getElementById('lgKeep');
+    const keep = !keepEl || keepEl.checked;
+    localStorage.setItem('cc-keep-signin', keep ? '1' : '0');
+    const FB = await fbReady();
+    try { await FB.keepSignedIn(keep); } catch (e2) { console.warn('persistence', e2); }
     await fbLogin(em, pw);
     document.getElementById('lgPw').value = '';
   } catch (e) {
@@ -2923,6 +2934,7 @@ function fbReady() {
 async function fbLogin(email, pw) {
   const FB = await fbReady();
   const c = await FB.signIn(email, pw);
+  try { localStorage.setItem('cc-last-email', c.user.email || ''); } catch (e) {}
   return '로그인됨: ' + c.user.email;
 }
 async function fbLogout() { const FB = await fbReady(); await FB.signOut(); return '로그아웃됨'; }
@@ -8282,7 +8294,8 @@ init();
 <script type="module">
   // ── Firebase 연결 (로그인 + 데이터 이전) ──
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence }
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence,
+           browserLocalPersistence, browserSessionPersistence }
     from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
   import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
            collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot }
@@ -8309,7 +8322,8 @@ init();
   const storage = getStorage(app);
   window.FB = { app, auth, db, storage, storageRef, uploadString, getDownloadURL,
     collection, getDocs, writeBatch, doc, setDoc, deleteDoc, getDoc, onSnapshot,
-    signIn: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), user: null };
+    signIn: (e, p) => signInWithEmailAndPassword(auth, e, p), signOut: () => signOut(auth), user: null,
+    keepSignedIn: (keep) => setPersistence(auth, keep ? browserLocalPersistence : browserSessionPersistence) };
   onAuthStateChanged(auth, u => {
     window.FB.user = u;
     console.log('[Firebase] 로그인 상태:', u ? u.email : '(로그아웃)');
@@ -8325,6 +8339,10 @@ init();
     <p>계속하려면 로그인하세요</p>
     <input id="lgEmail" type="email" placeholder="이메일" autocomplete="username" />
     <input id="lgPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-3,#999);margin:2px 0 12px;cursor:pointer">
+      <input type="checkbox" id="lgKeep" checked style="width:auto;margin:0" />
+      이 기기에서 로그인 유지
+    </label>
     <button onclick="doLogin()">로그인</button>
     <div class="lg-err" id="lgErr"></div>
   </div>
