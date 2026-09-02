@@ -1699,17 +1699,15 @@
 
       .filter-bar { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
       /* 모바일 필터 칩: 테두리 없이 '켜짐=채워짐 / 꺼짐=흐림' 으로 직관화 */
-      .pill {
-        padding: 3px 8px; font-size: 10px; border-radius: 999px;
+      #ordersFilterBar .pill, #filterBar .pill {
+        padding: 3px 8px !important; font-size: 10px !important; border-radius: 999px !important;
         border: 0 !important; box-shadow: none !important;
-        background: var(--bg-3); color: var(--text-3); opacity: .5; font-weight: 600;
+        background: #34322f !important; color: #8a8780 !important; opacity: 1 !important;
+        font-weight: 600;
       }
-      .pill.active {
-        background: var(--accent); color: #1a1a1a; opacity: 1;
-        box-shadow: none !important;
+      #ordersFilterBar .pill.active, #filterBar .pill.active {
+        background: var(--accent) !important; color: #1a1a1a !important;
       }
-      .pill:hover { opacity: .75; }
-      .pill.active:hover { opacity: 1; }
       /* 필터 각 묶음은 한 줄 유지 — 넘치면 좌우로 밀어서 본다 */
       #ordersFilterBar .filter-row { flex-direction: column; align-items: stretch; gap: 6px; }
       #ordersFilterBar .filter-group {
@@ -2796,7 +2794,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.6';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
