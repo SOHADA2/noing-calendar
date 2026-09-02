@@ -398,6 +398,18 @@
     .resv-btns { display: flex; gap: 5px; flex-shrink: 0; }
     .resv-add { white-space: nowrap; }
     .chip-ch-short { display: none; }
+    /* 일정이 많은 날: 칸을 늘리지 않고 위아래로 천천히 밀어 나머지를 보여줌 */
+    .chips-wrap { position: relative; }
+    .chips-wrap.cs-scroll { overflow: hidden; }
+    .chips-wrap.cs-scroll .chips { animation: cs-marquee var(--cs-dur, 7s) ease-in-out infinite; }
+    @keyframes cs-marquee {
+      0%, 16%   { transform: translateY(0); }
+      54%, 72%  { transform: translateY(var(--cs-shift, 0px)); }
+      100%      { transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chips-wrap.cs-scroll .chips { animation: none; }
+    }
     /* 긴 휴일/일정 글자: 잘림(…) 대신 천천히 밀어서 뒷부분까지 보여줌 */
     .holiday-label .hl-in { display: inline-block; will-change: transform; }
     .holiday-label.hl-scroll { text-overflow: clip; }
@@ -1764,7 +1776,8 @@
       .chip-time { font-size: 9.5px; }
       .chip-channel { display: none; }
       .chip-ch-short { display: inline-block; font-size: 9px; font-weight: 800; padding: 0 3px; border-radius: 3px; }
-      .cal-cell { min-height: 62px; }
+      .cal-cell { min-height: 62px; max-height: 62px; overflow: hidden; }
+      .chips-wrap { max-height: 38px; }   /* 2줄까지 보이고 나머지는 밀려서 표시 */
       .day-header .add-btn { display: none; }   /* 날짜 눌러 상세에서 추가 */
       /* ── 달력 네비/타이틀 (모바일: 한 줄에 모두) ── */
       .cal-nav { flex-wrap: nowrap; gap: 4px; align-items: center; }
@@ -2733,7 +2746,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.29.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.30.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -2802,7 +2815,7 @@ function setCalMode(mode) {
   document.getElementById('calendarGridView').style.display = mode === 'grid' ? '' : 'none';
   document.getElementById('calendarListView').style.display = mode === 'list' ? '' : 'none';
   render();
-  setTimeout(applyLabelMarquee, 60);     // 보이게 된 뒤 라벨 폭 다시 계산
+  setTimeout(() => { applyLabelMarquee(); applyChipsMarquee(); }, 60);   // 보이게 된 뒤 다시 계산
 }
 // 다중 컬럼 정렬: [{key, dir}, ...] 순서대로 우선순위 적용
 let orderSort = [
@@ -3517,7 +3530,7 @@ function switchView(view) {
   if (addBtn) addBtn.style.display = view === 'calendar' ? '' : 'none';
   document.getElementById('filterBar').style.display = view === 'calendar' ? '' : 'none';
   if (view === 'orders') { renderOrders(); ensureQuoteHistory().then(renderRecentQuotes); }
-  else setTimeout(applyLabelMarquee, 60);
+  else setTimeout(() => { applyLabelMarquee(); applyChipsMarquee(); }, 60);
 }
 function openAddByView() {
   if (currentView === 'calendar') openModal(null);
@@ -4157,6 +4170,24 @@ function renderOrderStats(filtered) {
   renderRecentQuotes();
 }
 
+// 일정이 많은 날: 칸 높이를 유지한 채 위아래로 밀어서 나머지를 보여준다
+function applyChipsMarquee() {
+  document.querySelectorAll('.chips-wrap').forEach(wrap => {
+    const inner = wrap.querySelector('.chips');
+    if (!inner) return;
+    const over = inner.scrollHeight - wrap.clientHeight;
+    if (over > 2) {
+      wrap.classList.add('cs-scroll');
+      wrap.style.setProperty('--cs-shift', -(over + 1) + 'px');
+      wrap.style.setProperty('--cs-dur', Math.max(6, 5 + over / 8).toFixed(1) + 's');
+    } else {
+      wrap.classList.remove('cs-scroll');
+      wrap.style.removeProperty('--cs-shift');
+      wrap.style.removeProperty('--cs-dur');
+    }
+  });
+}
+
 // 칸보다 긴 라벨은 잘라내는 대신 좌우로 천천히 밀어 전체를 보여준다
 function applyLabelMarquee() {
   document.querySelectorAll('.holiday-label').forEach(el => {
@@ -4174,7 +4205,7 @@ function applyLabelMarquee() {
     }
   });
 }
-window.addEventListener('resize', () => requestAnimationFrame(applyLabelMarquee));
+window.addEventListener('resize', () => requestAnimationFrame(() => { applyLabelMarquee(); applyChipsMarquee(); }));
 
 // ── 날짜 상세 (모바일에서 날짜를 누르면 그 날 일정만 크게 보기) ──
 function isMobileView() { return window.matchMedia('(max-width: 640px)').matches; }
@@ -6760,13 +6791,13 @@ function render() {
         ${holiday ? `<span class="holiday-label"><span class="hl-in">${escapeHtml(holiday)}</span></span>` : '<span></span>'}
         <button class="add-btn" onclick="openModal('${dateStr}')">+</button>
       </div>
-      <div class="chips" id="chips-${dateStr}"></div>
+      <div class="chips-wrap"><div class="chips" id="chips-${dateStr}"></div></div>
     `;
     if (cell.type === 'cur') div.onclick = () => { if (isMobileView()) openDayDetail(dateStr); };
     grid.appendChild(div);
   });
-  requestAnimationFrame(applyLabelMarquee);   // 잘리는 라벨만 밀어서 보여주기
-  setTimeout(applyLabelMarquee, 120);         // 표시 지연 대비 재계산
+  requestAnimationFrame(() => { applyLabelMarquee(); applyChipsMarquee(); });   // 넘치는 라벨·일정만 밀어서 보여주기
+  setTimeout(() => { applyLabelMarquee(); applyChipsMarquee(); }, 120);   // 표시 지연 대비 재계산
 
   contents
     .filter(passesFilter)
