@@ -1830,11 +1830,18 @@
       .orders-main { width: 100%; }
       .orders-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
       .orders-toolbar-left { display: flex; gap: 8px; align-items: baseline; }
-      /* 연도 필터: 줄바꿈 없이 한 줄 (넘치면 좌우로 밀어서 봄) */
-      .period-years { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      /* 연도 필터: 줄바꿈 없이 한 줄 (넘치면 좌우로 밀어서 봄) + 컨트롤 높이 통일 */
+      .orders-period-bar { flex-wrap: nowrap; gap: 6px; align-items: center; }
+      .period-years { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; align-items: center; gap: 5px; min-width: 0; }
       .period-years::-webkit-scrollbar { display: none; }
-      .period-year-btn { padding: 5px 9px; font-size: 11.5px; flex-shrink: 0; }
-      .orders-period-bar { flex-wrap: nowrap; gap: 8px; }
+      .period-year-btn,
+      .orders-period-bar .period-month,
+      .orders-period-bar .btn.btn-primary {
+        height: 30px; padding: 0 10px; font-size: 11.5px; line-height: 1;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 7px; flex-shrink: 0;
+      }
+      .orders-period-bar .period-month { padding-right: 6px; }
       .orders-title { font-size: 16px; }
       .orders-search { width: 100%; }
       .orders-search input { width: 100%; }
@@ -1900,17 +1907,23 @@
         margin: 1px 0 3px;
       }
       /* 3행: 나머지 정보(날짜·유형·담당·상태 배지) */
-      .orders-table tbody td[data-label="수주일"] { order: 4; }
+      /* 3줄: 날짜 · 유형 · 담당자 (담당자가 남는 폭을 채워 배지를 다음 줄로 내림) */
+      .orders-table tbody td[data-label="수주일"] { order: 4; color: var(--text-3); }
       .orders-table tbody td[data-label="유형"]   { order: 5; }
-      .orders-table tbody td[data-label="담당자"] { order: 6; }
+      .orders-table tbody td[data-label="담당자"] { order: 6; flex: 1 1 auto; }
+      /* 4줄(하단): 상태 배지들을 같은 크기로 정렬 */
       .orders-table tbody td[data-label="세금계산서"] { order: 7; }
-      .orders-table tbody td[data-label="입금"]   { order: 8; }
+      .orders-table tbody td[data-label="입금"]       { order: 8; }
       .orders-table tbody td[data-label="콘텐츠 진행"] { order: 9; }
-      .orders-table tbody td[data-label="발행 채널"]   { order: 10; }
-      .orders-table tbody td[data-label="발행 채널"] > div { max-width: none !important; flex-wrap: nowrap !important; }
+      .orders-table tbody td[data-label="발행 채널"]   { order: 10; margin-left: auto; }
+      .orders-table tbody td[data-label="발행 채널"] > div { max-width: none !important; flex-wrap: nowrap !important; gap: 4px !important; }
       .orders-table tbody td .invoice-badge,
       .orders-table tbody td .payment-badge,
-      .orders-table tbody td .content-progress-tag { font-size: 10px; padding: 1px 6px; }
+      .orders-table tbody td .content-progress-tag {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 52px; height: 19px; padding: 0 6px;
+        font-size: 10px; border-radius: 5px; box-sizing: border-box;
+      }
 
       /* ── 터치 타깃 ── */
       .icon-btn { width: 36px; height: 36px; }
@@ -2757,7 +2770,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.31.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
