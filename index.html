@@ -398,6 +398,18 @@
     .resv-btns { display: flex; gap: 5px; flex-shrink: 0; }
     .resv-add { white-space: nowrap; }
     .chip-ch-short { display: none; }
+    /* 긴 휴일/일정 글자: 잘림(…) 대신 천천히 밀어서 뒷부분까지 보여줌 */
+    .holiday-label .hl-in { display: inline-block; will-change: transform; }
+    .holiday-label.hl-scroll { text-overflow: clip; }
+    .holiday-label.hl-scroll .hl-in { animation: hl-marquee var(--hl-dur, 6s) ease-in-out infinite; }
+    @keyframes hl-marquee {
+      0%, 18%   { transform: translateX(0); }
+      58%, 76%  { transform: translateX(var(--hl-shift, 0px)); }
+      100%      { transform: translateX(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .holiday-label.hl-scroll .hl-in { animation: none; }
+    }
     /* 날짜 상세 (모바일) */
     #dayOverlay .day-item { display: flex; gap: 8px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
     #dayOverlay .day-item:hover { background: var(--bg-2); }
@@ -2721,7 +2733,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.29.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.29.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4142,6 +4154,25 @@ function renderOrderStats(filtered) {
   // 최근 발행 견적서
   renderRecentQuotes();
 }
+
+// 칸보다 긴 라벨은 잘라내는 대신 좌우로 천천히 밀어 전체를 보여준다
+function applyLabelMarquee() {
+  document.querySelectorAll('.holiday-label').forEach(el => {
+    const inner = el.querySelector('.hl-in');
+    if (!inner) return;
+    const over = inner.scrollWidth - el.clientWidth;
+    if (over > 2) {
+      el.classList.add('hl-scroll');
+      el.style.setProperty('--hl-shift', -(over + 2) + 'px');
+      el.style.setProperty('--hl-dur', Math.max(5, 4 + over / 12).toFixed(1) + 's');
+    } else {
+      el.classList.remove('hl-scroll');
+      el.style.removeProperty('--hl-shift');
+      el.style.removeProperty('--hl-dur');
+    }
+  });
+}
+window.addEventListener('resize', () => requestAnimationFrame(applyLabelMarquee));
 
 // ── 날짜 상세 (모바일에서 날짜를 누르면 그 날 일정만 크게 보기) ──
 function isMobileView() { return window.matchMedia('(max-width: 640px)').matches; }
@@ -6724,7 +6755,7 @@ function render() {
     div.innerHTML = `
       <div class="day-header">
         <span class="day-num">${cell.d}</span>
-        ${holiday ? `<span class="holiday-label">${holiday}</span>` : '<span></span>'}
+        ${holiday ? `<span class="holiday-label"><span class="hl-in">${escapeHtml(holiday)}</span></span>` : '<span></span>'}
         <button class="add-btn" onclick="openModal('${dateStr}')">+</button>
       </div>
       <div class="chips" id="chips-${dateStr}"></div>
@@ -6732,6 +6763,7 @@ function render() {
     if (cell.type === 'cur') div.onclick = () => { if (isMobileView()) openDayDetail(dateStr); };
     grid.appendChild(div);
   });
+  requestAnimationFrame(applyLabelMarquee);   // 잘리는 라벨만 밀어서 보여주기
 
   contents
     .filter(passesFilter)
