@@ -2359,7 +2359,7 @@
     </div>
 
     <div class="form-row">
-      <div class="form-group" style="flex:2"><label>금액 (VAT 별도)</label><input type="text" id="oAmount" placeholder="예) 2,300,000" oninput="onAmountInput()" /></div>
+      <div class="form-group" style="flex:2"><label>광고비 (VAT 별도)</label><input type="text" id="oAmount" placeholder="예) 2,300,000" oninput="onAmountInput()" /></div>
       <div class="form-group" style="flex:1"><label>담당자</label><input type="text" id="oOwner" list="dlOwners" autocomplete="off" /></div>
     </div>
 
@@ -2376,6 +2376,35 @@
     </div>
 
     <div class="form-group"><label>견적 비고</label><textarea id="oAmountMemo" placeholder="예) 릴스 1건 + 카드뉴스 1건" style="min-height:50px"></textarea></div>
+
+    <!-- 콘텐츠 스폰서드: 메타 스폰서드를 대행 집행하는 경우 (발행 전 신청 / 발행 후 요청) -->
+    <div class="form-group" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--bg-2)">
+      <label style="margin-bottom:8px">✨ 콘텐츠 스폰서드 <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-4)">(메타 스폰서드 대행 집행)</span></label>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="form-group" style="flex:1"><label>신청 시점</label>
+          <select id="oSponsoredStatus" onchange="updateOrderTotal()">
+            <option value="없음">없음</option>
+            <option value="발행 전 신청">발행 전 신청</option>
+            <option value="발행 후 요청">발행 후 요청</option>
+            <option value="집행 완료">집행 완료</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1"><label>스폰서드 금액 (VAT 별도)</label>
+          <input type="text" id="oSponsoredAmount" placeholder="예) 300,000" oninput="updateOrderTotal()" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0"><label>스폰서드 메모</label>
+        <input type="text" id="oSponsoredMemo" placeholder="예) 9/1~9/7 집행 · 20대 여성 타겟" />
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;margin-bottom:14px;border-radius:8px;background:var(--bg-3)">
+      <span style="color:var(--text-2);font-size:12px;font-weight:600">최종 금액 (VAT 별도)</span>
+      <span style="text-align:right">
+        <span id="oTotalBreak" style="font-size:11px;color:var(--muted);margin-right:8px"></span>
+        <b id="oTotalAmount" style="color:var(--accent);font-size:15px;font-variant-numeric:tabular-nums">0원</b>
+      </span>
+    </div>
 
     <div class="form-row">
       <div class="form-group"><label>세금계산서</label>
@@ -2794,7 +2823,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.31.7';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.32.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3337,6 +3366,9 @@ async function fetchOrdersFromSheet() {
     amount: Number(r.amount) || 0,
     amount_memo: r.amount_memo || '',
     amount_inc_vat: r.amount_inc_vat ? Number(r.amount_inc_vat) : 0,
+    sponsored_status: r.sponsored_status || '없음',
+    sponsored_amount: Number(r.sponsored_amount) || 0,
+    sponsored_memo: r.sponsored_memo || '',
     invoice_status: r.invoice_status || '미발행',
     payment_status: r.payment_status || '미입금',
     owner: r.owner || '',
@@ -3619,6 +3651,7 @@ function onAmountIncVatInput() {
   document.getElementById('oAmtVat').textContent    = '₩' + fmtMoney(vat);
   document.getElementById('oAmtTotal').textContent  = '₩' + fmtMoney(inc);
   document.getElementById('oAmountBreakdown').style.display = '';
+  updateOrderTotal();
 }
 // VAT 별도 금액 직접 수정 시 → VAT 포함 입력칸 비우기 (혼동 방지)
 function onAmountInput() {
@@ -3627,6 +3660,20 @@ function onAmountInput() {
     inc.value = '';
     document.getElementById('oAmountBreakdown').style.display = 'none';
   }
+  updateOrderTotal();
+}
+
+// 최종 금액 = 광고비 + 스폰서드 (둘 다 VAT 별도)
+function orderTotal(o) {
+  return (Number(o && o.amount) || 0) + (Number(o && o.sponsored_amount) || 0);
+}
+function updateOrderTotal() {
+  const ad = parseMoney(document.getElementById('oAmount').value);
+  const sp = parseMoney(document.getElementById('oSponsoredAmount').value);
+  const brk = document.getElementById('oTotalBreak');
+  if (brk) brk.textContent = sp ? ('광고비 ' + fmtMoney(ad) + ' + 스폰서드 ' + fmtMoney(sp)) : '';
+  const el = document.getElementById('oTotalAmount');
+  if (el) el.textContent = fmtMoney(ad + sp) + '원';
 }
 
 function getContentProgress(orderId) {
@@ -3670,7 +3717,7 @@ let ORDER_COLUMNS = [
   { key: 'company',        label: '업체',         sortable: true, render: (o) => escapeHtml(o.company) },
   { key: 'title',          label: '제목',         sortable: true, tdClass: 'title', render: (o) => escapeHtml(o.title) },
   { key: 'ad_type',        label: '유형',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.ad_type) },
-  { key: 'amount',         label: '금액',         sortable: true, thClass: 'num', tdClass: 'amount', render: (o) => fmtMoney(o.amount) },
+  { key: 'amount',         label: '금액',         sortable: true, thClass: 'num', tdClass: 'amount', render: (o) => fmtMoney(orderTotal(o)) + (Number(o.sponsored_amount) ? ' <span style="font-size:9px;color:var(--accent);font-weight:700">+SP</span>' : '') },
   { key: 'invoice_status', label: '세금계산서',   sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell invoice-badge ${o.invoice_status}" data-bulk="invoice" data-oid="${o.id}" title="클릭: 상태 변경 · 드래그/Shift·Ctrl 클릭: 여러 건 선택 (상세는 제목 클릭 모달)">${escapeHtml(o.invoice_status)}</span>` },
   { key: 'payment_status', label: '입금',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell payment-badge ${o.payment_status}" data-bulk="payment" data-oid="${o.id}" title="클릭: 상태 변경 · 드래그/Shift·Ctrl 클릭: 여러 건 선택">${escapeHtml(o.payment_status)}</span>` },
   { key: 'owner',          label: '담당자',       sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.owner) },
@@ -4183,7 +4230,7 @@ function renderOrderStats(filtered) {
   const thisMonth = orders.filter(o => String(o.order_date).startsWith(monthStr));
 
   document.getElementById('oCnt-total').textContent = thisMonth.length;
-  const totalAmount = thisMonth.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+  const totalAmount = thisMonth.reduce((s, o) => s + orderTotal(o), 0);
   document.getElementById('oCnt-amount').textContent = fmtMoney(totalAmount) + '원';
   document.getElementById('oCnt-invoice').textContent = thisMonth.filter(o => o.invoice_status === '미발행').length;
   document.getElementById('oCnt-payment').textContent = thisMonth.filter(o => o.payment_status === '미입금').length;
@@ -4201,7 +4248,7 @@ function renderOrderStats(filtered) {
     if (!o.owner) return;
     owners[o.owner] = owners[o.owner] || { count: 0, amount: 0 };
     owners[o.owner].count++;
-    owners[o.owner].amount += Number(o.amount) || 0;
+    owners[o.owner].amount += orderTotal(o);
   });
   const ownerEntries = Object.entries(owners).sort((a,b) => b[1].amount - a[1].amount).slice(0, 8);
   const oeEl = document.getElementById('ordersOwnersBody');
@@ -4568,6 +4615,10 @@ function openOrderModal(id) {
     }
     document.getElementById('oOwner').value = o.owner || '';
     document.getElementById('oAmountMemo').value = o.amount_memo || '';
+    document.getElementById('oSponsoredStatus').value = o.sponsored_status || '없음';
+    document.getElementById('oSponsoredAmount').value = o.sponsored_amount ? fmtMoney(o.sponsored_amount) : '';
+    document.getElementById('oSponsoredMemo').value   = o.sponsored_memo || '';
+    updateOrderTotal();
     document.getElementById('oInvoiceStatus').value = o.invoice_status || '미발행';
     document.getElementById('oPaymentStatus').value = o.payment_status || '미입금';
     document.getElementById('oNotes').value = o.notes || '';
@@ -4588,6 +4639,10 @@ function openOrderModal(id) {
     document.getElementById('oAmountBreakdown').style.display = 'none';
     document.getElementById('oOwner').value = '';
     document.getElementById('oAmountMemo').value = '';
+    document.getElementById('oSponsoredStatus').value = '없음';
+    document.getElementById('oSponsoredAmount').value = '';
+    document.getElementById('oSponsoredMemo').value = '';
+    updateOrderTotal();
     document.getElementById('oInvoiceStatus').value = '미발행';
     document.getElementById('oPaymentStatus').value = '미입금';
     document.getElementById('oNotes').value = '';
@@ -4656,6 +4711,9 @@ async function _saveOrder() {
   const amount         = parseMoney(document.getElementById('oAmount').value);
   const amount_inc_vat = parseMoney(document.getElementById('oAmountIncVat').value);
   const amount_memo    = document.getElementById('oAmountMemo').value.trim();
+  const sponsored_status = document.getElementById('oSponsoredStatus').value;
+  const sponsored_amount = parseMoney(document.getElementById('oSponsoredAmount').value);
+  const sponsored_memo   = document.getElementById('oSponsoredMemo').value.trim();
   const invoice_status = document.getElementById('oInvoiceStatus').value;
   const payment_status = document.getElementById('oPaymentStatus').value;
   const owner          = document.getElementById('oOwner').value.trim();
@@ -4670,11 +4728,11 @@ async function _saveOrder() {
     const idx = orders.findIndex(o => String(o.id) === String(editingOrderId));
     if (idx === -1) return;
     const prev = orders[idx];
-    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, invoice_status, payment_status, owner, status, notes };
+    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
     // 세금계산서 스냅샷 동기화: 수주 금액을 그대로 따르던 값이면 새 금액으로 갱신(수동 override는 보존)
     // → 수주 금액 수정 후 세금계산서 공유 시 옛 금액이 뜨던 문제 방지
-    if (prev.inv_amount && Number(prev.inv_amount) === Number(prev.amount) && Number(amount) !== Number(prev.amount)) {
-      item.inv_amount = Number(amount) || 0;
+    if (prev.inv_amount && Number(prev.inv_amount) === orderTotal(prev) && orderTotal(item) !== orderTotal(prev)) {
+      item.inv_amount = orderTotal(item);
     }
     if (prev.inv_content && prev.inv_content === titleWithChannels(prev.title, prev.channels) &&
         titleWithChannels(prev.title, prev.channels) !== titleWithChannels(title, channels)) {
@@ -4682,7 +4740,7 @@ async function _saveOrder() {
     }
     orders[idx] = item;
   } else {
-    item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, invoice_status, payment_status, owner, status, notes };
+    item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
     orders.push(item);
     pinnedNewOrderIds.unshift(item.id);  // 새로 추가한 수주는 최상단으로 (탭 전환 전까지 유지)
   }
@@ -4781,7 +4839,7 @@ function renderOrderPickerList(q) {
   list.innerHTML = filtered.slice(0, 50).map(o => `
     <div class="opl-item" onclick="pickOrder('${o.id}')">
       <div>${escapeHtml(o.company)} / ${escapeHtml(o.title)}</div>
-      <div class="opl-meta">${escapeHtml(o.order_date || '-')} · ${escapeHtml(o.status)} · ${fmtMoney(o.amount)}원</div>
+      <div class="opl-meta">${escapeHtml(o.order_date || '-')} · ${escapeHtml(o.status)} · ${fmtMoney(orderTotal(o))}원</div>
     </div>
   `).join('');
 }
@@ -6324,7 +6382,7 @@ function openInvoiceModal(orderId) {
   document.getElementById('iEmail').value = o.inv_email || lookupByOwner('inv_email') || '';
   document.getElementById('iEmailCc').value = o.inv_email_cc || lookupByOwner('inv_email_cc') || '';
   document.getElementById('iContent').value = o.inv_content || titleWithChannels(o.title, o.channels);
-  document.getElementById('iAmount').value = o.inv_amount ? fmtMoney(o.inv_amount) : (o.amount ? fmtMoney(o.amount) : '');
+  document.getElementById('iAmount').value = o.inv_amount ? fmtMoney(o.inv_amount) : (orderTotal(o) ? fmtMoney(orderTotal(o)) : '');
   document.getElementById('iIssueDate').value = o.inv_issue_date || '';
   document.getElementById('iPaymentDue').value = o.inv_payment_due || '';
   document.getElementById('iStatus').value = o.invoice_status || '미발행';
