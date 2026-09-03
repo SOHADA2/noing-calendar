@@ -2823,7 +2823,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.32.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.32.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -5043,6 +5043,20 @@ async function generateQuote() {
       qty: 1,
       price: totalAmount,
     }];
+  }
+
+  // 콘텐츠 스폰서드(메타 대행 집행)가 있으면 별도 항목으로 한 줄 추가 → 견적 총액에 반영
+  const spAmount = Number(o.sponsored_amount) || 0;
+  if (spAmount > 0) {
+    const spDesc = ['메타 스폰서드 대행 집행', o.sponsored_status && o.sponsored_status !== '없음' ? o.sponsored_status : '', o.sponsored_memo || '']
+      .filter(Boolean).join(' · ');
+    quoteItems.push({
+      category: '콘텐츠 스폰서드',
+      desc: spDesc,
+      channel: '',
+      qty: 1,
+      price: spAmount,
+    });
   }
 
   renderQuoteItems();
