@@ -2823,7 +2823,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.32.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.32.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3717,7 +3717,9 @@ let ORDER_COLUMNS = [
   { key: 'company',        label: '업체',         sortable: true, render: (o) => escapeHtml(o.company) },
   { key: 'title',          label: '제목',         sortable: true, tdClass: 'title', render: (o) => escapeHtml(o.title) },
   { key: 'ad_type',        label: '유형',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.ad_type) },
-  { key: 'amount',         label: '금액',         sortable: true, thClass: 'num', tdClass: 'amount', render: (o) => (Number(o.sponsored_amount) ? '<span style="font-size:9px;color:var(--accent);font-weight:700;margin-right:5px">+SP</span>' : '') + fmtMoney(orderTotal(o)) },
+  { key: 'amount',         label: '금액',         sortable: true, thClass: 'num', tdClass: 'amount', render: (o) => Number(o.sponsored_amount)
+      ? '<span style="position:relative"><span style="position:absolute;right:100%;top:1px;margin-right:4px;font-size:9px;color:var(--accent);font-weight:700">+SP</span>' + fmtMoney(orderTotal(o)) + '</span>'
+      : fmtMoney(orderTotal(o)) },
   { key: 'invoice_status', label: '세금계산서',   sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell invoice-badge ${o.invoice_status}" data-bulk="invoice" data-oid="${o.id}" title="클릭: 상태 변경 · 드래그/Shift·Ctrl 클릭: 여러 건 선택 (상세는 제목 클릭 모달)">${escapeHtml(o.invoice_status)}</span>` },
   { key: 'payment_status', label: '입금',         sortable: true, thClass: 'center', tdClass: 'center', render: (o) => `<span class="bulk-cell payment-badge ${o.payment_status}" data-bulk="payment" data-oid="${o.id}" title="클릭: 상태 변경 · 드래그/Shift·Ctrl 클릭: 여러 건 선택">${escapeHtml(o.payment_status)}</span>` },
   { key: 'owner',          label: '담당자',       sortable: true, thClass: 'center', tdClass: 'center', render: (o) => escapeHtml(o.owner) },
