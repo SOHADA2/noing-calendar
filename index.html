@@ -2823,7 +2823,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.32.3';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.32.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3006,7 +3006,7 @@ async function startFirestoreSync() {
     restoreInsightUrls(); restoreResvUrls(); saveLocal(); render(); mark('contents');
   }, err => { console.error('contents sync:', err); setStatus('동기화 오류', 'err'); });
   FB.onSnapshot(FB.collection(FB.db, 'orders'), snap => {
-    orders = snap.docs.map(d => d.data());
+    orders = snap.docs.map(d => sanitizeOrderDates(d.data()));
     saveOrdersLocal(); renderOrders(); mark('orders');
   }, err => { console.error('orders sync:', err); setStatus('동기화 오류', 'err'); });
   FB.onSnapshot(FB.collection(FB.db, 'quotes'), snap => {
@@ -3159,8 +3159,22 @@ function setResvMap(id, urls) { const m = loadResvMap(); if (urls && urls.replac
 function restoreResvUrls() { const m = loadResvMap(); contents.forEach(c => { const v = m[String(c.id)]; if (v && !((c.reservation_urls || '').replace(/\|/g, '').trim())) c.reservation_urls = v; }); }
 
 // ── Sheet sync ──
+// 시트 시절 '빈 날짜'가 에폭/엑셀 기준일로 변환돼 저장된 흔적 → 빈 값으로 되돌린다
+const LEGACY_EMPTY_DATE = /^(1970-01-0[12]|1969-12-3[01]|1899-12-3[01]|1900-01-0[12])/;
+function cleanLegacyDate(v) {
+  const t = String(v == null ? '' : v).trim();
+  return LEGACY_EMPTY_DATE.test(t) ? '' : v;
+}
+function sanitizeOrderDates(o) {
+  if (!o) return o;
+  o.inv_issue_date  = cleanLegacyDate(o.inv_issue_date);
+  o.inv_payment_due = cleanLegacyDate(o.inv_payment_due);
+  return o;
+}
+
 function normalizeDate(v) {
   if (!v) return '';
+  if (LEGACY_EMPTY_DATE.test(String(v).trim())) return '';
   if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   const d = new Date(v);
   if (isNaN(d.getTime())) return String(v);
@@ -6425,7 +6439,7 @@ async function _saveInvoiceInfo() {
   const inv_email_cc = document.getElementById('iEmailCc').value.trim();
   const inv_content = document.getElementById('iContent').value.trim();
   const inv_amount = parseMoney(document.getElementById('iAmount').value);
-  const inv_issue_date = document.getElementById('iIssueDate').value;
+  const inv_issue_date = cleanLegacyDate(document.getElementById('iIssueDate').value);
   const inv_payment_due = document.getElementById('iPaymentDue').value;
   const invoice_status = document.getElementById('iStatus').value;
 
