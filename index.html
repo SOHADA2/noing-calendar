@@ -2806,6 +2806,15 @@
     </div>
 
     <div class="form-group">
+      <label>데이터 점검 (날짜 · 금액)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" onclick="runDataAudit()" style="white-space:nowrap">🔍 전수 점검</button>
+        <span id="auditSummary" style="font-size:11px;color:var(--text-3)">수주·콘텐츠·견적의 날짜/금액 이상값을 찾습니다</span>
+      </div>
+      <div id="auditResult" style="display:none;margin-top:8px;max-height:260px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;line-height:1.7"></div>
+    </div>
+
+    <div class="form-group">
       <label>저장된 이미지 (이 기기)</label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="imgCacheInfo" readonly value="(확인 중...)" style="flex:1" />
@@ -2823,7 +2832,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.32.4';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.33.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -5027,13 +5036,14 @@ async function generateQuote() {
     const jejakCost = Math.min(totalAmount, CONTRACT_RATES.제작);   // 콘텐츠 제작비(기본 50만)
     const pubTotal = Math.max(0, totalAmount - jejakCost);
     const chs = channels.length ? channels : [''];
-    const perPub = Math.round(pubTotal / chs.length);
-    quoteItems = chs.map(ch => ({
+    const perPub = Math.floor(pubTotal / chs.length);
+    const pubRest = pubTotal - perPub * chs.length;      // 나머지는 마지막 항목에 (합계 보존)
+    quoteItems = chs.map((ch, i) => ({
       category: '채널 발행',
       desc: o.title || '',
       channel: ch ? (CHANNEL_FULLNAME[ch.toLowerCase()] || ch) : '',
       qty: 1,
-      price: perPub,
+      price: perPub + (i === chs.length - 1 ? pubRest : 0),
     }));
     quoteItems.push({
       category: '콘텐츠 제작',
@@ -5043,13 +5053,14 @@ async function generateQuote() {
       price: jejakCost,
     });
   } else if (channels.length > 0) {
-    const perChannelPrice = Math.round(totalAmount / channels.length);
-    quoteItems = channels.map(ch => ({
+    const perChannelPrice = Math.floor(totalAmount / channels.length);
+    const chRest = totalAmount - perChannelPrice * channels.length;   // 나머지는 마지막 항목에
+    quoteItems = channels.map((ch, i) => ({
       category: '채널발행',
       desc: o.title || '',
       channel: CHANNEL_FULLNAME[ch.toLowerCase()] || ch,
       qty: 1,
-      price: perChannelPrice,
+      price: perChannelPrice + (i === channels.length - 1 ? chRest : 0),
     }));
   } else {
     quoteItems = [{
@@ -8126,6 +8137,88 @@ function openSettings() {
   if (au) au.value = apiUrl;
   document.getElementById('settingsOverlay').classList.add('open');
 }
+// 날짜·금액 전수 점검 — 저장된 값만 읽고 아무것도 고치지 않는다(보고 전용)
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function runDataAudit() {
+  const issues = [];
+  const add = (kind, where, msg) => issues.push({ kind, where, msg });
+  const yr = new Date().getFullYear();
+
+  orders.forEach(o => {
+    const who = `${o.order_date || '?'} ${o.company || ''} ${o.title || ''}`.trim().slice(0, 40);
+    // 날짜
+    if (!o.order_date) add('날짜', who, '수주일 비어 있음');
+    else if (!DATE_RE.test(o.order_date)) add('날짜', who, '수주일 형식 이상: ' + o.order_date);
+    else {
+      const y = Number(o.order_date.slice(0, 4));
+      if (y < 2015 || y > yr + 2) add('날짜', who, '수주일 연도 이상: ' + o.order_date);
+    }
+    ['inv_issue_date', 'inv_payment_due'].forEach(k => {
+      const v = String(o[k] || '').trim();
+      if (!v) return;
+      if (LEGACY_EMPTY_DATE.test(v)) add('날짜', who, k + ' 잘못된 값: ' + v);
+      else if (DATE_RE.test(v)) {
+        const y = Number(v.slice(0, 4));
+        if (y < 2015 || y > yr + 2) add('날짜', who, k + ' 연도 이상: ' + v);
+      }
+    });
+    // 금액
+    const amt = Number(o.amount);
+    if (o.amount != null && !Number.isFinite(amt)) add('금액', who, '광고비가 숫자가 아님: ' + o.amount);
+    else if (amt < 0) add('금액', who, '광고비 음수: ' + amt);
+    else if (!amt && o.status === '완료') add('금액', who, '완료인데 광고비 0원');
+    const sp = Number(o.sponsored_amount || 0);
+    if (sp < 0) add('금액', who, '스폰서드 음수: ' + sp);
+    const iv = Number(o.inv_amount || 0);
+    if (iv && orderTotal(o) && iv !== orderTotal(o)) {
+      add('참고', who, `세금계산서 금액(${fmtMoney(iv)})이 최종 금액(${fmtMoney(orderTotal(o))})과 다름`);
+    }
+  });
+
+  contents.forEach(c => {
+    const who = `${c.date || '?'} ${c.company || ''} ${c.title || ''}`.trim().slice(0, 40);
+    if (!c.date) add('날짜', who, '콘텐츠 발행일 비어 있음');
+    else if (!DATE_RE.test(c.date)) add('날짜', who, '발행일 형식 이상: ' + c.date);
+    else {
+      const y = Number(c.date.slice(0, 4));
+      if (y < 2015 || y > yr + 2) add('날짜', who, '발행일 연도 이상: ' + c.date);
+    }
+    if (c.time && !/^\d{2}:\d{2}$/.test(c.time)) add('날짜', who, '시간 형식 이상: ' + c.time);
+  });
+
+  (quoteHistory || []).forEach(q => {
+    const who = `${q.quote_number || '?'} ${q.recipient || ''}`.trim().slice(0, 40);
+    if (q.quote_date && !DATE_RE.test(q.quote_date)) add('날짜', who, '견적일 형식 이상: ' + q.quote_date);
+    if (q.quote_date && LEGACY_EMPTY_DATE.test(q.quote_date)) add('날짜', who, '견적일 잘못된 값: ' + q.quote_date);
+    // 항목 합계 vs 저장된 총액
+    try {
+      const items = typeof q.items_json === 'string' ? JSON.parse(q.items_json) : (q.items || []);
+      if (Array.isArray(items) && items.length && q.total_amount) {
+        const sum = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.price) || 0), 0);
+        const withVat = sum + Math.round(sum * 0.1);
+        if (Number(q.total_amount) !== sum && Number(q.total_amount) !== withVat) {
+          add('금액', who, `견적 항목 합계(${fmtMoney(sum)})와 저장 총액(${fmtMoney(q.total_amount)}) 불일치`);
+        }
+      }
+    } catch (e) {}
+  });
+
+  const box = document.getElementById('auditResult');
+  const sum = document.getElementById('auditSummary');
+  const counts = { 날짜: 0, 금액: 0, 참고: 0 };
+  issues.forEach(i => counts[i.kind]++);
+  sum.textContent = `수주 ${orders.length} · 콘텐츠 ${contents.length} · 견적 ${(quoteHistory || []).length} 검사 → 날짜 ${counts.날짜} · 금액 ${counts.금액} · 참고 ${counts.참고}`;
+  box.style.display = '';
+  if (!issues.length) {
+    box.innerHTML = '<span style="color:var(--ok,#7fbf7f)">이상 없음 — 날짜·금액 모두 정상입니다.</span>';
+    return;
+  }
+  const color = k => k === '금액' ? 'var(--err)' : (k === '날짜' ? 'var(--accent)' : 'var(--text-3)');
+  box.innerHTML = issues.slice(0, 200).map(i =>
+    `<div><b style="color:${color(i.kind)}">[${i.kind}]</b> ${escapeHtml(i.where)} — ${escapeHtml(i.msg)}</div>`
+  ).join('') + (issues.length > 200 ? `<div style="color:var(--text-3);margin-top:4px">…외 ${issues.length - 200}건</div>` : '');
+}
+
 function closeSettings() {
   document.getElementById('settingsOverlay').classList.remove('open');
 }
