@@ -1338,12 +1338,21 @@
     .due-col { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
     .due-inputs { display: flex; gap: 4px; }
     .due-inputs input[type=number] {
+      flex: 0 0 40px;
+      width: 40px;
+      min-width: 0;
+      padding: 7px 2px;
+      font-size: 13px;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+    .due-inputs input[type=time] {
+      flex: 1 1 auto;
       width: 100%;
       min-width: 0;
       padding: 7px 4px;
       font-size: 13px;
       text-align: center;
-      -moz-appearance: textfield;
     }
     .due-inputs input[type=number]::-webkit-outer-spin-button,
     .due-inputs input[type=number]::-webkit-inner-spin-button {
@@ -2697,26 +2706,26 @@
     </div>
 
     <div class="form-group">
-      <label>데드라인 (선택) <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 일 / 시만 입력</span></label>
+      <label>데드라인 (선택) <span style="color:var(--text-4);font-weight:400;text-transform:none;letter-spacing:0">— 일 + 시각(분까지)</span></label>
       <div class="due-grid">
         <div class="due-col">
           <div class="due-inputs">
             <input type="number" id="fDueStoryboardDay" placeholder="일" min="1" max="31" />
-            <input type="number" id="fDueStoryboardHour" placeholder="시" min="0" max="23" />
+            <input type="time" id="fDueStoryboardTime" step="300" />
           </div>
           <div class="due-label">콘티</div>
         </div>
         <div class="due-col">
           <div class="due-inputs">
             <input type="number" id="fDueShootDay" placeholder="일" min="1" max="31" />
-            <input type="number" id="fDueShootHour" placeholder="시" min="0" max="23" />
+            <input type="time" id="fDueShootTime" step="300" />
           </div>
           <div class="due-label">촬영</div>
         </div>
         <div class="due-col">
           <div class="due-inputs">
             <input type="number" id="fDueDraftDay" placeholder="일" min="1" max="31" />
-            <input type="number" id="fDueDraftHour" placeholder="시" min="0" max="23" />
+            <input type="time" id="fDueDraftTime" step="300" />
           </div>
           <div class="due-label">초안</div>
         </div>
@@ -2832,7 +2841,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.33.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.34.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3276,13 +3285,13 @@ function fmtDueDisplay(s) {
 }
 
 function extractDueParts(s) {
-  if (!s) return { day: '', hour: '' };
-  const m = String(s).match(/^\d{4}-\d{2}-(\d{2})(?:T(\d{2}))?/);
-  if (!m) return { day: '', hour: '' };
-  return { day: parseInt(m[1], 10), hour: m[2] != null ? parseInt(m[2], 10) : '' };
+  if (!s) return { day: '', time: '' };
+  const m = String(s).match(/^\d{4}-\d{2}-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return { day: '', time: '' };
+  return { day: parseInt(m[1], 10), time: m[2] != null ? `${m[2]}:${m[3]}` : '' };
 }
 
-function buildDueDate(dayStr, hourStr, refDate) {
+function buildDueDate(dayStr, timeStr, refDate) {
   if (!dayStr) return '';
   const d = parseInt(dayStr, 10);
   if (isNaN(d) || d < 1 || d > 31) return '';
@@ -3296,12 +3305,13 @@ function buildDueDate(dayStr, hourStr, refDate) {
   }
   const mm = String(mo).padStart(2, '0');
   const dd = String(d).padStart(2, '0');
-  if (hourStr === '' || hourStr == null) {
-    return `${y}-${mm}-${dd}`;
-  }
-  const h = Math.max(0, Math.min(23, parseInt(hourStr, 10) || 0));
-  const hh = String(h).padStart(2, '0');
-  return `${y}-${mm}-${dd}T${hh}:00`;
+  const t = String(timeStr == null ? '' : timeStr).trim();
+  if (!t) return `${y}-${mm}-${dd}`;
+  const tm = t.match(/^(\d{1,2}):(\d{2})/);
+  if (!tm) return `${y}-${mm}-${dd}`;
+  const h = Math.max(0, Math.min(23, parseInt(tm[1], 10) || 0));
+  const mi = Math.max(0, Math.min(59, parseInt(tm[2], 10) || 0));
+  return `${y}-${mm}-${dd}T${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
 }
 
 // 진행 중인 시트 푸시 카운터 — 새로고침/닫기 시 경고용
@@ -7247,11 +7257,11 @@ function openModal(dateStr, id) {
     const sh = extractDueParts(c.due_shoot);
     const dr = extractDueParts(c.due_draft);
     document.getElementById('fDueStoryboardDay').value = sb.day;
-    document.getElementById('fDueStoryboardHour').value = sb.hour;
+    document.getElementById('fDueStoryboardTime').value = sb.time;
     document.getElementById('fDueShootDay').value = sh.day;
-    document.getElementById('fDueShootHour').value = sh.hour;
+    document.getElementById('fDueShootTime').value = sh.time;
     document.getElementById('fDueDraftDay').value = dr.day;
-    document.getElementById('fDueDraftHour').value = dr.hour;
+    document.getElementById('fDueDraftTime').value = dr.time;
     document.getElementById('fMemo').value = c.memo || '';
     document.getElementById('fUrl').value = c.publish_url || '';
     insightEditUrls = (c.insight_urls || '').split('|').filter(Boolean);
@@ -7274,11 +7284,11 @@ function openModal(dateStr, id) {
     document.getElementById('fOwner').value = '';
     setOrderLink('');
     document.getElementById('fDueStoryboardDay').value = '';
-    document.getElementById('fDueStoryboardHour').value = '';
+    document.getElementById('fDueStoryboardTime').value = '';
     document.getElementById('fDueShootDay').value = '';
-    document.getElementById('fDueShootHour').value = '';
+    document.getElementById('fDueShootTime').value = '';
     document.getElementById('fDueDraftDay').value = '';
-    document.getElementById('fDueDraftHour').value = '';
+    document.getElementById('fDueDraftTime').value = '';
     document.getElementById('fMemo').value = '';
     document.getElementById('fUrl').value = '';
     insightEditUrls = [];
@@ -8037,15 +8047,15 @@ async function _saveContent() {
 
   const due_storyboard = buildDueDate(
     document.getElementById('fDueStoryboardDay').value,
-    document.getElementById('fDueStoryboardHour').value,
+    document.getElementById('fDueStoryboardTime').value,
     date);
   const due_shoot = buildDueDate(
     document.getElementById('fDueShootDay').value,
-    document.getElementById('fDueShootHour').value,
+    document.getElementById('fDueShootTime').value,
     date);
   const due_draft = buildDueDate(
     document.getElementById('fDueDraftDay').value,
-    document.getElementById('fDueDraftHour').value,
+    document.getElementById('fDueDraftTime').value,
     date);
 
   const order_id = document.getElementById('fOrderId').value || '';
