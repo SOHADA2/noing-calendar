@@ -299,12 +299,21 @@
     .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
     .folder { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; text-align: left; color: var(--text); font-family: inherit; }
     .folder:hover { border-color: var(--border-2); background: var(--bg-3); }
-    .folder .fan { position: relative; height: 128px; margin-bottom: 10px; }
-    .folder .fan > * { position: absolute; bottom: 0; height: 116px; aspect-ratio: 9/16; object-fit: cover; border-radius: 7px; border: 2px solid var(--bg-2); background: var(--bg-3); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
-    .folder .fan > :nth-child(1) { left: 6%; transform: rotate(-7deg); }
-    .folder .fan > :nth-child(2) { left: 34%; z-index: 1; }
-    .folder .fan > :nth-child(3) { left: 62%; transform: rotate(7deg); }
-    .folder .fan > .ph { display: grid; place-items: center; color: var(--text-4); font-size: 18px; }
+    /* 폴더 안 썸네일: 개수에 맞춰 가운데 기준으로 대칭 배치 (1장=똑바로, 2장=양쪽으로 살짝, 3장=부채꼴) */
+    .folder .fan { display: flex; justify-content: center; align-items: flex-end; height: 132px; margin-bottom: 10px; padding-top: 6px; }
+    .folder .fan > * { flex: none; height: 118px; aspect-ratio: 9/16; object-fit: cover; border-radius: 7px; border: 2px solid var(--bg-2); background: var(--bg-3); box-shadow: 0 3px 10px rgba(0,0,0,.35); margin: 0 -9px; position: relative; }
+    .folder .fan.n2 > :nth-child(1) { transform: rotate(-5deg); }
+    .folder .fan.n2 > :nth-child(2) { transform: rotate(5deg); }
+    .folder .fan.n3 > :nth-child(1) { transform: rotate(-8deg) translateY(2px); }
+    .folder .fan.n3 > :nth-child(2) { z-index: 1; transform: translateY(-4px); }
+    .folder .fan.n3 > :nth-child(3) { transform: rotate(8deg) translateY(2px); }
+    .folder .fan > .ph, .plan-card .pc-thumb .ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; text-align: center; color: var(--text-3); font-size: 10.5px; line-height: 1.35; word-break: keep-all; background: linear-gradient(160deg, var(--bg-3), #3a3430); }
+    .folder .fan > .ph b, .plan-card .pc-thumb .ph b { font-size: 10px; font-weight: 700; color: var(--accent-2); letter-spacing: .02em; }
+    .plan-card .pc-thumb .ph { position: absolute; inset: 0; font-size: 12px; padding: 14px; }
+    .pc-del { position: absolute; right: 7px; top: 7px; z-index: 2; border: 0; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-family: inherit; background: rgba(0,0,0,.65); color: #f0d0c8; cursor: pointer; opacity: 0; transition: opacity .15s; }
+    .plan-card:hover .pc-del, .plan-card:focus-within .pc-del { opacity: 1; }
+    .pc-del:hover { background: var(--err); color: #fff; }
+    @media (hover: none) { .pc-del { opacity: 1; } }
     .folder .fname { font-weight: 600; font-size: 14px; }
     .folder .fmeta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
     .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
@@ -2909,7 +2918,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.36.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.36.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3731,7 +3740,7 @@ function planCard(p) {
   const st = p.status === 'done' ? 'done' : 'draft', type = p.type === 'cardnews' ? 'cardnews' : 'reels';
   const b = planEl('button', `plan-card ${type} ${st}`); b.type = 'button';
   const th = planEl('div', 'pc-thumb');
-  if (p.thumb) { const im = planEl('img'); im.src = p.thumb; im.alt = ''; im.loading = 'lazy'; th.append(im); } else th.textContent = '그림 없음';
+  th.append(planThumb(p, 'large'));
   const bd = planEl('div', 'pc-badges');
   bd.append(planEl('span', 'pc-badge ' + type, type === 'reels' ? '릴스' : '카드뉴스'), planEl('span', 'pc-badge ' + st, st === 'done' ? '완성' : '작성 중'));
   th.append(bd); b.append(th);
@@ -3746,7 +3755,33 @@ function planCard(p) {
   const u = p.updatedAt ? new Date(p.updatedAt) : null;
   b.title = `${p.title || ''}\n마지막 저장 ${u ? `${u.getMonth() + 1}.${u.getDate()} ${String(u.getHours()).padStart(2, '0')}:${String(u.getMinutes()).padStart(2, '0')}` : '-'}${p.updatedBy ? ' · ' + p.updatedBy : ''}`;
   b.onclick = () => window.open(planUrl(p), '_blank');
+  const del = planEl('span', 'pc-del', '삭제'); del.setAttribute('role', 'button'); del.tabIndex = 0; del.title = '이 콘티 삭제';
+  del.onclick = e => { e.stopPropagation(); deleteConti(p); };
+  del.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteConti(p); } };
+  th.append(del);
   return b;
+}
+// 썸네일: 저장된 작은 그림, 없으면 제목이 들어간 카드
+function planThumb(p, size) {
+  if (p.thumb) { const im = planEl('img'); im.src = p.thumb; im.alt = ''; im.loading = 'lazy'; return im; }
+  const ph = planEl('div', 'ph');
+  ph.append(planEl('b', null, p.type === 'cardnews' ? '카드뉴스' : '릴스'), planEl('span', null, (p.title || '제목 없음').slice(0, size === 'large' ? 40 : 18)));
+  if (size === 'large') ph.append(planEl('span', null, '아직 사진 없음'));
+  return ph;
+}
+// 콘티 삭제 — 글 문서와 사진(media) 모두 지운다. 되돌릴 수 없다
+async function deleteConti(p) {
+  if (!confirm(`'${p.title || '제목 없음'}' 콘티를 삭제할까요?\n사진까지 모두 지워지고 되돌릴 수 없습니다.`)) return;
+  const FB = await fbReady();
+  try {
+    const ms = await FB.getDocs(FB.collection(FB.db, 'contis', p.id, 'media'));
+    for (const d of ms.docs) await FB.deleteDoc(FB.doc(FB.db, 'contis', p.id, 'media', d.id));
+    await FB.deleteDoc(FB.doc(FB.db, 'contis', p.id));
+    plans = plans.filter(x => x.id !== p.id);
+    if (planF.folder !== null && !plans.length) planF.folder = null;
+    renderPlans();
+    if (typeof showToast === 'function') showToast('콘티를 삭제했습니다');
+  } catch (e) { alert('삭제하지 못했습니다 — ' + (e.message || e)); }
 }
 function renderPlans(msg) {
   const body = document.getElementById('plansBody'), crumb = document.getElementById('plansCrumb');
@@ -3761,7 +3796,7 @@ function renderPlans(msg) {
   document.getElementById('plansCount').textContent = `${list.length}건`;
   if (!list.length) {
     body.append(planEl('div', 'plans-empty', plans.length ? '조건에 맞는 콘티가 없습니다'
-      : '아직 저장된 콘티가 없습니다.\n달력에서 릴스 콘텐츠를 누르고 [📋 콘티 만들기]를 누르거나, 오른쪽 위 [+ 새 릴스 기획]으로 시작하세요.'));
+      : '아직 저장된 콘티가 없습니다.\n달력에서 릴스 콘텐츠를 누르고 [콘티 만들기]를 누르거나, 오른쪽 위 [+ 새 릴스 기획]으로 시작하세요.'));
     body.firstChild.style.whiteSpace = 'pre-line';
     return;
   }
@@ -3781,8 +3816,8 @@ function renderPlans(msg) {
   const fg = planEl('div', 'folder-grid');
   keys.forEach(k => {
     const items = groups.get(k), f = planEl('button', 'folder'); f.type = 'button';
-    const fan = planEl('div', 'fan');
-    items.slice(0, 3).forEach(p => { if (p.thumb) { const im = planEl('img'); im.src = p.thumb; im.alt = ''; fan.append(im); } else fan.append(planEl('div', 'ph', '🎬')); });
+    const shown = items.slice(0, 3), fan = planEl('div', 'fan n' + shown.length);
+    shown.forEach(p => fan.append(planThumb(p, 'small')));
     const done = items.filter(p => p.status === 'done').length;
     f.append(fan, planEl('div', 'fname', '📁 ' + nameOf(k)), planEl('div', 'fmeta', `${items.length}건 · 완성 ${done} · 작성 중 ${items.length - done}`));
     f.onclick = () => { planF.folder = k; renderPlans(); };
@@ -4244,7 +4279,7 @@ function openContentActionMenu(id, x, y) {
     `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
     `<div class="menu-status-label">상태 변경</div><div class="menu-status-row">${statusPills}</div>` +
     `<button class="bulk-menu-opt" data-act="edit">콘텐츠 수정</button>` +
-    (contiOk ? `<button class="bulk-menu-opt" data-act="conti">${plans.some(p => p.id === 'c-' + c.id) ? '📋 콘티 열기' : '📋 콘티 만들기'}</button>` : '') +
+    (contiOk ? `<button class="bulk-menu-opt" data-act="conti">${plans.some(p => p.id === 'c-' + c.id) ? '콘티 열기' : '콘티 만들기'}</button>` : '') +
     ((c.insight_urls || '').trim() ? `<button class="bulk-menu-opt" data-act="insight">📄 인사이트 보고서</button>` : '') +
     orderActs.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
     (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`);

@@ -498,6 +498,7 @@ body[data-view="noing"] .only-client{display:none!important}
     <div class="filemenu">
       <div class="row"><button class="btn primary" onclick="exportJson()">저장 파일 받기</button><span>사진까지 모두 들어 있는 파일 하나로 받습니다</span></div>
       <div class="row"><button class="btn" onclick="$('#jsonPick').value='';$('#jsonPick').click()">저장 파일 열기</button><span>받아 둔 저장 파일로 이어서 작업합니다 (지금 내용은 바뀝니다)</span></div>
+      <div class="row" id="delRow" hidden><button class="btn" style="color:#c0392b;border-color:#f0c4bc" onclick="deleteThisConti()">이 콘티 삭제</button><span>서버에서 글과 사진을 모두 지웁니다 (되돌릴 수 없음)</span></div>
       <div class="row"><button class="btn" onclick="startNew()">새 콘티 시작</button><span>지금 내용을 비우고 처음부터 (먼저 저장 파일을 받아 두세요)</span></div>
     </div>
     <div class="foot"><button class="btn" onclick="closeM(mFile)">닫기</button></div>
@@ -733,6 +734,7 @@ async function remoteSave() {
 }
 let saveTimer, saving = false, saveAgain = false;
 function save() {
+  if (typeof deleted !== 'undefined' && deleted) return;   // 삭제 중·삭제 후에는 다시 저장하지 않는다
   clearTimeout(saveTimer);
   $('#saveBadge').textContent = '저장 중…';
   saveTimer = setTimeout(doSave, FBX ? 1200 : 400);
@@ -1611,6 +1613,7 @@ function renderAll() {
   if (FBX) {
     $('.mock-banner').innerHTML = '<b>릴스 콘티</b> · 서버에 자동 저장됩니다(달력과 같은 계정). 팀원도 달력의 <b>[콘텐츠 기획]</b> 탭에서 볼 수 있습니다.';
     $('#fileDesc').textContent = '작업 내용은 서버에 자동 저장되고, 달력의 [콘텐츠 기획] 탭에 모입니다. 보관용 파일이 필요하면 저장 파일(.json)을 받아 두세요.';
+    $('#delRow').hidden = false;
     CONTI_ID = QS.get('id') || (CID ? 'c-' + CID : null);
     let isNew = false;
     if (!CONTI_ID) { CONTI_ID = 'p-' + Date.now().toString(36) + uid().slice(0, 3); history.replaceState(null, '', location.pathname + '?id=' + CONTI_ID); isNew = true; }
@@ -1632,6 +1635,21 @@ function renderAll() {
   renderAll();
   if (CID && S.cal) save();
 })();
+// 이 콘티 삭제 (서버 모드) — 글 문서와 사진을 모두 지우고 달력의 콘텐츠 기획 탭으로 돌아간다
+let deleted = false;
+async function deleteThisConti() {
+  if (!FBX || !CONTI_ID) return;
+  if (!confirm(`'${S.info.title || '제목 없음'}' 콘티를 삭제할까요?\n사진까지 모두 지워지고 되돌릴 수 없습니다.`)) return;
+  clearTimeout(saveTimer); deleted = true;
+  const F = FBX.F;
+  try {
+    const ms = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'media'));
+    for (const d of ms.docs) await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'media', d.id));
+    await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID));
+    alert('콘티를 삭제했습니다. 달력의 콘텐츠 기획 탭으로 이동합니다.');
+    location.href = '../';
+  } catch (e) { deleted = false; alert('삭제하지 못했습니다 — ' + e.message); }
+}
 async function doLogin(e) {
   e.preventDefault();
   $('#lgMsg').textContent = '로그인 중…';
