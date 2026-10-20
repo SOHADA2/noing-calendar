@@ -283,6 +283,54 @@
     .view { display: none; }
     .view.active { display: block; }
 
+    /* ── 콘텐츠 기획 (서버에 저장된 콘티 모아 보기) ── */
+    .plans-wrap { max-width: 1280px; margin: 16px auto 40px; padding: 0 20px; }
+    .plans-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .plans-title { font-size: 18px; font-weight: 600; color: var(--text); }
+    .plans-count { color: var(--text-3); font-size: 13px; margin-left: 6px; font-weight: 400; }
+    .plans-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .pseg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+    .pseg button { border: 0; background: transparent; color: var(--text-3); font-size: 12.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+    .pseg button:hover { color: var(--text-2); }
+    .pseg button.on { background: var(--bg-3); color: var(--text); }
+    .plans-search { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; width: 180px; font-family: inherit; }
+    .plans-crumb { font-size: 13px; color: var(--text-3); margin: 0 0 12px; min-height: 18px; }
+    .plans-crumb button { background: none; border: 0; color: var(--accent-2); cursor: pointer; font-size: 13px; padding: 0; font-family: inherit; }
+    .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+    .folder { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; text-align: left; color: var(--text); font-family: inherit; }
+    .folder:hover { border-color: var(--border-2); background: var(--bg-3); }
+    .folder .fan { position: relative; height: 128px; margin-bottom: 10px; }
+    .folder .fan > * { position: absolute; bottom: 0; height: 116px; aspect-ratio: 9/16; object-fit: cover; border-radius: 7px; border: 2px solid var(--bg-2); background: var(--bg-3); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
+    .folder .fan > :nth-child(1) { left: 6%; transform: rotate(-7deg); }
+    .folder .fan > :nth-child(2) { left: 34%; z-index: 1; }
+    .folder .fan > :nth-child(3) { left: 62%; transform: rotate(7deg); }
+    .folder .fan > .ph { display: grid; place-items: center; color: var(--text-4); font-size: 18px; }
+    .folder .fname { font-weight: 600; font-size: 14px; }
+    .folder .fmeta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+    .plan-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; text-align: left; color: var(--text); padding: 0; display: flex; flex-direction: column; font-family: inherit; transition: opacity .15s, border-color .15s; }
+    .plan-card:hover { border-color: var(--border-2); }
+    .plan-card .pc-thumb { position: relative; aspect-ratio: 9/16; background: var(--bg-3); display: grid; place-items: center; color: var(--text-4); font-size: 12px; }
+    .plan-card.cardnews .pc-thumb { aspect-ratio: 4/5; }
+    .plan-card .pc-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .pc-badges { position: absolute; left: 8px; top: 8px; display: flex; gap: 4px; z-index: 1; }
+    .pc-badge { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 5px; background: rgba(0,0,0,.62); color: #fff; }
+    .pc-badge.reels { background: var(--accent); }
+    .pc-badge.cardnews { background: var(--info); }
+    .pc-badge.draft { color: var(--warn); }
+    .pc-badge.done { color: var(--ok); }
+    .pc-body { padding: 9px 10px 11px; }
+    .pc-title { font-size: 13px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .pc-meta { font-size: 11.5px; color: var(--text-3); margin-top: 4px; line-height: 1.45; }
+    .plan-card.draft { opacity: .5; filter: grayscale(.35); }
+    .plan-card.draft:hover { opacity: .9; filter: none; }
+    .plans-empty { color: var(--text-3); text-align: center; padding: 56px 0; font-size: 13.5px; line-height: 1.7; }
+    @media (max-width: 640px) {
+      .plans-wrap { padding: 0 12px; }
+      .plan-grid, .folder-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .plans-search { width: 100%; }
+    }
+
     /* ── Orders table ── */
     .orders-layout {
       display: flex;
@@ -2068,6 +2116,7 @@
 <div class="view-tabs">
   <button class="view-tab active" data-view="calendar" onclick="switchView('calendar')">📅 콘텐츠 달력</button>
   <button class="view-tab" data-view="orders" onclick="switchView('orders')">💼 광고 수주</button>
+  <button class="view-tab" data-view="plans" onclick="switchView('plans')">🗂 콘텐츠 기획</button>
 </div>
 
 <div class="filter-bar" id="filterBar">
@@ -2318,6 +2367,24 @@
         <div class="stat-body" id="recentQuotesBody"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="view" id="viewPlans">
+  <div class="plans-wrap">
+    <div class="plans-toolbar">
+      <div class="plans-title">콘텐츠 기획<span class="plans-count" id="plansCount"></span></div>
+      <div class="plans-filters">
+        <div class="pseg" data-k="type"><button data-v="all" class="on">전체</button><button data-v="reels">릴스</button><button data-v="cardnews">카드뉴스</button></div>
+        <div class="pseg" data-k="status"><button data-v="all" class="on">전체</button><button data-v="done">완성</button><button data-v="draft">작성 중</button></div>
+        <div class="pseg" data-k="group"><button data-v="month" class="on">📁 월별</button><button data-v="company">📁 업체별</button><button data-v="flat">전체 보기</button></div>
+        <input class="plans-search" id="planSearch" placeholder="제목·업체·담당자 검색" oninput="renderPlans()" />
+        <button class="btn" onclick="loadPlans(true)" title="새로고침">↻</button>
+        <button class="btn btn-primary" onclick="newPlan('reels')">+ 새 릴스 기획</button>
+      </div>
+    </div>
+    <div class="plans-crumb" id="plansCrumb"></div>
+    <div id="plansBody"></div>
   </div>
 </div>
 
@@ -2842,7 +2909,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.34.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.36.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3631,6 +3698,99 @@ async function init() {
   checkVersion();  // 백그라운드 버전 체크 (3초 후, 메인 작업 방해 안 하도록)
 }
 
+// ── 콘텐츠 기획: 서버(contis 컬렉션)에 저장된 콘티 모아 보기 ──
+// 콘티 화면(conti/reels.html)이 저장할 때 목록용 정보(제목·업체·일정·상태·작은 그림)를 같이 남긴다.
+// 작성 중(draft)은 흐리게. 폴더 = 발행 월별 / 업체별.
+let plans = [], plansLoaded = false;
+const planF = { type: 'all', status: 'all', group: 'month', folder: null };
+document.querySelectorAll('#viewPlans .pseg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  planF[seg.dataset.k] = b.dataset.v;
+  if (seg.dataset.k === 'group') planF.folder = null;
+  renderPlans();
+}));
+async function loadPlans(force) {
+  if (plansLoaded && !force) { renderPlans(); return; }
+  const FB = await fbReady();
+  if (!FB.user) { renderPlans('로그인하면 저장된 콘티가 보입니다'); return; }
+  if (!plansLoaded) renderPlans('불러오는 중…');
+  try {
+    const snap = await FB.getDocs(FB.collection(FB.db, 'contis'));
+    plans = snap.docs.map(d => { const x = d.data(); delete x.data; return { ...x, id: d.id }; });
+    plansLoaded = true; renderPlans();
+  } catch (e) {
+    renderPlans('콘티를 불러오지 못했습니다 — ' + (/permission/i.test(e.message || '') ? '권한이 없습니다(Firestore 보안 규칙에 contis 허용 필요)' : (e.message || e)));
+  }
+}
+function planUrl(p) { return `conti/${p.type === 'cardnews' ? 'cardnews' : 'reels'}.html?id=${encodeURIComponent(p.id)}`; }
+function newPlan(type) { window.open(`conti/${type === 'cardnews' ? 'cardnews' : 'reels'}.html`, '_blank'); }
+const PLAN_CH = { 'one_home_life': 'life', 'one_home_guide': 'guide', 'one_home_mag': 'mag' };
+function planEl(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+function planCard(p) {
+  const st = p.status === 'done' ? 'done' : 'draft', type = p.type === 'cardnews' ? 'cardnews' : 'reels';
+  const b = planEl('button', `plan-card ${type} ${st}`); b.type = 'button';
+  const th = planEl('div', 'pc-thumb');
+  if (p.thumb) { const im = planEl('img'); im.src = p.thumb; im.alt = ''; im.loading = 'lazy'; th.append(im); } else th.textContent = '그림 없음';
+  const bd = planEl('div', 'pc-badges');
+  bd.append(planEl('span', 'pc-badge ' + type, type === 'reels' ? '릴스' : '카드뉴스'), planEl('span', 'pc-badge ' + st, st === 'done' ? '완성' : '작성 중'));
+  th.append(bd); b.append(th);
+  const body = planEl('div', 'pc-body');
+  body.append(planEl('div', 'pc-title', p.title || '(서비스명 없음)'));
+  const ch = Object.entries(PLAN_CH).find(([k]) => (p.channel || '').includes(k))?.[1] || '';
+  const d = p.date ? `${+p.date.slice(5, 7)}.${+p.date.slice(8, 10)}${p.time ? ' ' + p.time : ''}` : '날짜 미정';
+  const m1 = [d, ch].filter(Boolean).join(' · ');
+  const m2 = [p.owner ? '담당 ' + p.owner : '', type === 'reels' ? `클립 ${p.clipCount || 0} · 약 ${p.secs || 0}초` : ''].filter(Boolean).join(' · ');
+  const meta = planEl('div', 'pc-meta'); meta.append(m1); if (m2) { meta.append(document.createElement('br')); meta.append(m2); }
+  body.append(meta); b.append(body);
+  const u = p.updatedAt ? new Date(p.updatedAt) : null;
+  b.title = `${p.title || ''}\n마지막 저장 ${u ? `${u.getMonth() + 1}.${u.getDate()} ${String(u.getHours()).padStart(2, '0')}:${String(u.getMinutes()).padStart(2, '0')}` : '-'}${p.updatedBy ? ' · ' + p.updatedBy : ''}`;
+  b.onclick = () => window.open(planUrl(p), '_blank');
+  return b;
+}
+function renderPlans(msg) {
+  const body = document.getElementById('plansBody'), crumb = document.getElementById('plansCrumb');
+  if (!body) return;
+  body.textContent = ''; crumb.textContent = '';
+  if (msg) { body.append(planEl('div', 'plans-empty', msg)); document.getElementById('plansCount').textContent = ''; return; }
+  const q = (document.getElementById('planSearch').value || '').trim().toLowerCase();
+  const list = plans.filter(p => (planF.type === 'all' || (p.type || 'reels') === planF.type)
+    && (planF.status === 'all' || (p.status === 'done' ? 'done' : 'draft') === planF.status)
+    && (!q || [p.title, p.company, p.owner].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.updatedAt || 0) - (a.updatedAt || 0));
+  document.getElementById('plansCount').textContent = `${list.length}건`;
+  if (!list.length) {
+    body.append(planEl('div', 'plans-empty', plans.length ? '조건에 맞는 콘티가 없습니다'
+      : '아직 저장된 콘티가 없습니다.\n달력에서 릴스 콘텐츠를 누르고 [📋 콘티 만들기]를 누르거나, 오른쪽 위 [+ 새 릴스 기획]으로 시작하세요.'));
+    body.firstChild.style.whiteSpace = 'pre-line';
+    return;
+  }
+  const grid = items => { const g = planEl('div', 'plan-grid'); items.forEach(p => g.append(planCard(p))); return g; };
+  if (planF.group === 'flat') { body.append(grid(list)); return; }
+  const keyOf = p => planF.group === 'month' ? (p.date ? p.date.slice(0, 7) : '') : (p.company || '');
+  const nameOf = k => planF.group === 'month' ? (k ? `${k.slice(0, 4)}년 ${+k.slice(5, 7)}월` : '날짜 미정') : (k || '업체 미정');
+  if (planF.folder !== null) {
+    const back = planEl('button', null, '← 모든 폴더'); back.onclick = () => { planF.folder = null; renderPlans(); };
+    crumb.append(back, ' / ' + nameOf(planF.folder));
+    body.append(grid(list.filter(p => keyOf(p) === planF.folder)));
+    return;
+  }
+  const groups = new Map();
+  list.forEach(p => { const k = keyOf(p); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
+  const keys = [...groups.keys()].sort((a, b) => planF.group === 'month' ? (b || '0').localeCompare(a || '0') : (a || '힣').localeCompare(b || '힣'));
+  const fg = planEl('div', 'folder-grid');
+  keys.forEach(k => {
+    const items = groups.get(k), f = planEl('button', 'folder'); f.type = 'button';
+    const fan = planEl('div', 'fan');
+    items.slice(0, 3).forEach(p => { if (p.thumb) { const im = planEl('img'); im.src = p.thumb; im.alt = ''; fan.append(im); } else fan.append(planEl('div', 'ph', '🎬')); });
+    const done = items.filter(p => p.status === 'done').length;
+    f.append(fan, planEl('div', 'fname', '📁 ' + nameOf(k)), planEl('div', 'fmeta', `${items.length}건 · 완성 ${done} · 작성 중 ${items.length - done}`));
+    f.onclick = () => { planF.folder = k; renderPlans(); };
+    fg.append(f);
+  });
+  body.append(fg);
+}
+
 // ── View switching ──
 function switchView(view) {
   // 다른 탭으로 이동하면 임시 상단 고정 해제 → 기본 정렬 복귀
@@ -3640,14 +3800,17 @@ function switchView(view) {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   document.getElementById('viewCalendar').classList.toggle('active', view === 'calendar');
   document.getElementById('viewOrders').classList.toggle('active', view === 'orders');
+  document.getElementById('viewPlans').classList.toggle('active', view === 'plans');
   const addBtn = document.getElementById('addBtn');            // 헤더 버튼은 제거됨(각 화면에 자체 버튼)
   if (addBtn) addBtn.style.display = view === 'calendar' ? '' : 'none';
   document.getElementById('filterBar').style.display = view === 'calendar' ? '' : 'none';
   if (view === 'orders') { renderOrders(); ensureQuoteHistory().then(renderRecentQuotes); }
+  else if (view === 'plans') loadPlans(true);
   else setTimeout(() => { applyLabelMarquee(); applyChipsMarquee(); }, 60);
 }
 function openAddByView() {
   if (currentView === 'calendar') openModal(null);
+  else if (currentView === 'plans') newPlan('reels');
   else openOrderModal(null);
 }
 
@@ -4076,15 +4239,17 @@ function openContentActionMenu(id, x, y) {
     const badge = (st === '예약완료' && hasResv) ? `<span class="resv-badge" title="예약 확인 보고서" onclick="event.stopPropagation(); enterReservation('${id}')">📄</span>` : '';
     return `<span class="content-progress-tag ${st}${c.status === st ? ' cur' : ''}" data-st="${st}" style="position:relative">${st}${badge}</span>`;
   }).join('');
+  const contiOk = c.type === '릴스';   // 카드뉴스 콘티는 준비 중
   menu.innerHTML =
     `<div class="bulk-menu-title">${escapeHtml(label)} · 작업 선택</div>` +
     `<div class="menu-status-label">상태 변경</div><div class="menu-status-row">${statusPills}</div>` +
     `<button class="bulk-menu-opt" data-act="edit">콘텐츠 수정</button>` +
+    (contiOk ? `<button class="bulk-menu-opt" data-act="conti">${plans.some(p => p.id === 'c-' + c.id) ? '📋 콘티 열기' : '📋 콘티 만들기'}</button>` : '') +
     ((c.insight_urls || '').trim() ? `<button class="bulk-menu-opt" data-act="insight">📄 인사이트 보고서</button>` : '') +
     orderActs.map(a => `<button class="bulk-menu-opt" data-act="${a.k}">${a.t}</button>`).join('') +
     (lo ? '' : `<div class="menu-note">· 연결된 광고 수주 없음</div>`);
   menu.style.display = 'block';
-  const rowCount = 1 + orderActs.length + (lo ? 0 : 1);
+  const rowCount = 1 + (contiOk ? 1 : 0) + orderActs.length + (lo ? 0 : 1);
   const mw = 180, mh = 34 + rowCount * 32 + 74;
   menu.style.left = Math.min(x, window.innerWidth - mw - 10) + 'px';
   menu.style.top  = Math.min(y, window.innerHeight - mh - 10) + 'px';
@@ -4094,6 +4259,7 @@ function openContentActionMenu(id, x, y) {
       menu.style.display = 'none';
       const act = btn.dataset.act;
       if (act === 'edit') { openModal(c.date, id); return; }
+      if (act === 'conti') { openConti(c); return; }
       if (act === 'insight') { openInsightReportFor(id); return; }
       if (act === 'resvreport') { openReservationReportFor(id); return; }
       if (!lo) return;
@@ -4111,6 +4277,22 @@ function openContentActionMenu(id, x, y) {
       setContentStatus(id, pill.dataset.st);
     };
   });
+}
+// 콘티 만들기 — 같은 사이트의 conti/reels.html 을 새 탭으로 열고 기본 정보를 넘긴다.
+// 넘기는 건 콘티에 필요한 정보뿐(업체·제목·채널·일시·담당·콘티 마감). 수주·금액·메모는 넘기지 않는다.
+// 주소창에 업체명이 남지 않도록 정보는 같은 사이트의 localStorage 로 건네고, 주소에는 콘텐츠 id 만 둔다.
+function openConti(c) {
+  const chMap = { life: 'one_home_life', guide: 'one_home_guide', mag: 'one_home_mag' };
+  const company = (c.company || '').trim(), title = (c.title || '').trim();
+  const service = title && company && !title.includes(company) ? `${company} ${title}` : (title || company);
+  const info = {
+    cid: String(c.id), company, title, service,
+    channel: '인스타그램 ' + (chMap[c.channel] || 'one_home_life'),
+    date: c.date || '', time: c.time || '', owner: c.owner || '', due: c.due_storyboard || '', type: c.type || '', at: Date.now(),
+  };
+  try { localStorage.setItem('noing-conti-handoff:' + info.cid, JSON.stringify(info)); } catch (e) {}
+  const w = window.open('conti/reels.html?cid=' + encodeURIComponent(info.cid), '_blank');
+  if (!w) alert('팝업이 막혀 콘티 창을 열지 못했습니다. 주소창 오른쪽에서 팝업을 허용해 주세요.');
 }
 // 콘텐츠 상태 빠른 변경
 async function setContentStatus(id, status) {
