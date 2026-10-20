@@ -315,6 +315,10 @@ body[data-view="noing"] .only-client{display:none!important}
 .ig-audio{margin-top:4px;font-size:11.5px;opacity:.85}
 .ig-ctrl{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .ig-ctrl .btn.on{background:var(--brand);border-color:var(--brand);color:#2b1d00}
+.ig-voice{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;color:#cfc8ba;font-size:12px}
+.ig-voice select{font:inherit;font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #5a534a;background:#2b2722;color:#f3eee6}
+.ig-voice select:disabled,.ig-voice .btn:disabled{opacity:.45;cursor:default}
+.ig-voice #igVoiceMsg{min-width:0;max-width:340px}
 .ig-hint{color:#cfc8ba;font-size:12px;text-align:center;max-width:520px}
 .seg a{display:inline-block;padding:6px 12px;border-radius:7px;font-size:13px;color:var(--ink-2);text-decoration:none}
 .seg a.off{color:#b9b2a6;cursor:default}
@@ -528,7 +532,12 @@ body[data-view="noing"] .only-client{display:none!important}
       <button class="btn" id="igSound" onclick="toggleSound()">🔇 나레이션 끔</button>
       <button class="btn" onclick="closeInsta()">닫기</button>
     </div>
-    <div class="ig-hint">사진은 클립마다 넣은 참고 사진, 자막은 자막·나레이션 글입니다. 클립 길이는 글자 수로 계산한 대략값이고, 나레이션을 켜면 브라우저 음성이 읽는 동안 보여줍니다.</div>
+    <div class="ig-voice" id="igVoice">
+      <select id="igVoiceSel" title="Voicebox 목소리" onchange="voiceRow()"></select>
+      <button class="btn" id="igMake" onclick="makeVoices()">🎙 목소리로 만들기</button>
+      <span id="igVoiceMsg"></span>
+    </div>
+    <div class="ig-hint">사진은 클립마다 넣은 참고 사진, 자막은 자막·나레이션 글입니다. 클립 길이는 글자 수로 계산한 대략값이고, 나레이션을 켜면 만들어 둔 목소리로, 없으면 브라우저 기본 음성으로 읽습니다. 목소리는 이 PC 에서 [목소리_중계]를 켜면 만들 수 있고, 만든 목소리는 콘티와 함께 저장되어 어디서든 들립니다.</div>
   </div>
 </div>
 
@@ -682,13 +691,14 @@ async function dbPut(v) {
 function mediaList(st) {
   const out = [];
   st.clips.forEach(c => c.photos.forEach(p => p.url && out.push({ mid: p.id, url: p.url })));
+  st.clips.forEach(c => c.voice?.url && out.push({ mid: c.voice.id, url: c.voice.url }));
   st.briefFiles.forEach(f => f.url && out.push({ mid: f.id, url: f.url }));
   if (st.feed && st.feedId) out.push({ mid: st.feedId, url: st.feed });
   return out;
 }
 function withoutMedia(st) {
   const c = JSON.parse(JSON.stringify(st));
-  c.clips.forEach(k => k.photos.forEach(p => delete p.url));
+  c.clips.forEach(k => { k.photos.forEach(p => delete p.url); if (k.voice) delete k.voice.url; });
   c.briefFiles.forEach(f => delete f.url);
   delete c.feed;
   return c;
@@ -699,6 +709,7 @@ async function remoteLoad(id) {
   const meta = snap.data(), st = JSON.parse(meta.data || '{}');
   const need = [];
   (st.clips || []).forEach(c => (c.photos || []).forEach(p => need.push([p.id, u => { p.url = u; }])));
+  (st.clips || []).forEach(c => c.voice && need.push([c.voice.id, u => { c.voice.url = u; }]));
   (st.briefFiles || []).forEach(f => need.push([f.id, u => { f.url = u; }]));
   if (st.feedId) need.push([st.feedId, u => { st.feed = u; }]);
   await Promise.all(need.map(async ([mid, set]) => {
@@ -1477,7 +1488,7 @@ async function buildPptx() {
 // ───────── 인스타로 보기 — 만들어 둔 나레이션·참고 사진으로 릴스가 대략 어떻게 흘러갈지 ─────────
 // 클립마다 사진을 천천히 넘기고(살짝 확대), 나레이션을 자막으로 나눠 보여준다.
 // [소리] 를 켜면 브라우저의 한국어 음성으로 나레이션을 읽고, 읽기가 끝나면 다음 클립으로 넘어간다.
-const IG = { i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0 };
+const IG = { i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, audio: null };
 function chunkCaption(text) {
   // 자막은 15자 안팎으로 끊는다. 문장부호에서 먼저 끊고, 길면 띄어쓰기에서 끊는다
   const out = [];
@@ -1502,11 +1513,14 @@ if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { IG.vo
 function openInsta() {
   if (!S.clips.length) return;
   IG.i = 0; IG.voice = pickKoVoice();
+  if (S.clips.some(voiceOf)) IG.sound = true;   // 만들어 둔 목소리가 있으면 소리 켜고 시작
+  $('#igSound').textContent = IG.sound ? '🔊 나레이션 켜짐' : '🔇 나레이션 끔';
   $('#igName').textContent = (S.info.channel || 'one_home_life').replace(/^인스타그램\s*/, '');
   const cap = (S.caption.mention || '').replace(/#광고\s*/, '').trim().split('\n').filter(Boolean)[0] || '';
   $('#igCap').textContent = cap;
   $('#igSound').classList.toggle('on', IG.sound);
-  $('#igSound').hidden = !('speechSynthesis' in window);
+  $('#igSound').hidden = !('speechSynthesis' in window) && !S.clips.some(voiceOf);
+  voiceRow();
   const bars = $('#igBars'); bars.textContent = '';
   S.clips.forEach(() => { const b = el('i'); b.append(el('b')); bars.append(b); });
   openM(mInsta);
@@ -1516,6 +1530,7 @@ function closeInsta() { stopInsta(); closeM(mInsta); }
 function stopInsta() {
   IG.playing = false; clearTimeout(IG.timer); cancelAnimationFrame(IG.raf);
   if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (IG.audio) { IG.audio.onended = null; IG.audio.pause(); IG.audio = null; }
 }
 function playClip(i) {
   stopInsta();
@@ -1537,7 +1552,13 @@ function playClip(i) {
   });
   IG.chunks = chunkCaption(c.narration);
   IG.photoN = photos.length;
-  if (IG.sound && c.narration.trim() && 'speechSynthesis' in window) {
+  const v = voiceOf(c);
+  if (IG.sound && v) {   // 만들어 둔 목소리
+    const a = new Audio(v.url);
+    a.onended = () => { if (IG.playing && IG.i === i) playClip(i + 1); };
+    IG.audio = a; a.play().catch(() => {});
+    IG.dur = Math.max((v.dur || secs(c.narration)) * 1000, 1500);
+  } else if (IG.sound && c.narration.trim() && 'speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance(c.narration); u.lang = 'ko-KR'; u.rate = 1.15; if (IG.voice) u.voice = IG.voice;
     u.onend = () => { if (IG.playing && IG.i === i) playClip(i + 1); };
     IG.utter = u; speechSynthesis.speak(u);
@@ -1556,7 +1577,7 @@ function tick() {
   // 자막
   const n = IG.chunks.length;
   $('#igSub').textContent = n ? IG.chunks[Math.min(n - 1, Math.floor(p * n))] : '';
-  if (p >= 1 && !(IG.sound && speechSynthesis.speaking)) { playClip(IG.i + 1); return; }
+  if (p >= 1 && !(IG.sound && (IG.audio ? !IG.audio.ended : 'speechSynthesis' in window && speechSynthesis.speaking))) { playClip(IG.i + 1); return; }
   IG.raf = requestAnimationFrame(tick);
 }
 function renderBars(p) {
@@ -1567,14 +1588,87 @@ function togglePlay() {
   if (IG.playing) {
     IG.elapsed += performance.now() - IG.t0; IG.playing = false; cancelAnimationFrame(IG.raf);
     if ('speechSynthesis' in window) speechSynthesis.pause();
+    if (IG.audio) IG.audio.pause();
     $('#igPlay').textContent = '▶ 재생';
     document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'paused');
   } else {
     IG.playing = true; IG.t0 = performance.now();
     if ('speechSynthesis' in window) speechSynthesis.resume();
+    if (IG.audio) IG.audio.play().catch(() => {});
     $('#igPlay').textContent = '❚❚ 멈춤';
     document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'running');
     tick();
+  }
+}
+// ───────── 목소리 (Voicebox) ─────────
+// 이 PC 에서 [목소리_중계.pyw] 를 켜 두면 127.0.0.1:17494 로 Voicebox 를 쓸 수 있다.
+// 클립마다 { id, text, profile, name, url(m4a data URL), dur } 를 c.voice 에 두고, 글이 바뀌면 다시 만들어야 한다.
+const RELAY = 'http://127.0.0.1:17494';
+const voiceOf = c => c.voice?.url && c.voice.text === c.narration.trim() ? c.voice : null;
+let RELAY_OK = null, VOICE_BUSY = false;
+async function relay(path, body) {
+  const r = await fetch(RELAY + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+function voiceStat(prof = $('#igVoiceSel').value) {   // prof 목소리로 아직 안 만든 클립 = todo
+  const need = S.clips.filter(c => c.narration.trim()), ok = need.filter(voiceOf);
+  return { need, ok, todo: need.filter(c => !voiceOf(c) || (prof && c.voice.profile !== prof)) };
+}
+async function voiceRow() {
+  const sel = $('#igVoiceSel'), btn = $('#igMake'), msg = $('#igVoiceMsg');
+  const st = voiceStat();
+  const have = st.ok.length ? `목소리 ${st.ok.length}/${st.need.length}클립 준비됨` : '';
+  if (VOICE_BUSY) return;
+  if (RELAY_OK === null || !sel.options.length) {
+    try {
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+      await fetch(RELAY + '/health', { signal: ctl.signal }).then(r => { if (!r.ok) throw 0; });
+      const list = await relay('/profiles');
+      sel.textContent = '';
+      list.forEach(p => { const o = el('option', null, p.name); o.value = p.id; sel.append(o); });
+      const want = S.voiceProfile?.id || list.find(p => /허지웅/.test(p.name))?.id;
+      if (want && list.some(p => p.id === want)) sel.value = want;
+      RELAY_OK = true;
+    } catch (e) { RELAY_OK = false; }
+  }
+  sel.hidden = btn.hidden = !RELAY_OK;
+  btn.disabled = !st.todo.length;
+  const other = st.ok.some(c => c.voice.profile !== sel.value);
+  btn.textContent = other ? `🎙 ${sel.selectedOptions[0]?.textContent || ''} 목소리로 다시 만들기`
+    : st.ok.length && st.todo.length ? `🎙 남은 ${st.todo.length}클립 만들기` : st.ok.length ? '🎙 다 만들었습니다' : '🎙 목소리로 만들기';
+  msg.textContent = RELAY_OK ? (have || '클립 나레이션을 이 목소리로 만듭니다')
+    : (have ? have + ' · ' : '') + '목소리를 새로 만들려면 이 PC 에서 [목소리_중계]를 켜 주세요';
+}
+async function makeVoices() {
+  if (VOICE_BUSY) return;
+  const sel = $('#igVoiceSel'), btn = $('#igMake'), msg = $('#igVoiceMsg');
+  const prof = { id: sel.value, name: sel.selectedOptions[0]?.textContent || '' };
+  if (!prof.id) return;
+  S.voiceProfile = prof;
+  const todo = voiceStat().todo;
+  VOICE_BUSY = true; btn.disabled = sel.disabled = true;
+  stopInsta(); $('#igPlay').textContent = '▶ 재생';
+  let n = 0;
+  try {
+    for (const c of todo) {
+      msg.textContent = `${clipNo(c)} 만드는 중… (${++n}/${todo.length})`;
+      const text = c.narration.trim();
+      const r = await relay('/speak', { text, profile: prof.id });
+      if (c.narration.trim() !== text) continue;   // 만드는 사이 글이 바뀌었으면 버린다
+      c.voice = { id: 'v' + uid(), text, profile: prof.id, name: prof.name, url: r.url, dur: r.dur };
+      save();
+    }
+    VOICE_BUSY = false;
+    await voiceRow();
+    msg.textContent = `다 만들었습니다 · ${msg.textContent}`;
+    if (!IG.sound) toggleSound(); else playClip(0);
+  } catch (e) {
+    VOICE_BUSY = false; RELAY_OK = null;
+    msg.textContent = /fetch/i.test(e.message) ? '목소리 중계가 꺼졌습니다. [목소리_중계]를 다시 켜 주세요' : '만들기 실패: ' + e.message;
+  } finally {
+    VOICE_BUSY = false; btn.disabled = false; sel.disabled = false;
   }
 }
 function toggleSound() {
