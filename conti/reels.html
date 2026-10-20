@@ -53,12 +53,6 @@ section{margin-top:22px}
 .info-grid .v{font-weight:600}
 .info-grid .v.dim{font-weight:400;color:var(--muted)}
 
-/* 점검 */
-.checks{display:flex;flex-direction:column;gap:6px}
-.check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;padding:8px 12px;border-radius:9px}
-.check.bad{background:var(--warn-soft);color:#8f2a17}
-.check.good{background:var(--ok-soft);color:#1d5e40}
-.check .ic{flex:none;font-weight:700}
 
 /* 소구포인트 */
 .points{display:flex;flex-direction:column}
@@ -261,6 +255,65 @@ body[data-view="noing"] .only-client{display:none!important}
   .bottombar .reset{display:none}
 }
 
+/* 담당자 화면(보기 전용) · 미리보기 */
+#viewer{display:none}
+body.viewer #viewer{display:block}
+body.viewer main,body.viewer .bottombar,body.viewer .mock-banner,body.viewer .ed-only{display:none!important}
+body.viewer .ig-voice,body.viewer .ig-hint{display:none}
+.pv-banner{position:sticky;top:0;z-index:21;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:#2b2926;color:#f3efe7;font-size:13px;padding:8px 16px}
+.pv-banner[hidden]{display:none}
+.pv-banner b{color:var(--brand)}
+.pv-banner .btn{color:var(--ink)}
+.vw-hero{margin-top:22px;padding:22px 24px}
+.vw-kicker{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.vw-hero h1{font-size:24px;line-height:1.3;margin:4px 0 16px;word-break:keep-all}
+.vw-meta{margin-bottom:18px}
+.vw-acts{display:flex;gap:8px;flex-wrap:wrap}
+.vw-acts .btn{padding:9px 16px;font-size:14px}
+.vw-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
+.vw-note + .vw-note{margin-top:2px}
+.vw-brief{display:flex;flex-wrap:wrap;gap:10px}
+.vw-brief img{max-height:300px;max-width:100%;border:1px solid var(--line);border-radius:8px;cursor:zoom-in}
+.vw-files{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.vw-files a{text-decoration:none;color:var(--ink)}
+.vw-points{margin:12px 0 0;padding-left:22px}
+.vw-points li{margin:2px 0}
+.vw-feed{display:grid;grid-template-columns:220px 1fr;gap:22px;align-items:start}
+.vw-feedimg img{display:block;width:100%;border-radius:12px;cursor:zoom-in}
+.vw-feedimg .nop,.vw-ph .nop{display:grid;place-items:center;text-align:center;white-space:pre-line;background:#f3f0e9;color:var(--muted);font-size:12px;border-radius:10px;padding:14px;min-height:120px}
+.vw-feedimg .nop{aspect-ratio:9/16}
+.vw-cap .k,.vw-tx .k{font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 3px}
+.vw-cap .k:first-child,.vw-tx .k:first-child{margin-top:0}
+.vw-text{white-space:pre-line;word-break:keep-all}
+.vw-text.big{font-size:16px;font-weight:600;line-height:1.6}
+.vw-clips{display:flex;flex-direction:column;gap:0;padding:0}
+.vw-clip{padding:18px 20px;border-top:1px solid var(--line)}
+.vw-clip:first-child{border-top:0}
+.vw-ch{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.vw-ch b{font-size:15px}
+.vw-ch .sec{font-size:12px;color:var(--muted)}
+.vw-pts{font-size:12px;color:#8a5a00;background:var(--brand-soft);border-radius:99px;padding:1px 8px}
+.vw-cb{display:grid;grid-template-columns:minmax(260px,1fr) 1.1fr;gap:22px;align-items:start}
+.vw-ph{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.vw-ph figure{margin:0}
+.vw-ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;cursor:zoom-in;background:#f3f0e9}
+.vw-ph figcaption{font-size:11.5px;color:var(--muted);margin-top:3px}
+.vw-ph .nop{grid-column:1/-1}
+.vw-foot{margin:26px 0 10px;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.8}
+.vw-brand{font-weight:600;color:var(--ink-2)}
+.vw-msg{padding:80px 20px;text-align:center;color:var(--muted);white-space:pre-line;line-height:1.7}
+.sh-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.sh-link{flex:1;min-width:220px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.5px;background:#f6f3ed}
+.sh-row a.btn{text-decoration:none;color:var(--ink)}
+.sh-note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.sh-msg{font-size:13px;font-weight:600;color:#8a5a00;margin:10px 0 0}
+.sh-cut{color:#c0392b;border-color:#f0c4bc}
+@media (max-width:760px){
+  .vw-feed,.vw-cb{grid-template-columns:1fr}
+  .vw-feedimg{max-width:220px}
+  .vw-hero h1{font-size:20px}
+}
+
 /* 인쇄 = PDF 받기 */
 #printArea{display:none}
 @media print{
@@ -401,16 +454,19 @@ body[data-view="noing"] .only-client{display:none!important}
       <span class="chip">릴스 · 클립 <span id="clipCount"></span>개</span>
       <span class="chip" id="estTotal"></span>
       <span class="chip" id="verChip"></span>
-      <select class="chip status-sel" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select>
+      <select class="chip status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select>
     </div>
     <div class="spacer"></div>
-    <div class="seg" aria-label="콘티 종류"><a class="off" title="카드뉴스 콘티는 준비 중입니다">카드뉴스</a><a class="on" aria-current="page">릴스</a></div>
+    <div class="seg ed-only" aria-label="콘티 종류"><a class="off" title="카드뉴스 콘티는 준비 중입니다">카드뉴스</a><a class="on" aria-current="page">릴스</a></div>
     <button class="btn" onclick="openInsta()">인스타로 보기</button>
     <button class="btn" onclick="printPdf()">PDF 받기</button>
     <button class="btn" onclick="downloadPptx(this)">PPT 받기</button>
-    <button class="btn brand" onclick="openM(mFile)">저장·불러오기</button>
+    <button class="btn ed-only" onclick="enterViewer(true)" title="담당자가 링크를 열면 보는 화면">👁 담당자 화면 미리보기</button>
+    <button class="btn ed-only" id="btnShare" onclick="openShare()" hidden>🔗 담당자 링크</button>
+    <button class="btn brand ed-only" onclick="openM(mFile)">저장·불러오기</button>
   </div>
 </header>
+<div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 (고칠 수 없고, 보기·PPT·PDF 받기만 됩니다)</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
 
 <main class="wrap">
 
@@ -422,17 +478,11 @@ body[data-view="noing"] .only-client{display:none!important}
       <div class="field"><label>발행 채널</label><input data-info="channel" list="channels"></div>
       <div class="field"><label>발행 날짜</label><input type="date" data-info="date"></div>
       <div class="field"><label>발행 시각</label><input type="time" data-info="time" step="300"></div>
-      <div class="field wide"><label>행사·참고 (선택)</label><input data-info="period" placeholder="예: 7.13 ~ 7.31 출시 기념 / 24시간 판매"></div>
       <div class="field"><label>영상 길이</label><input data-info="length" placeholder="1분 이내"></div>
       <div class="field"><label>버전</label><input data-info="version" placeholder="v1"></div>
       <label class="chk"><input type="checkbox" data-info="narration"> 나레이션 작업 포함</label>
     </div>
     <datalist id="channels"><option value="인스타그램 one_home_life"></option></datalist>
-  </section>
-
-  <section>
-    <h2 class="sec-title">보내기 전 점검</h2>
-    <div class="panel checks" id="checks"></div>
   </section>
 
   <section id="briefSection">
@@ -485,6 +535,7 @@ body[data-view="noing"] .only-client{display:none!important}
   </section>
 
 </main>
+<div id="viewer"></div>
 
 <div class="bottombar">
   <div class="wrap">
@@ -506,6 +557,16 @@ body[data-view="noing"] .only-client{display:none!important}
       <div class="row"><button class="btn" onclick="startNew()">새 콘티 시작</button><span>지금 내용을 비우고 처음부터 (먼저 저장 파일을 받아 두세요)</span></div>
     </div>
     <div class="foot"><button class="btn" onclick="closeM(mFile)">닫기</button></div>
+  </div>
+</div>
+
+<!-- 담당자 링크 -->
+<div class="modal" id="mShare" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog" style="max-width:620px">
+    <h3>담당자에게 보낼 링크</h3>
+    <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 고칠 수는 없고, 인스타 릴스 화면으로 보기와 PPT·PDF 받기만 됩니다. 링크에는 만든 순간의 내용이 들어가니, 고친 뒤에는 새 링크를 만들어 보내 주세요.</p>
+    <div id="shareBody"></div>
+    <div class="foot"><button class="btn" onclick="closeM(mShare);enterViewer(true)">👁 담당자 화면 미리보기</button><button class="btn" onclick="closeM(mShare)">닫기</button></div>
   </div>
 </div>
 
@@ -537,7 +598,7 @@ body[data-view="noing"] .only-client{display:none!important}
       <button class="btn" id="igMake" onclick="makeVoices()">🎙 목소리로 만들기</button>
       <span id="igVoiceMsg"></span>
     </div>
-    <div class="ig-hint">사진은 클립마다 넣은 참고 사진, 자막은 자막·나레이션 글입니다. 클립 길이는 글자 수로 계산한 대략값이고, 나레이션을 켜면 만들어 둔 목소리로, 없으면 브라우저 기본 음성으로 읽습니다. 목소리는 이 PC 에서 [목소리_중계]를 켜면 만들 수 있고, 만든 목소리는 콘티와 함께 저장되어 어디서든 들립니다.</div>
+    <div class="ig-hint">사진은 클립마다 넣은 참고 사진, 자막은 자막·나레이션 글입니다. 클립 길이는 글자 수로 계산한 대략값이고, 나레이션을 켜면 만들어 둔 목소리로, 없으면 브라우저 기본 음성으로 읽습니다. 목소리는 이 PC 에서 [목소리_중계]를 켜면 클립 글 전체를 한 번에 이어 읽어 만들고, 콘티와 함께 저장되어 어디서든 들립니다. 클립 글을 고치면 다시 만들어야 합니다.</div>
   </div>
 </div>
 
@@ -572,7 +633,8 @@ const cfg = {
     messagingSenderId: "511910681269",
     appId: "1:511910681269:web:cd0efba8cb5bfa67f93cfc"
   };
-if (!cfg) window.__fbxDone(null);
+window.__BUCKET = cfg && cfg.storageBucket;
+if (!cfg || /^#s=/.test(location.hash)) window.__fbxDone(null);   // 담당자 링크는 로그인·서버 없이 본다
 else {
   try {
     const V = 'https://www.gstatic.com/firebasejs/10.12.5/';
@@ -582,7 +644,8 @@ else {
     const app = initializeApp(cfg);
     const auth = A.getAuth(app);
     try { await A.setPersistence(auth, A.browserLocalPersistence); } catch (e) {}
-    const fbx = { auth, db: F.getFirestore(app), F, user: null, signIn: (e, p) => A.signInWithEmailAndPassword(auth, e, p) };
+    const ST = await import(V + 'firebase-storage.js');
+    const fbx = { auth, db: F.getFirestore(app), F, ST, storage: ST.getStorage(app), user: null, signIn: (e, p) => A.signInWithEmailAndPassword(auth, e, p) };
     let first = true;
     A.onAuthStateChanged(auth, u => { fbx.user = u; if (first) { first = false; window.__fbxDone(fbx); } });
   } catch (e) { console.error('Firebase 준비 실패', e); window.__fbxDone(null); }
@@ -636,7 +699,7 @@ const newClip = () => ({ id: 'k' + uid(), narration: '', shots: '', notes: '', p
 function blank() {
   return {
     kind: 'reels', v: 1, status: 'draft',
-    info: { title: '', channel: '인스타그램 one_home_life', date: '', time: '18:00', period: '', length: '1분 이내', narration: true, version: 'v1' },
+    info: { title: '', channel: '인스타그램 one_home_life', date: '', time: '18:00', length: '1분 이내', narration: true, version: 'v1' },
     brief: [], briefFiles: [],
     caption: { mention: '#광고 ', tags: '', account: '' },
     feed: null, feedId: null,
@@ -647,6 +710,7 @@ function normalize(d) {
   const b = blank();
   const s = { ...b, ...d, info: { ...b.info, ...(d.info || {}) }, caption: { ...b.caption, ...(d.caption || {}) }, status: d.status || 'draft' };
   if (!Array.isArray(s.clips) || !s.clips.length) s.clips = [newClip()];
+  s.clips.forEach(c => delete c.voice);   // 예전 클립별 목소리(10.20 하루 쓰임) → 한 테이크로 바뀜
   if (s.feed && !s.feedId) s.feedId = 'f' + uid();
   return s;
 }
@@ -691,14 +755,15 @@ async function dbPut(v) {
 function mediaList(st) {
   const out = [];
   st.clips.forEach(c => c.photos.forEach(p => p.url && out.push({ mid: p.id, url: p.url })));
-  st.clips.forEach(c => c.voice?.url && out.push({ mid: c.voice.id, url: c.voice.url }));
+  if (st.take?.url && st.take.id) out.push({ mid: st.take.id, url: st.take.url });
   st.briefFiles.forEach(f => f.url && out.push({ mid: f.id, url: f.url }));
   if (st.feed && st.feedId) out.push({ mid: st.feedId, url: st.feed });
   return out;
 }
 function withoutMedia(st) {
   const c = JSON.parse(JSON.stringify(st));
-  c.clips.forEach(k => { k.photos.forEach(p => delete p.url); if (k.voice) delete k.voice.url; });
+  c.clips.forEach(k => k.photos.forEach(p => delete p.url));
+  if (c.take) delete c.take.url;
   c.briefFiles.forEach(f => delete f.url);
   delete c.feed;
   return c;
@@ -709,7 +774,7 @@ async function remoteLoad(id) {
   const meta = snap.data(), st = JSON.parse(meta.data || '{}');
   const need = [];
   (st.clips || []).forEach(c => (c.photos || []).forEach(p => need.push([p.id, u => { p.url = u; }])));
-  (st.clips || []).forEach(c => c.voice && need.push([c.voice.id, u => { c.voice.url = u; }]));
+  if (st.take?.id) need.push([st.take.id, u => { st.take.url = u; }]);
   (st.briefFiles || []).forEach(f => need.push([f.id, u => { f.url = u; }]));
   if (st.feedId) need.push([st.feedId, u => { st.feed = u; }]);
   await Promise.all(need.map(async ([mid, set]) => {
@@ -746,6 +811,7 @@ async function remoteSave() {
 let saveTimer, saving = false, saveAgain = false;
 function save() {
   if (typeof deleted !== 'undefined' && deleted) return;   // 삭제 중·삭제 후에는 다시 저장하지 않는다
+  if (typeof VIEW !== 'undefined' && VIEW === 'share') return;   // 담당자 화면은 저장하지 않는다
   clearTimeout(saveTimer);
   $('#saveBadge').textContent = '저장 중…';
   saveTimer = setTimeout(doSave, FBX ? 1200 : 400);
@@ -829,7 +895,7 @@ document.querySelectorAll('[data-info]').forEach(i => ['input', 'change'].forEac
   if (i.readOnly) return;
   S.info[i.dataset.info] = i.type === 'checkbox' ? i.checked : i.value;
   if (i.dataset.info === 'title') S.info.titleFromCal = false;   // 직접 고친 서비스명은 달력 값으로 덮지 않는다
-  renderHead(); renderChecks(); save();
+  renderHead(); save();
 })));
 $('#statusSel').addEventListener('change', e => { S.status = e.target.value; renderHead(); save(); toast(S.status === 'done' ? '완성으로 표시했습니다' : '작성 중으로 표시했습니다'); });
 function renderHead() {
@@ -837,7 +903,7 @@ function renderHead() {
   document.title = '릴스 콘티 · ' + (S.info.title || '새 콘티');
   $('#clipCount').textContent = S.clips.length;
   $('#verChip').textContent = S.info.version || 'v1';
-  const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'chip status-sel ' + ss.value;
+  const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'chip status-sel ed-only ' + ss.value;
   const t = totalSecs(), over = t > limitSecs();
   const e = $('#estTotal'); e.textContent = `예상 약 ${fmtSec(t)}`; e.classList.toggle('bad', over);
   e.title = '자막·나레이션 글자 수로 계산한 대략값 (1초에 약 6.5자)';
@@ -860,7 +926,7 @@ function renderBriefFiles() {
       const a = el('a', null, f.name); a.href = f.url; a.download = f.name; a.title = '원본 내려받기'; d.append(a);
     }
     const x = el('button', 'x', '×'); x.title = '빼기'; x.setAttribute('aria-label', f.name + ' 빼기');
-    x.onclick = e => { e.stopPropagation(); S.briefFiles = S.briefFiles.filter(y => y !== f); renderBriefFiles(); renderChecks(); save(); };
+    x.onclick = e => { e.stopPropagation(); S.briefFiles = S.briefFiles.filter(y => y !== f); renderBriefFiles(); save(); };
     d.append(x);
     wrap.append(d);
   });
@@ -873,7 +939,7 @@ async function addBriefFiles(files) {
     if (!image && file.size > 900000) { toast(`${name} 은(는) 900KB 가 넘어 첨부할 수 없습니다. 캡처로 넣어 주세요`); continue; }
     S.briefFiles.push({ id: 'b' + uid(), name, type: file.type, url: await fitStore(await fileToDataURL(file, 2000)), image });
   }
-  renderBriefFiles(); renderChecks(); save();
+  renderBriefFiles(); save();
   toast(list.length > 1 ? `소구포인트 자료 ${list.length}개를 넣었습니다` : (/^image\//.test(list[0].type) ? '캡처를 넣었습니다' : '파일을 첨부했습니다'));
 }
 function renderPoints() {
@@ -900,7 +966,7 @@ function renderPoints() {
   ta.addEventListener('input', () => {
     S.brief = ta.value.split('\n').map(x => x.trim()).filter(Boolean);
     S.clips.forEach(c => { c.points = c.points.filter(n => n <= S.brief.length); });
-    renderPoints(); renderChecks(); renderClipEditor(); save();
+    renderPoints(); renderClipEditor(); save();
   });
 })();
 
@@ -910,11 +976,11 @@ function renderFeed() {
   if (S.feed) {
     b.classList.add('has');
     const im = el('img'); im.src = S.feed; im.alt = '피드 예시'; b.append(im);
-    const x = el('button', 'x', '×'); x.title = '빼기'; x.onclick = e => { e.stopPropagation(); S.feed = null; renderFeed(); renderChecks(); save(); };
+    const x = el('button', 'x', '×'); x.title = '빼기'; x.onclick = e => { e.stopPropagation(); S.feed = null; renderFeed(); save(); };
     b.append(x);
   } else { b.classList.remove('has'); b.textContent = '피드 예시 이미지\n(프로필 화면 캡처나 첫 장면)\n끌어다 놓거나 Ctrl+V · 눌러서 선택'; }
 }
-async function setFeed(file) { if (!file) return; S.feed = await fitStore(await fileToDataURL(file)); S.feedId = 'f' + uid(); renderFeed(); renderChecks(); save(); toast('피드 예시를 넣었습니다'); }
+async function setFeed(file) { if (!file) return; S.feed = await fitStore(await fileToDataURL(file)); S.feedId = 'f' + uid(); renderFeed(); save(); toast('피드 예시를 넣었습니다'); }
 (() => {
   const b = $('#feedBox');
   b.onclick = () => { $('#feedPick').value = ''; $('#feedPick').click(); };
@@ -933,7 +999,7 @@ function renderCaption(setValues) {
   ct.textContent = `#광고 포함 ${tc}개 / 최대 5개`; ct.classList.toggle('bad', tc > 5);
 }
 document.querySelectorAll('[data-capf]').forEach(inp => inp.addEventListener('input', () => {
-  S.caption[inp.dataset.capf] = inp.value; renderCaption(false); renderChecks(); save();
+  S.caption[inp.dataset.capf] = inp.value; renderCaption(false); save();
 }));
 
 // ───────── 클립 구성: 2줄 한눈에 + 편집 ─────────
@@ -943,8 +1009,7 @@ function renderClips() {
   grid.style.setProperty('--cols', Math.max(5, Math.ceil((S.clips.length + 1) / 2)));   // 몇 개든 2줄 안에 (적을 때도 칸이 커지지 않게 최소 5열)
   S.clips.forEach((c, i) => grid.append(buildClipTile(c, i)));
   const a = el('button', 'tile add', '+ 클립 추가'); a.type = 'button'; a.onclick = addClip; grid.append(a);
-  renderClipEditor(); renderHead(); renderPoints(); renderChecks();
-}
+  renderClipEditor(); renderHead(); renderPoints(); }
 function fillClipTile(t, c) {
   const one = (node, text, empty) => { node.textContent = text || empty; node.classList.toggle('none', !text); };
   one(t.querySelector('.tb'), c.narration, '(자막·나레이션 없음)');
@@ -1067,7 +1132,7 @@ function renderClipEditor() {
     ta.addEventListener('input', () => {
       c[f] = ta.value; grow(ta); upd();
       const t = document.querySelector(`#clipGrid .tile[data-id="${c.id}"]`); if (t) fillClipTile(t, c);
-      renderHead(); renderChecks(); save();
+      renderHead(); save();
     });
     upd();
     right.append(fd);
@@ -1079,7 +1144,7 @@ function renderClipEditor() {
   if (!items.length) pts.append(el('span', null, '— 위 소구포인트 칸에 적으면 여기서 연결할 수 있습니다'));
   items.forEach(b => {
     const p = el('button', 'pt' + (c.points.includes(b.n) ? ' on' : ''), CIRC[b.n] || b.n); p.title = b.t;
-    p.onclick = () => { c.points = c.points.includes(b.n) ? c.points.filter(x => x !== b.n) : [...c.points, b.n].sort((x, y) => x - y); p.classList.toggle('on'); renderPoints(); renderChecks(); save(); };
+    p.onclick = () => { c.points = c.points.includes(b.n) ? c.points.filter(x => x !== b.n) : [...c.points, b.n].sort((x, y) => x - y); p.classList.toggle('on'); renderPoints(); save(); };
     pts.append(p);
   });
   right.append(pts);
@@ -1113,29 +1178,6 @@ document.addEventListener('paste', e => {
   else if (pasteTarget === 'brief') addBriefFiles(files);
   else addPhotos(S.clips.find(c => c.id === SEL), files);
 });
-
-// ───────── 점검 ─────────
-function renderChecks() {
-  const out = [];
-  if (!S.info.title.trim()) out.push(['bad', '서비스명(제품명)이 비어 있습니다']);
-  if (!S.info.date) out.push(['bad', '발행 날짜가 비어 있습니다']);
-  if (!S.briefFiles.length && !S.brief.length) out.push(['bad', '고객사 소구포인트(브리프 캡처나 파일)가 없습니다']);
-  briefItems().forEach(b => { if (!S.clips.some(c => c.points.includes(b.n))) out.push(['bad', `소구포인트 ${CIRC[b.n] || b.n} 가 어느 클립에도 없습니다 — ${b.t.slice(0, 34)}…`]); });
-  const t = totalSecs(), lim = limitSecs();
-  if (t > lim) out.push(['bad', `나레이션 예상 길이가 약 ${fmtSec(t)}로 '${S.info.length || '1분 이내'}'를 넘습니다 (글자 수로 계산한 대략값)`]);
-  const list = (arr, msg) => { if (arr.length) out.push(['bad', `${msg}: ${arr.map(clipNo).join(', ')}`]); };
-  list(S.clips.filter(c => !c.narration.trim()), '자막·나레이션이 빈 클립');
-  list(S.clips.filter(c => !c.shots.trim()), '촬영 컷 설명이 빈 클립');
-  list(S.clips.filter(c => !c.photos.length), '참고 사진이 없는 클립');
-  if (!S.feed) out.push(['bad', '피드 예시(첫 장면) 이미지가 없습니다']);
-  const tc = tagCount();
-  if (tc > 5) out.push(['bad', `해시태그가 ${tc}개입니다 (#광고 포함 5개까지)`]);
-  if (!/#광고/.test(S.caption.mention.split('\n')[0])) out.push(['bad', '멘션 첫 줄에 #광고 표기가 없습니다']);
-  if (!S.caption.account.trim()) out.push(['bad', '계정 태그가 비어 있습니다 — 브랜드 계정 태그 여부를 확인하세요']);
-  const wrap = $('#checks'); wrap.textContent = '';
-  if (!out.length) out.push(['good', '점검 통과 — 고객사에 보내도 됩니다']);
-  out.forEach(([k, txt]) => { const d = el('div', 'check ' + k); d.append(el('span', 'ic', k === 'bad' ? '!' : '✓'), el('span', null, txt)); wrap.append(d); });
-}
 
 // ───────── 날짜·파일 이름 ─────────
 function dateKo(withTime) {
@@ -1422,7 +1464,7 @@ async function buildPptx() {
     { ...BODY, x: 1.18, y, w: 10.54, h: 0.4, color: PPT.ink, margin: 0, valign: 'middle' });
   line(1.46, '서비스명 (제품명):  ', NAME, 16);
   line(1.81, '발행채널 : ', S.info.channel, 12);
-  line(2.16, '발행일정 : ', dateOld() + (S.info.period.trim() ? `   (${S.info.period.trim()})` : ''), 12);
+  line(2.16, '발행일정 : ', dateOld(), 12);
   s.addShape(pptx.ShapeType.rect, { x: 0.47, y: 2.73, w: 0.1, h: 0.37, fill: { color: RC.accent }, line: { color: RC.accent } });
   s.addText('콘텐츠 구성 (영상 / 사진)', { ...HEAD, x: 0.62, y: 2.71, w: 11.9, h: 0.4, fontSize: 18, color: PPT.ink, margin: 0, valign: 'middle' });
   s.addText([
@@ -1488,7 +1530,7 @@ async function buildPptx() {
 // ───────── 인스타로 보기 — 만들어 둔 나레이션·참고 사진으로 릴스가 대략 어떻게 흘러갈지 ─────────
 // 클립마다 사진을 천천히 넘기고(살짝 확대), 나레이션을 자막으로 나눠 보여준다.
 // [소리] 를 켜면 브라우저의 한국어 음성으로 나레이션을 읽고, 읽기가 끝나면 다음 클립으로 넘어간다.
-const IG = { i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, audio: null };
+const IG = { i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, take: null, takeSrc: null, seg: null };
 function chunkCaption(text) {
   // 자막은 15자 안팎으로 끊는다. 문장부호에서 먼저 끊고, 길면 띄어쓰기에서 끊는다
   const out = [];
@@ -1513,13 +1555,13 @@ if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { IG.vo
 function openInsta() {
   if (!S.clips.length) return;
   IG.i = 0; IG.voice = pickKoVoice();
-  if (S.clips.some(voiceOf)) IG.sound = true;   // 만들어 둔 목소리가 있으면 소리 켜고 시작
+  if (takeOf()) IG.sound = true;   // 만들어 둔 나레이션이 있으면 소리 켜고 시작
   $('#igSound').textContent = IG.sound ? '🔊 나레이션 켜짐' : '🔇 나레이션 끔';
   $('#igName').textContent = (S.info.channel || 'one_home_life').replace(/^인스타그램\s*/, '');
   const cap = (S.caption.mention || '').replace(/#광고\s*/, '').trim().split('\n').filter(Boolean)[0] || '';
   $('#igCap').textContent = cap;
   $('#igSound').classList.toggle('on', IG.sound);
-  $('#igSound').hidden = !('speechSynthesis' in window) && !S.clips.some(voiceOf);
+  $('#igSound').hidden = !('speechSynthesis' in window) && !takeOf();
   voiceRow();
   const bars = $('#igBars'); bars.textContent = '';
   S.clips.forEach(() => { const b = el('i'); b.append(el('b')); bars.append(b); });
@@ -1527,15 +1569,20 @@ function openInsta() {
   playClip(0);
 }
 function closeInsta() { stopInsta(); closeM(mInsta); }
-function stopInsta() {
+function stopInsta(keepTake) {
   IG.playing = false; clearTimeout(IG.timer); cancelAnimationFrame(IG.raf);
   if ('speechSynthesis' in window) speechSynthesis.cancel();
-  if (IG.audio) { IG.audio.onended = null; IG.audio.pause(); IG.audio = null; }
+  if (IG.take && !keepTake) IG.take.pause();
 }
-function playClip(i) {
-  stopInsta();
+// 나레이션은 콘티 전체가 파일 하나(한 테이크) — 클립은 marks 시각으로 나눠 그 구간만 튼다
+function takeAudio(t) {
+  if (!IG.take || IG.takeSrc !== t.url) { if (IG.take) IG.take.pause(); IG.take = new Audio(t.url); IG.takeSrc = t.url; }
+  return IG.take;
+}
+function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어옴 → 나레이션을 끊지 않고 이어 튼다
+  stopInsta(flow);
   if (i < 0) i = 0;
-  if (i >= S.clips.length) { IG.i = S.clips.length - 1; renderBars(1); $('#igPlay').textContent = '↻ 처음부터'; return; }
+  if (i >= S.clips.length) { if (IG.take) IG.take.pause(); IG.i = S.clips.length - 1; renderBars(1); $('#igPlay').textContent = '↻ 처음부터'; return; }
   IG.i = i; IG.playing = true; IG.elapsed = 0;
   const c = S.clips[i];
   IG.dur = clipDur(c) * 1000;
@@ -1552,12 +1599,14 @@ function playClip(i) {
   });
   IG.chunks = chunkCaption(c.narration);
   IG.photoN = photos.length;
-  const v = voiceOf(c);
-  if (IG.sound && v) {   // 만들어 둔 목소리
-    const a = new Audio(v.url);
-    a.onended = () => { if (IG.playing && IG.i === i) playClip(i + 1); };
-    IG.audio = a; a.play().catch(() => {});
-    IG.dur = Math.max((v.dur || secs(c.narration)) * 1000, 1500);
+  IG.seg = null;
+  const t = IG.sound && takeOf();
+  if (t) {   // 만들어 둔 나레이션
+    const a = takeAudio(t), s0 = t.marks[i], s1 = i + 1 < t.marks.length ? t.marks[i + 1] : t.dur;
+    IG.seg = [s0, s1];
+    if (!flow || Math.abs(a.currentTime - s0) > 0.25) a.currentTime = s0;
+    if (a.paused) a.play().catch(() => {});
+    IG.dur = Math.max(300, (s1 - s0) * 1000);
   } else if (IG.sound && c.narration.trim() && 'speechSynthesis' in window) {
     const u = new SpeechSynthesisUtterance(c.narration); u.lang = 'ko-KR'; u.rate = 1.15; if (IG.voice) u.voice = IG.voice;
     u.onend = () => { if (IG.playing && IG.i === i) playClip(i + 1); };
@@ -1569,7 +1618,9 @@ function playClip(i) {
 }
 function tick() {
   if (!IG.playing) return;
-  const t = IG.elapsed + (performance.now() - IG.t0), p = Math.min(1, t / IG.dur);
+  const onTake = IG.seg && IG.take;
+  const t = onTake ? (IG.take.ended ? IG.dur : (IG.take.currentTime - IG.seg[0]) * 1000) : IG.elapsed + (performance.now() - IG.t0);
+  const p = Math.max(0, Math.min(1, t / IG.dur));
   renderBars(p);
   // 사진 바꾸기
   const k = Math.min(IG.photoN - 1, Math.floor(p * IG.photoN));
@@ -1577,7 +1628,7 @@ function tick() {
   // 자막
   const n = IG.chunks.length;
   $('#igSub').textContent = n ? IG.chunks[Math.min(n - 1, Math.floor(p * n))] : '';
-  if (p >= 1 && !(IG.sound && (IG.audio ? !IG.audio.ended : 'speechSynthesis' in window && speechSynthesis.speaking))) { playClip(IG.i + 1); return; }
+  if (p >= 1 && !(IG.sound && !onTake && 'speechSynthesis' in window && speechSynthesis.speaking)) { playClip(IG.i + 1, !!onTake); return; }
   IG.raf = requestAnimationFrame(tick);
 }
 function renderBars(p) {
@@ -1588,13 +1639,13 @@ function togglePlay() {
   if (IG.playing) {
     IG.elapsed += performance.now() - IG.t0; IG.playing = false; cancelAnimationFrame(IG.raf);
     if ('speechSynthesis' in window) speechSynthesis.pause();
-    if (IG.audio) IG.audio.pause();
+    if (IG.seg && IG.take) IG.take.pause();
     $('#igPlay').textContent = '▶ 재생';
     document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'paused');
   } else {
     IG.playing = true; IG.t0 = performance.now();
     if ('speechSynthesis' in window) speechSynthesis.resume();
-    if (IG.audio) IG.audio.play().catch(() => {});
+    if (IG.seg && IG.take) IG.take.play().catch(() => {});
     $('#igPlay').textContent = '❚❚ 멈춤';
     document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'running');
     tick();
@@ -1602,10 +1653,16 @@ function togglePlay() {
 }
 // ───────── 목소리 (Voicebox) ─────────
 // 이 PC 에서 [목소리_중계.pyw] 를 켜 두면 127.0.0.1:17494 로 Voicebox 를 쓸 수 있다.
-// 클립마다 { id, text, profile, name, url(m4a data URL), dur } 를 c.voice 에 두고, 글이 바뀌면 다시 만들어야 한다.
+// 줄글 나레이션이라 클립 전체를 한 번에 읽힌다(클립마다 따로 만들면 억양이 끊기고 끝잘림이 클립 수만큼 생긴다).
+// S.take = { id, texts(클립별 글), profile, name, url(m4a data URL), dur, marks(클립별 시작 초), v }
+//   클립 글이 하나라도 바뀌면 무효 → 브라우저 기본 음성으로 읽고, [다시 만들기]를 안내한다.
 const RELAY = 'http://127.0.0.1:17494';
-const VOICE_V = 2;   // 2 = 끝잘림 완화(중계가 끝 공백·무음 처리). 옛 목소리는 다시 만들 수 있게
-const voiceOf = c => c.voice?.url && c.voice.text === c.narration.trim() ? c.voice : null;
+const narrTexts = () => S.clips.map(c => c.narration.trim());
+function takeOf() {
+  const t = S.take; if (!t?.url || !Array.isArray(t.texts)) return null;
+  const x = narrTexts();
+  return t.texts.length === x.length && t.texts.every((s, k) => s === x[k]) ? t : null;
+}
 let RELAY_OK = null, VOICE_BUSY = false;
 async function relay(path, body) {
   const r = await fetch(RELAY + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -1613,33 +1670,28 @@ async function relay(path, body) {
   if (!r.ok) throw new Error(j.error || r.status);
   return j;
 }
-function voiceStat(prof = $('#igVoiceSel').value) {   // prof 목소리로 아직 안 만든 클립 = todo
-  const need = S.clips.filter(c => c.narration.trim()), ok = need.filter(voiceOf);
-  return { need, ok, todo: need.filter(c => !voiceOf(c) || (prof && c.voice.profile !== prof) || (c.voice.v || 1) < VOICE_V) };
-}
 async function voiceRow() {
   const sel = $('#igVoiceSel'), btn = $('#igMake'), msg = $('#igVoiceMsg');
-  const st = voiceStat();
-  const have = st.ok.length ? `목소리 ${st.ok.length}/${st.need.length}클립 준비됨` : '';
   if (VOICE_BUSY) return;
   if (RELAY_OK === null || !sel.options.length) {
     try {
-      $('#igVoiceMsg').textContent = '목소리 중계 찾는 중… (크롬이 허용을 물으면 [허용]을 눌러 주세요)';
+      msg.textContent = '목소리 중계 찾는 중… (크롬이 허용을 물으면 [허용]을 눌러 주세요)';
       await fetch(RELAY + '/health').then(r => { if (!r.ok) throw 0; });
       const list = await relay('/profiles');
       sel.textContent = '';
       list.forEach(p => { const o = el('option', null, p.name); o.value = p.id; sel.append(o); });
-      const want = S.voiceProfile?.id || list.find(p => /허지웅/.test(p.name))?.id;
+      const want = S.take?.profile || S.voiceProfile?.id || list.find(p => /허지웅/.test(p.name))?.id;
       if (want && list.some(p => p.id === want)) sel.value = want;
       RELAY_OK = true;
     } catch (e) { RELAY_OK = false; }
   }
+  const t = takeOf(), stale = !!S.take?.url && !t;
+  const have = t ? `나레이션 준비됨 · ${t.name} · ${fmtSec(Math.round(t.dur))}` : stale ? '클립 글이 바뀌어 나레이션을 다시 만들어야 합니다' : '';
   sel.hidden = btn.hidden = !RELAY_OK;
-  btn.disabled = !st.todo.length;
-  const other = st.ok.some(c => c.voice.profile !== sel.value), old = st.ok.some(c => (c.voice.v || 1) < VOICE_V);
-  btn.textContent = old && !other ? '🎙 끝소리 다듬어 다시 만들기' : other ? `🎙 ${sel.selectedOptions[0]?.textContent || ''} 목소리로 다시 만들기`
-    : st.ok.length && st.todo.length ? `🎙 남은 ${st.todo.length}클립 만들기` : st.ok.length ? '🎙 다 만들었습니다' : '🎙 목소리로 만들기';
-  msg.textContent = RELAY_OK ? (have || '클립 나레이션을 이 목소리로 만듭니다')
+  btn.disabled = !S.clips.some(c => c.narration.trim());
+  btn.textContent = !S.take?.url ? '🎙 목소리로 만들기' : stale ? '🎙 바뀐 글로 다시 만들기'
+    : t.profile !== sel.value ? `🎙 ${sel.selectedOptions[0]?.textContent || ''} 목소리로 다시 만들기` : '🎙 다시 만들기';
+  msg.textContent = RELAY_OK ? (have || '클립 나레이션 전체를 한 번에 이어 읽어 만듭니다')
     : (have ? have + ' · ' : '') + '목소리를 새로 만들려면 이 PC 에서 [목소리_중계]를 켜 주세요. 켜 두었는데도 안 되면 주소창 왼쪽 아이콘 → 사이트 설정에서 [로컬 네트워크 접근]을 허용해 주세요';
 }
 async function makeVoices() {
@@ -1648,28 +1700,25 @@ async function makeVoices() {
   const prof = { id: sel.value, name: sel.selectedOptions[0]?.textContent || '' };
   if (!prof.id) return;
   S.voiceProfile = prof;
-  const todo = voiceStat().todo;
+  const texts = narrTexts(), est = Math.round(totalSecs() * 2.2 + 12), t0 = Date.now();
   VOICE_BUSY = true; btn.disabled = sel.disabled = true;
   stopInsta(); $('#igPlay').textContent = '▶ 재생';
-  let n = 0;
+  const show = () => { msg.textContent = `전체 나레이션 만드는 중… ${Math.round((Date.now() - t0) / 1000)}초 (보통 ${est}초 안팎)`; };
+  show(); const timer = setInterval(show, 1000);
   try {
-    for (const c of todo) {
-      msg.textContent = `${clipNo(c)} 만드는 중… (${++n}/${todo.length})`;
-      const text = c.narration.trim();
-      const r = await relay('/speak', { text, profile: prof.id });
-      if (c.narration.trim() !== text) continue;   // 만드는 사이 글이 바뀌었으면 버린다
-      c.voice = { id: 'v' + uid(), text, profile: prof.id, name: prof.name, url: r.url, dur: r.dur, v: r.v || 1 };
-      save();
-    }
+    const r = await relay('/speak_all', { parts: texts, profile: prof.id });
+    clearInterval(timer);
+    if (narrTexts().join('\n') !== texts.join('\n')) { msg.textContent = '만드는 사이 글이 바뀌었습니다. 다시 눌러 주세요'; return; }
+    S.take = { id: 'v' + uid(), texts, profile: prof.id, name: prof.name, url: r.url, dur: r.dur, marks: r.marks, v: r.v || 3 };
+    save();
     VOICE_BUSY = false;
     await voiceRow();
-    msg.textContent = `다 만들었습니다 · ${msg.textContent}`;
     if (!IG.sound) toggleSound(); else playClip(0);
   } catch (e) {
-    VOICE_BUSY = false; RELAY_OK = null;
+    RELAY_OK = null;
     msg.textContent = /fetch/i.test(e.message) ? '목소리 중계가 꺼졌습니다. [목소리_중계]를 다시 켜 주세요' : '만들기 실패: ' + e.message;
   } finally {
-    VOICE_BUSY = false; btn.disabled = false; sel.disabled = false;
+    clearInterval(timer); VOICE_BUSY = false; btn.disabled = false; sel.disabled = false;
   }
 }
 function toggleSound() {
@@ -1693,6 +1742,168 @@ function toggleSound() {
   });
 })();
 
+// ───────── 담당자 화면 (보기 전용) ─────────
+// 담당자는 링크(reels.html#s=파일.토큰)로 들어와 로그인 없이 본다. 고칠 수 없고, 인스타로 보기·PPT·PDF 받기만 된다.
+// 링크 내용 = 링크를 만든 순간의 콘티 전체(사진·나레이션 포함)를 스크립트 파일 하나로 Firebase Storage 에 올린 것.
+//   Storage 는 다른 사이트에서 fetch 로 읽는 걸 막지만(CORS 설정 없음) <script> 로는 읽힌다.
+//   같은 파일을 다시 올리면 토큰이 바뀌어 옛 링크가 죽는다 → 고친 뒤에는 새 링크를 만든다.
+const SHARE = /^#s=([\w-]+)\.([\w-]+)$/.exec(location.hash);
+let VIEW = null;   // null = 편집 · 'preview' = 내 미리보기 · 'share' = 담당자
+function enterViewer(preview) {
+  VIEW = preview ? 'preview' : 'share';
+  document.body.classList.add('viewer');
+  $('#pvBanner').hidden = !preview;
+  renderViewer(); window.scrollTo(0, 0);
+}
+function exitViewer() { VIEW = null; document.body.classList.remove('viewer'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
+function vwSec(title) { const s = el('section'); s.append(el('h2', 'sec-title', title)); const p = el('div', 'panel'); s.append(p); return [s, p]; }
+function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { $('#mImgSrc').src = url; openM(mImg); }; return im; }
+function renderViewer() {
+  const v = $('#viewer'); v.textContent = '';
+  const w = el('div', 'wrap'); v.append(w);
+  // 머리: 무엇을, 언제, 어디에
+  const hero = el('section', 'panel vw-hero');
+  hero.append(el('div', 'vw-kicker', [S.cal?.company, '릴스 콘티', S.info.version || 'v1'].filter(Boolean).join(' · ')));
+  hero.append(el('h1', null, S.info.title || '(서비스명)'));
+  const meta = el('div', 'info-grid vw-meta');
+  [['발행 채널', S.info.channel], ['발행 일시', dateKo(true)], ['영상 길이', S.info.length || '1분 이내'], ['구성', `클립 ${S.clips.length}개 · 나레이션 약 ${fmtSec(totalSecs())}`]]
+    .forEach(([k, x]) => { const d = el('div'); d.append(el('div', 'k', k), el('div', 'v', x || '-')); meta.append(d); });
+  hero.append(meta);
+  const acts = el('div', 'vw-acts');
+  const b1 = el('button', 'btn brand', '▶ 인스타 릴스 화면으로 보기'); b1.onclick = openInsta;
+  const b2 = el('button', 'btn', 'PPT 받기'); b2.onclick = () => downloadPptx(b2);
+  const b3 = el('button', 'btn', 'PDF 받기'); b3.onclick = printPdf;
+  acts.append(b1, b2, b3); hero.append(acts);
+  const notes = [];
+  if (S.info.narration) notes.push(`*${S.info.length || '1분 이내'}의 릴스 영상을 제작하며 나레이션 작업이 포함됩니다.`);
+  notes.push(takeOf() ? '*릴스 화면으로 보기에서 나레이션을 들어 볼 수 있습니다. 실제 영상의 목소리·속도와는 다를 수 있습니다.'
+    : '*릴스 화면으로 보기는 사진과 자막으로 흐름만 보여 드립니다. 실제 영상과는 다를 수 있습니다.');
+  notes.forEach(t => hero.append(el('p', 'vw-note', t)));
+  w.append(hero);
+
+  // 소구포인트
+  if (S.briefFiles.length || S.brief.length) {
+    const [s, p] = vwSec('필수 소구포인트');
+    const imgs = S.briefFiles.filter(f => f.image && f.url), files = S.briefFiles.filter(f => !f.image && f.url);
+    if (imgs.length) { const g = el('div', 'vw-brief'); imgs.forEach(f => { const im = el('img'); im.src = f.url; im.alt = f.name || ''; g.append(zoomable(im, f.url)); }); p.append(g); }
+    if (files.length) { const l = el('div', 'vw-files'); files.forEach(f => { const a = el('a', 'btn', '📎 ' + f.name); a.href = f.url; a.download = f.name; l.append(a); }); p.append(l); }
+    if (S.brief.length) { const ol = el('ol', 'vw-points'); S.brief.forEach(t => ol.append(el('li', null, t))); p.append(ol); }
+    w.append(s);
+  }
+
+  // 피드 예시·멘션
+  const [fs, fp] = vwSec('피드 예시 · 멘션 텍스트');
+  const fg = el('div', 'vw-feed');
+  const ph = el('div', 'vw-feedimg');
+  if (S.feed) { const im = el('img'); im.src = S.feed; im.alt = '피드 예시'; ph.append(zoomable(im, S.feed)); }
+  else ph.append(el('div', 'nop', '첫 장면 혹은 인스타그램 자체 설정에 의해\n효과적인 첫 장면으로 배치됩니다'));
+  const cap = el('div', 'vw-cap');
+  cap.append(el('div', 'k', '멘션 텍스트'), el('div', 'vw-text', S.caption.mention || '-'));
+  if (S.caption.tags.trim()) cap.append(el('div', 'k', '해시태그'), el('div', 'vw-text', S.caption.tags));
+  if (S.caption.account.trim()) cap.append(el('div', 'k', '계정 태그'), el('div', 'vw-text', S.caption.account));
+  fg.append(ph, cap); fp.append(fg); w.append(fs);
+
+  // 클립
+  const [cs, cp] = vwSec('클립 구성');
+  cp.classList.add('vw-clips');
+  S.clips.forEach((c, i) => {
+    const card = el('article', 'vw-clip');
+    const h = el('div', 'vw-ch');
+    h.append(el('b', null, `클립 ${i + 1}`), el('span', 'sec', `약 ${fmtSec(secs(c.narration))}`));
+    if (S.brief.length && c.points.length) h.append(el('span', 'vw-pts', '소구 ' + c.points.map(n => CIRC[n] || n).join(' ')));
+    card.append(h);
+    const body = el('div', 'vw-cb');
+    const pg = el('div', 'vw-ph');
+    if (c.photos.length) c.photos.forEach(p => { const f = el('figure'); const im = el('img'); im.src = p.url; im.alt = p.caption || ''; f.append(zoomable(im, p.url)); if (p.caption) f.append(el('figcaption', null, p.caption)); pg.append(f); });
+    else pg.append(el('div', 'nop', '참고 사진 없음'));
+    const tx = el('div', 'vw-tx');
+    const add = (k, x, cls) => { if (!x || !x.trim()) return; tx.append(el('div', 'k', k), el('div', 'vw-text' + (cls ? ' ' + cls : ''), x.trim())); };
+    add('자막 · 나레이션', c.narration, 'big');
+    add('영상 클립', c.shots);
+    add('촬영 참고', c.notes.split('\n').filter(Boolean).map(x => '*' + x.replace(/^\*\s*/, '')).join('\n'));
+    body.append(pg, tx); card.append(body); cp.append(card);
+  });
+  w.append(cs);
+  const ft = el('footer', 'vw-foot');
+  ft.append(el('div', null, '고칠 내용은 PPT를 받아 직접 고쳐 보내 주시거나, 담당자에게 말씀해 주세요.'), el('div', 'vw-brand', '노잉커뮤니케이션즈 · 자취생으로 살아남기'));
+  w.append(ft);
+}
+async function openShared() {
+  VIEW = 'share'; document.body.classList.add('viewer');
+  const v = $('#viewer'); v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 불러오는 중…'));
+  try {
+    const url = `https://firebasestorage.googleapis.com/v0/b/${window.__BUCKET}/o/${encodeURIComponent('conti-share/' + SHARE[1] + '.js')}?alt=media&token=${SHARE[2]}`;
+    await loadScript(url);
+    const d = window.__CONTI_SHARE;
+    if (!d || !d.conti) throw new Error('내용 없음');
+    S = normalize(d.conti); SEL = S.clips[0].id;
+    renderHead(); renderViewer();
+    document.title = `[콘티] ${S.info.title || '릴스'} (릴스)`;
+  } catch (e) {
+    v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 담당자에게 새 링크를 받아 주세요.'));
+  }
+}
+
+// ───────── 담당자 링크 만들기 (서버 모드) ─────────
+function shareSnapshot() {
+  const c = JSON.parse(JSON.stringify(S));
+  delete c.share; delete c.voiceProfile; delete c.status;
+  if (c.cal) c.cal = { company: c.cal.company || '' };
+  return c;
+}
+function hashOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + s.length.toString(36); }
+const shareLink = sh => `${location.origin}${location.pathname}#s=${sh.sid}.${sh.token}`;
+const fmtWhen = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+function openShare() { renderShare(); openM(mShare); }
+function renderShare(msg) {
+  const b = $('#shareBody'); b.textContent = '';
+  const sh = S.share;
+  if (!sh) {
+    const r = el('div', 'sh-row');
+    const mk = el('button', 'btn brand', '링크 만들기'); mk.onclick = () => publishShare(mk);
+    r.append(mk, el('span', 'sh-note', '지금 내용 그대로 담당자 화면을 만듭니다'));
+    b.append(r);
+  } else {
+    const r = el('div', 'sh-row');
+    const inp = el('input', 'sh-link'); inp.readOnly = true; inp.value = shareLink(sh); inp.onclick = () => inp.select();
+    const cp = el('button', 'btn brand', '복사'); cp.onclick = async () => { try { await navigator.clipboard.writeText(inp.value); } catch (e) { inp.select(); document.execCommand('copy'); } toast('링크를 복사했습니다'); };
+    const op = el('a', 'btn', '열어 보기'); op.href = inp.value; op.target = '_blank'; op.rel = 'noopener';
+    r.append(inp, cp, op); b.append(r);
+    const changed = hashOf(JSON.stringify(shareSnapshot())) !== sh.hash;
+    b.append(el('p', 'sh-note', `${fmtWhen(sh.at)}에 만든 링크${sh.by ? ' · ' + sh.by.split('@')[0] : ''}` + (changed ? ' · 링크를 만든 뒤 콘티를 고쳤습니다. 담당자에게는 아직 예전 내용이 보입니다.' : ' · 지금 내용과 같습니다.')));
+    const r2 = el('div', 'sh-row');
+    const up = el('button', 'btn' + (changed ? ' primary' : ''), '지금 내용으로 새 링크 만들기'); up.onclick = () => publishShare(up);
+    const cut = el('button', 'btn sh-cut', '링크 닫기'); cut.onclick = () => closeShare(cut);
+    r2.append(up, cut); b.append(r2);
+    b.append(el('p', 'sh-note', '새 링크를 만들면 이전 링크는 열리지 않습니다. 새 링크를 다시 보내 주세요.'));
+  }
+  if (msg) b.append(el('p', 'sh-msg', msg));
+}
+async function publishShare(btn) {
+  if (!FBX?.storage) return;
+  const old = S.share;
+  btn.disabled = true; btn.textContent = '만드는 중…';
+  try {
+    const snap = shareSnapshot();
+    const sid = 's' + Date.now().toString(36) + uid() + uid();
+    const ref = FBX.ST.ref(FBX.storage, `conti-share/${sid}.js`);
+    await FBX.ST.uploadString(ref, 'window.__CONTI_SHARE = ' + JSON.stringify({ v: 1, at: Date.now(), conti: snap }) + ';\n', 'raw',
+      { contentType: 'application/javascript; charset=utf-8', cacheControl: 'no-cache' });
+    const token = new URL(await FBX.ST.getDownloadURL(ref)).searchParams.get('token');
+    S.share = { sid, token, at: Date.now(), by: FBX.user?.email || '', hash: hashOf(JSON.stringify(snap)) };
+    if (old?.sid) FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${old.sid}.js`)).catch(() => {});
+    save(); renderShare(old ? '새 링크를 만들었습니다. 이전 링크는 닫혔습니다.' : '링크를 만들었습니다. [복사]해서 담당자에게 보내 주세요.');
+  } catch (e) {
+    console.error(e); renderShare('링크를 만들지 못했습니다 — ' + e.message);
+  }
+}
+async function closeShare(btn) {
+  if (!S.share || !confirm('이 링크를 닫을까요? 담당자가 더 이상 열 수 없습니다.')) return;
+  btn.disabled = true;
+  try { await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${S.share.sid}.js`)); } catch (e) { if (!/not-found/.test(e.code || '')) { renderShare('닫지 못했습니다 — ' + e.message); return; } }
+  S.share = null; save(); renderShare('링크를 닫았습니다.');
+}
+
 // ───────── 공통 ─────────
 function openM(m) { m.hidden = false; }
 function closeM(m) { m.hidden = true; }
@@ -1704,11 +1915,13 @@ function renderAll() {
 }
 (async () => {
   FBX = await (window.FBX_READY || Promise.resolve(null));
+  if (SHARE) { await openShared(); return; }
   if (FBX && !FBX.user) { openM(mLogin); setTimeout(() => $('#lgEmail').focus(), 50); return; }
   if (FBX) {
     $('.mock-banner').innerHTML = '<b>릴스 콘티</b> · 서버에 자동 저장됩니다(달력과 같은 계정). 팀원도 달력의 <b>[콘텐츠 기획]</b> 탭에서 볼 수 있습니다.';
     $('#fileDesc').textContent = '작업 내용은 서버에 자동 저장되고, 달력의 [콘텐츠 기획] 탭에 모입니다. 보관용 파일이 필요하면 저장 파일(.json)을 받아 두세요.';
     $('#delRow').hidden = false;
+    $('#btnShare').hidden = false;
     CONTI_ID = QS.get('id') || (CID ? 'c-' + CID : null);
     let isNew = false;
     if (!CONTI_ID) { CONTI_ID = 'p-' + Date.now().toString(36) + uid().slice(0, 3); history.replaceState(null, '', location.pathname + '?id=' + CONTI_ID); isNew = true; }
@@ -1740,6 +1953,7 @@ async function deleteThisConti() {
   try {
     const ms = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'media'));
     for (const d of ms.docs) await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'media', d.id));
+    if (S.share?.sid) await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${S.share.sid}.js`)).catch(() => {});
     await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID));
     alert('콘티를 삭제했습니다. 달력의 콘텐츠 기획 탭으로 이동합니다.');
     location.href = '../';
