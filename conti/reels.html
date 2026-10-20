@@ -1623,8 +1623,8 @@ async function voiceRow() {
   if (VOICE_BUSY) return;
   if (RELAY_OK === null || !sel.options.length) {
     try {
-      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
-      await fetch(RELAY + '/health', { signal: ctl.signal }).then(r => { if (!r.ok) throw 0; });
+      $('#igVoiceMsg').textContent = '목소리 중계 찾는 중… (크롬이 허용을 물으면 [허용]을 눌러 주세요)';
+      await fetch(RELAY + '/health').then(r => { if (!r.ok) throw 0; });
       const list = await relay('/profiles');
       sel.textContent = '';
       list.forEach(p => { const o = el('option', null, p.name); o.value = p.id; sel.append(o); });
@@ -1639,7 +1639,7 @@ async function voiceRow() {
   btn.textContent = other ? `🎙 ${sel.selectedOptions[0]?.textContent || ''} 목소리로 다시 만들기`
     : st.ok.length && st.todo.length ? `🎙 남은 ${st.todo.length}클립 만들기` : st.ok.length ? '🎙 다 만들었습니다' : '🎙 목소리로 만들기';
   msg.textContent = RELAY_OK ? (have || '클립 나레이션을 이 목소리로 만듭니다')
-    : (have ? have + ' · ' : '') + '목소리를 새로 만들려면 이 PC 에서 [목소리_중계]를 켜 주세요';
+    : (have ? have + ' · ' : '') + '목소리를 새로 만들려면 이 PC 에서 [목소리_중계]를 켜 주세요. 켜 두었는데도 안 되면 주소창 왼쪽 아이콘 → 사이트 설정에서 [로컬 네트워크 접근]을 허용해 주세요';
 }
 async function makeVoices() {
   if (VOICE_BUSY) return;
