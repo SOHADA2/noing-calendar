@@ -454,6 +454,9 @@ ins.lg{padding:0 3px}
 .ig-bars b{display:block;height:100%;width:0;background:#fff}
 .ig-top{position:absolute;left:14px;right:14px;top:22px;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:16px}
 .ig-top span{font-size:11.5px;background:rgba(0,0,0,.4);padding:2px 9px;border-radius:99px}
+.ig-shotnote{position:absolute;left:12px;right:12px;top:52px;color:#fff;font-size:11.5px;line-height:1.4;background:rgba(0,0,0,.46);border-radius:9px;padding:6px 9px;pointer-events:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;word-break:keep-all}
+.ig-shotnote[hidden]{display:none}
+.ig-shotnote b{display:inline-block;font-size:10.5px;font-weight:700;color:#2b1d00;background:var(--brand);border-radius:4px;padding:0 5px;margin-right:5px;vertical-align:1px}
 .ig-sub{position:absolute;left:6%;right:15%;top:57%;text-align:center;color:#fff;font-weight:800;font-size:clamp(15px,2.6vh,22px);line-height:1.38;text-shadow:0 0 4px #000,0 2px 8px rgba(0,0,0,.9);word-break:keep-all;white-space:pre-line;pointer-events:none}
 .ig-sub.long{font-size:clamp(13.5px,2.25vh,19px)}
 .ig-side{position:absolute;right:10px;bottom:96px;display:flex;flex-direction:column;gap:15px;align-items:center;color:#fff;font-size:22px;pointer-events:none}
@@ -695,6 +698,7 @@ ins.lg{padding:0 3px}
       <div class="ig-shade"></div>
       <div class="ig-bars" id="igBars"></div>
       <div class="ig-top"><b>릴스</b><span id="igClip"></span></div>
+      <div class="ig-shotnote" id="igShot" hidden></div>
       <div class="ig-sub" id="igSub"></div>
       <div class="ig-side"><span>♡<small>좋아요</small></span><span>💬<small>댓글</small></span><span>➤<small>공유</small></span><span>⋯</span></div>
       <div class="ig-bottom">
@@ -708,6 +712,7 @@ ins.lg{padding:0 3px}
       <button class="btn primary" id="igPlay" onclick="togglePlay()">❚❚ 멈춤</button>
       <button class="btn" onclick="playClip(IG.i + 1)">다음 클립 ▶</button>
       <button class="btn" id="igSound" onclick="toggleSound()">🔇 나레이션 끔</button>
+      <button class="btn on" id="igNoteBtn" onclick="toggleShotNote()" title="사진이 예시라는 표시와 촬영할 컷 설명">🎬 촬영 설명</button>
       <button class="btn" onclick="closeInsta()">닫기</button>
     </div>
     <div class="ig-bgm">배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.</div>
@@ -1663,7 +1668,7 @@ async function buildPptx() {
 // ───────── 인스타로 보기 — 만들어 둔 나레이션·참고 사진으로 릴스가 대략 어떻게 흘러갈지 ─────────
 // 클립마다 사진을 천천히 넘기고(살짝 확대), 나레이션을 자막으로 나눠 보여준다.
 // [소리] 를 켜면 브라우저의 한국어 음성으로 나레이션을 읽고, 읽기가 끝나면 다음 클립으로 넘어간다.
-const IG = { i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, take: null, takeSrc: null, seg: null };
+const IG = { note: true, i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, take: null, takeSrc: null, seg: null };
 // 자막 나누기 — ① 글에서 줄을 바꾼 곳 ② 문장 끝(. ! ? …) ③ 그래도 길면(두 줄 26자 넘게) 가운데에 가까운 자연스러운 띄어쓰기
 //   (쉼표 뒤를 가장 먼저, '~고/~서/~며/~면/~는데/~지만' 같은 이음말 뒤를 그다음으로). 낱말 중간에서는 끊지 않는다
 const SUB_MAX = 26, SUB_LINE = 13;
@@ -1759,6 +1764,13 @@ function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어�
   IG.chunks = chunkCaption(c.narration);
   { let acc = 0; const tot = IG.chunks.reduce((a, x) => a + subLen(x), 0) || 1; IG.cum = IG.chunks.map(x => (acc += subLen(x)) / tot); }
   IG.photoN = photos.length;
+  // 사진이 예시라는 표시 + 이 클립에서 찍을 컷 설명(화면을 덜 가리게 위쪽에 작게)
+  const shotTxt = c.shots.split('\n').map(x => x.trim()).filter(Boolean).join(' / ');
+  const note = $('#igShot'); note.textContent = '';
+  if (c.photos.length) note.append(el('b', null, '예시 사진'));
+  if (shotTxt) note.append('촬영: ' + shotTxt);
+  else if (c.photos.length) note.append('실제 촬영 사진이 아닌 참고용 사진입니다');
+  note.hidden = !IG.note || !note.textContent;
   IG.seg = null;
   const t = IG.sound && takeOf();
   if (t) {   // 만들어 둔 나레이션
@@ -1849,7 +1861,7 @@ async function voiceRow() {
   }
   const t = takeOf(), stale = !!S.take?.url && !t;
   const have = t ? `나레이션 준비됨 · ${t.name} · ${fmtSec(Math.round(t.dur))}` : stale ? '클립 글이 바뀌어 나레이션을 다시 만들어야 합니다' : '';
-  sel.hidden = btn.hidden = !RELAY_OK;
+  sel.hidden = !RELAY_OK; btn.hidden = false;
   btn.disabled = !S.clips.some(c => c.narration.trim());
   btn.textContent = !S.take?.url ? '🎙 목소리로 만들기' : stale ? '🎙 바뀐 글로 다시 만들기'
     : t.profile !== sel.value ? `🎙 ${sel.selectedOptions[0]?.textContent || ''} 목소리로 다시 만들기` : '🎙 다시 만들기';
@@ -1858,6 +1870,10 @@ async function voiceRow() {
 }
 async function makeVoices() {
   if (VOICE_BUSY) return;
+  if (!RELAY_OK) {   // 중계를 못 찾았던 상태면 한 번 더 찾아본다
+    RELAY_OK = null; await voiceRow();
+    if (!RELAY_OK) { toast('목소리 중계를 찾지 못했습니다 — 아래 안내를 확인해 주세요'); return; }
+  }
   const sel = $('#igVoiceSel'), btn = $('#igMake'), msg = $('#igVoiceMsg');
   const prof = { id: sel.value, name: sel.selectedOptions[0]?.textContent || '' };
   if (!prof.id) return;
@@ -1882,6 +1898,10 @@ async function makeVoices() {
   } finally {
     clearInterval(timer); VOICE_BUSY = false; btn.disabled = false; sel.disabled = false;
   }
+}
+function toggleShotNote() {
+  IG.note = !IG.note; $('#igNoteBtn').classList.toggle('on', IG.note);
+  const n = $('#igShot'); n.hidden = !IG.note || !n.textContent;
 }
 function toggleSound() {
   IG.sound = !IG.sound; $('#igSound').classList.toggle('on', IG.sound);
