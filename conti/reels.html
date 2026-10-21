@@ -151,7 +151,7 @@ section{margin-top:22px}
 .brief-list .hint b{color:var(--ink-2)}
 .brief-list textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;margin-bottom:8px}
 .brief-list textarea:focus{outline:2px solid var(--brand);outline-offset:-1px}
-.lightbox{cursor:zoom-out}
+.lightbox{cursor:zoom-out;background:rgba(12,11,10,.9)}
 .lightbox{flex-direction:column;gap:10px}
 .lightbox img{max-width:min(1200px,90vw);max-height:80vh;border-radius:8px;background:#fff}
 .lb-wrap{display:flex;align-items:center;gap:10px}
@@ -442,11 +442,18 @@ ins.lg{padding:0 3px}
 .vc-h{display:flex;align-items:baseline;gap:8px}
 .vc-h b{font-size:14.5px}
 .vc-h span{font-size:12px;color:var(--muted)}
+.vc-sec b,#vwTotal b{font-weight:700}
+.vc-sec b.up,#vwTotal b.up{color:#c0392b}
+.vc-sec b.down,#vwTotal b.down{color:#1d5e40}
+#vwTotal .over-n{color:#c0392b;font-size:12.5px}
 .vc-h .vc-chg{display:none;margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:99px;padding:1px 9px}
 .vc.chg .vc-chg{display:inline-block}
 .vc-b{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
 .vc-panel{width:200px;display:flex;flex-direction:column;gap:4px;border-radius:10px;overflow:hidden;min-height:60px;background:#f3f0e9}
-.vc-row{display:flex;gap:4px}
+.vc-row{display:flex;gap:4px;position:relative}
+.vc-row.fill{justify-content:center;overflow:hidden;background:#1d1b19}
+.vc-row .vc-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(12px) brightness(.6);transform:scale(1.2)}
+.vc-row.fill .vc-ph{position:relative}
 .vc-ph{position:relative;margin:0;height:100%;flex:none;overflow:hidden;cursor:zoom-in;background:#ece8df}
 .vc-ph img{display:block;width:100%;height:100%;object-fit:cover}
 .vc-ph:hover::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 0 2px var(--brand)}
@@ -507,6 +514,27 @@ ins.lg{padding:0 3px}
 .sent-dlg .desc{white-space:pre-line}
 .sent-dlg .foot{justify-content:center}
 @media (max-width:1040px){ .vw-cards{grid-template-columns:1fr} }
+@media (max-width:560px){
+  .vc{padding:12px}
+  .vc-panel{width:100%}
+  .vw-nophoto{width:100%;height:80px}
+  .fx-t,.fx.nar .fx-t,.fx.memo .fx-t,.fb-bar .fb-name{font-size:16px}   /* 아이폰은 16px 보다 작은 칸을 누르면 화면을 확대한다 */
+  .fx-t{width:100%;margin:0}
+  .fb-bar{left:0;right:0;margin:12px -4px 4px;border-radius:12px;padding:10px 12px;gap:8px}
+  .fb-bar .fb-msg{min-width:0;flex-basis:calc(100% - 40px);font-size:12.5px}
+  .fb-bar .fb-extra{display:none}
+  .fb-bar .fb-name{flex:1;width:auto;min-width:0}
+  body.typing .fb-bar{display:none}   /* 글을 쓰는 동안은 자판 위 공간을 띠가 가리지 않게 */
+  .lb-wrap{position:relative}
+  .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:54px;background:rgba(0,0,0,.45);z-index:2}
+  .lb-nav.prev{left:4px}
+  .lb-nav.next{right:4px}
+  .lightbox img{max-width:94vw;max-height:72vh}
+  .lb-cap{font-size:12.5px}
+  .vw-hero{padding:18px 16px}
+  .vw-hero h1{font-size:20px}
+  .vw-acts .btn{flex:1;justify-content:center;text-align:center}
+}
 @media (max-width:560px){ .vc-b{grid-template-columns:1fr} .vw-cap2{grid-template-columns:1fr} .fb-bar .fb-name{width:100%} }
 
 /* 인쇄 = PDF 받기 */
@@ -2126,7 +2154,8 @@ function renderViewer() {
   hero.append(el('h1', null, S.info.title || '(서비스명)'));
   const meta = el('div', 'info-grid vw-meta');
   [['발행 채널', S.info.channel], ['발행 일시', dateKo(true)], ['영상 길이', S.info.length || '1분 이내'], ['구성', `클립 ${S.clips.length}개 · 나레이션 약 ${fmtSec(totalSecs())}`]]
-    .forEach(([k, x]) => { const d = el('div'); d.append(el('div', 'k', k), el('div', 'v', x || '-')); meta.append(d); });
+    .forEach(([k, x]) => { const d = el('div'); const v = el('div', 'v', x || '-'); if (k === '구성') v.id = 'vwTotal'; d.append(el('div', 'k', k), v); meta.append(d); });
+  requestAnimationFrame(vwTotal);
   hero.append(meta);
   const acts = el('div', 'vw-acts');
   const b1 = el('button', 'btn brand', '▶ 인스타 릴스 화면으로 보기'); b1.onclick = openInsta;
@@ -2188,13 +2217,14 @@ const fbTidy = c => { const d = FB.clips[c.id]; if (d && !clipChanged(c, d)) del
 function vwClipCard(c, i) {
   const card = el('article', 'vc'); card.dataset.id = c.id;
   const head = el('div', 'vc-h');
-  head.append(el('b', null, `클립 ${i + 1}`), el('span', null, `약 ${fmtSec(secs(c.narration))}`), el('i', 'vc-chg', '고친 곳 있음'));
+  head.append(el('b', null, `클립 ${i + 1}`), el('span', 'vc-sec'), el('i', 'vc-chg', '고친 곳 있음'));
+  requestAnimationFrame(() => vcSecs(card, c));
   const ph = el('div', 'vc-panel');
   if (c.photos.length) panelPhotos(ph, c, i);
   else ph.append(el('div', 'vw-nophoto', '사진 없음'));
   const tx = el('div', 'vc-t');
   const d = FB.clips[c.id];
-  tx.append(fixField('자막 · 나레이션', c.narration, d ? d.narration : c.narration, v => { fbClip(c).narration = v; fbTidy(c); }, { cls: 'nar' }));
+  tx.append(fixField('자막 · 나레이션', c.narration, d ? d.narration : c.narration, v => { fbClip(c).narration = v; fbTidy(c); vcSecs(card, c); vwTotal(); }, { cls: 'nar' }));
   tx.append(fixField('영상 클립', c.shots, d ? d.shots : c.shots, v => { fbClip(c).shots = v; fbTidy(c); }, { ph: '(없음)' }));
   const notes = c.notes.split('\n').map(x => x.trim()).filter(Boolean);
   if (notes.length) { const nb = el('div', 'vc-note'); nb.append(el('span', 'fx-l', '촬영 참고'), el('div', null, notes.map(x => '*' + x.replace(/^\*\s*/, '')).join('\n'))); tx.append(nb); }
@@ -2203,11 +2233,32 @@ function vwClipCard(c, i) {
   card.append(head, body);
   return card;
 }
+// 나레이션 길이(글자 수로 짐작) — 담당자가 고치면 클립마다·전체를 다시 계산해 늘어난/줄어든 만큼 보여 준다
+const narNow = c => { const d = FB?.clips?.[c.id]; return d ? d.narration : c.narration; };
+function vcSecs(card, c) {
+  const sp = card.querySelector('.vc-sec'); if (!sp) return;
+  const was = secs(c.narration), now = secs(narNow(c));
+  sp.textContent = `약 ${fmtSec(now)}`;
+  if (now !== was) sp.append(el('b', now > was ? 'up' : 'down', ` ${now > was ? '+' : '−'}${Math.abs(now - was)}초`));
+  sp.title = now !== was ? `원래 약 ${fmtSec(was)} → 고친 글 약 ${fmtSec(now)} (글자 수로 계산한 대략값)` : '글자 수로 계산한 대략값';
+}
+function vwTotal() {
+  const t = $('#vwTotal'); if (!t) return;
+  const was = totalSecs(), now = S.clips.reduce((a, c) => a + secs(narNow(c)), 0);
+  t.textContent = `클립 ${S.clips.length}개 · 나레이션 약 ${fmtSec(now)}`;
+  if (now !== was) t.append(el('b', now > was ? 'up' : 'down', ` (원래 약 ${fmtSec(was)}, ${now > was ? '+' : '−'}${Math.abs(now - was)}초)`));
+  const over = now > limitSecs(); t.classList.toggle('over', over);
+  if (over) t.append(el('span', 'over-n', ` · ${S.info.length || '1분 이내'}를 넘을 수 있어요`));
+}
 // 사진 판 — PPT 노란 판처럼 빈틈없이: 사진을 줄로 묶고, 줄마다 높이를 맞춰 폭 200px 을 원래 비율대로 꽉 채운다
 //   어떻게 줄로 묶을지는 가능한 묶음을 다 따져 판 높이가 260px 에 가장 가까운 것을 고른다
 //   (줄 높이는 원래보다 최대 20% 낮출 수 있다 = 위아래를 조금 잘라 냄. 80px 보다 얇은 줄은 피한다)
 const PANEL_W = 200, PANEL_H = 260, PGAP = 4;
 async function panelPhotos(box, c, i) {
+  // 휴대폰에선 판이 카드 폭을 꽉 채운다(CSS width:100%). 줄 높이는 300px 까지 — 넘으면 사진 전체를 가운데에 두고 양옆은 같은 사진을 흐리게
+  const mob = matchMedia('(max-width:560px)').matches;
+  if (mob) await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const W = mob ? Math.max(200, Math.round(box.getBoundingClientRect().width) || (innerWidth - 58)) : PANEL_W, TH = mob ? 240 : PANEL_H, ROWMAX = mob ? 300 : Infinity;
   const ims = await Promise.all(c.photos.map(p => loadImg(p.url).catch(() => null)));
   const rs = ims.map(im => im ? im.naturalWidth / im.naturalHeight : 0.75), n = rs.length;
   let best = null;
@@ -2216,16 +2267,22 @@ async function panelPhotos(box, c, i) {
     for (let k = 1; k < n; k++) { if (mask & (1 << (k - 1))) { rows.push(cur); cur = [k]; } else cur.push(k); }
     rows.push(cur);
     if (rows.some(r => r.length > 3)) continue;
-    const hs = rows.map(r => (PANEL_W - PGAP * (r.length - 1)) / r.reduce((a, x) => a + rs[x], 0));
+    const hs = rows.map(r => (W - PGAP * (r.length - 1)) / r.reduce((a, x) => a + rs[x], 0));
     const H = hs.reduce((a, b) => a + b, 0) + PGAP * (rows.length - 1);
-    const k = Math.max(0.8, Math.min(1, PANEL_H / H));
-    const score = Math.abs(H * k - PANEL_H) + hs.filter(h => h * k < 80).length * 200;
+    const k = Math.max(0.8, Math.min(1, TH / H));
+    const score = Math.abs(Math.min(H * k, ROWMAX * rows.length) - TH) + hs.filter(h => h * k < 80).length * 200;
     if (!best || score < best.score) best = { score, rows, hs: hs.map(h => h * k) };
   }
   box.textContent = '';
   best.rows.forEach((row, ri) => {
-    const sum = row.reduce((a, x) => a + rs[x], 0), wAvail = PANEL_W - PGAP * (row.length - 1);
-    const line = el('div', 'vc-row'); line.style.height = Math.round(best.hs[ri]) + 'px';
+    const sum = row.reduce((a, x) => a + rs[x], 0);
+    let wAvail = W - PGAP * (row.length - 1), h = best.hs[ri];
+    const line = el('div', 'vc-row');
+    if (h > ROWMAX) {   // 휴대폰에서 세로 사진 한 장이 너무 길어질 때
+      wAvail *= ROWMAX / h; h = ROWMAX; line.classList.add('fill');
+      const bg = el('img', 'vc-bg'); bg.src = c.photos[row[0]].url; bg.alt = ''; bg.setAttribute('aria-hidden', 'true'); line.append(bg);
+    }
+    line.style.height = Math.round(h) + 'px';
     row.forEach(k => {
       const p = c.photos[k], f = el('figure', 'vc-ph'); f.title = '크게 보기';
       f.style.width = (wAvail * rs[k] / sum).toFixed(1) + 'px';
@@ -2274,12 +2331,14 @@ function fixField(label, orig, cur, onval, o = {}) {
   requestAnimationFrame(() => { grow(ta); mark(); });
   return wrap;
 }
+document.addEventListener('focusin', e => { if (e.target.matches?.('.fx-t:not([readonly])')) document.body.classList.add('typing'); });
+document.addEventListener('focusout', e => { if (e.target.matches?.('.fx-t')) setTimeout(() => { if (!document.activeElement?.matches?.('.fx-t:not([readonly])')) document.body.classList.remove('typing'); }, 50); });
 // 아래 고정 띠: 지금 상태(고친 곳 · 보냈는지 · 노잉이 확인했는지)와 보내기
 function fbBar() {
   const bar = $('#fbBar'); if (!bar || !FB) return;
   const p = fbPayload(), n = fbCount(p), h = hashOf(JSON.stringify(p));
   bar.textContent = ''; bar.className = 'fb-bar';
-  const msg = (ic, t) => bar.append(el('span', 'fb-ic', ic), el('span', 'fb-msg', t));
+  const msg = (ic, t, extra) => { const m = el('span', 'fb-msg', t); if (extra) m.append(el('span', 'fb-extra', extra)); bar.append(el('span', 'fb-ic', ic), m); };
   if (VIEW === 'preview') {
     bar.classList.add('pv');
     msg('👁', n ? `미리보기 · 고친 곳 ${n}곳 — 담당자는 여기서 [수정 요청 보내기]를 누르면 노잉에 전달됩니다` : '미리보기 · 담당자는 글을 눌러 바로 고치고 [수정 요청 보내기]로 보냅니다');
@@ -2290,9 +2349,9 @@ function fbBar() {
     msg('✓', FB.seen ? `노잉이 수정 요청을 확인했습니다 · ${fmtWhen(FB.sentAt)}에 보냄` : `${fmtWhen(FB.sentAt)} 노잉에 전달했습니다 · 확인되면 여기에 표시됩니다`);
     return;
   }
-  if (!n) { msg('✎', '글을 눌러 바로 고칠 수 있어요. 고친 뒤 [수정 요청 보내기]를 눌러야 노잉에 전달됩니다'); return; }
+  if (!n) { msg('✎', '글을 눌러 바로 고칠 수 있어요.', ' 고친 뒤 [수정 요청 보내기]를 눌러야 노잉에 전달됩니다'); return; }
   bar.classList.add('on');
-  msg(String(n), `${FB.sentAt ? '보낸 뒤 더 고친 곳' : '고친 곳'} ${n}곳 · 아직 보내지 않았어요 (이 브라우저에만 임시 저장)`);
+  msg(String(n), `${FB.sentAt ? '보낸 뒤 더 고친 곳' : '고친 곳'} ${n}곳 · 아직 보내지 않았어요`, ' (이 브라우저에만 임시 저장)');
   const nm = el('input', 'fb-name'); nm.id = 'fbName'; nm.placeholder = '보내는 분 (이름·회사)'; nm.value = FB.name || '';
   nm.oninput = () => { FB.name = nm.value; fbSave(); };
   const go = el('button', 'btn brand', FB.sentAt ? '다시 보내기' : '수정 요청 보내기'); go.onclick = () => sendFeedback(go);
@@ -2463,6 +2522,24 @@ async function loadFeedback() {
   b.classList.toggle('brand', n > 0);
 }
 // 낱말 단위 비교: 지운 곳은 빨간 줄, 더한 곳은 초록
+// 글자 단위 비교(바뀐 구간 안에서만 쓴다)
+function charLcs(a, b) {
+  const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  return L;
+}
+function charSim(a, b) { if (a.length * b.length > 250000) return 0; return 2 * charLcs(a, b)[0][0] / (a.length + b.length); }
+function charDiff(a, b, out) {
+  const L = charLcs(a, b), n = a.length, m = b.length;
+  let i = 0, j = 0, cur = null, buf = '';
+  const put = (t, ch) => { if (t !== cur) { if (buf) out.append(cur ? el(cur, null, buf) : buf); cur = t; buf = ''; } buf += ch; };
+  while (i < n || j < m) {
+    if (i < n && j < m && a[i] === b[j]) { put(null, a[i]); i++; j++; }
+    else if (i < n && (j >= m || L[i + 1][j] >= L[i][j + 1])) { put('del', a[i]); i++; }
+    else { put('ins', b[j]); j++; }
+  }
+  if (buf) out.append(cur ? el(cur, null, buf) : buf);
+}
 function diffEl(a, b) {
   const A = (a || '').split(/(\s+)/), B = (b || '').split(/(\s+)/), n = A.length, m = B.length;
   const L = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
@@ -2473,9 +2550,12 @@ function diffEl(a, b) {
   const flush = () => {
     const d = dels.join('').trim(), s2 = inss.join('').trim();
     if ((d || s2) && /^\s/.test((dels.length ? dels : inss).join(''))) out.append(' ');
-    if (d) out.append(el('del', null, d));
-    if (d && s2) out.append(' ');
-    if (s2) out.append(el('ins', null, s2));
+    if (d && s2 && charSim(d, s2) >= 0.5) charDiff(d, s2, out);   // 거의 같은 글 = 글자만 조금 바뀜 → 바뀐 글자만
+    else {
+      if (d) out.append(el('del', null, d));
+      if (d && s2) out.append(' ');
+      if (s2) out.append(el('ins', null, s2));
+    }
     if ((d || s2) && /\s$/.test((inss.length ? inss : dels).join(''))) out.append(' ');
     dels = []; inss = [];
   };
