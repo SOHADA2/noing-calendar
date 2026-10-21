@@ -2245,7 +2245,7 @@ function renderViewer() {
   if ((S.bgm || []).length) {
     const [bs, bp] = vwSec('BGM 후보');
     const l = el('div', 'bgm-list'); S.bgm.forEach(b => l.append(bgmItem(b, false))); bp.append(l);
-    bp.append(el('p', 'vw-note', '*눌러서 인스타그램에서 들어보실 수 있습니다. 원하시는 곡이나 다른 곡이 있으면 아래 전체 의견에 적어 주세요. 고르지 않으시면 근래 반응 좋은 곡으로 정해 발행합니다.'));
+    bp.append(el('p', 'vw-note', '*눌러서 인스타그램에서 들어보실 수 있습니다. 원하시는 곡이나 다른 곡이 있으면 아래 [추가 요청]에 적어 주세요. 고르지 않으시면 근래 반응 좋은 곡으로 정해 발행합니다.'));
     w.append(bs);
   }
 
@@ -2277,10 +2277,10 @@ function renderViewer() {
   fp.append(row2);
   w.append(fs);
 
-  // 전체 의견
+  // 추가 요청(클립 하나에 묶이지 않는 요청)
   if (canFix()) {
-    const [ms, mp] = vwSec('전체 의견');
-    mp.append(fixField('클립과 상관없이 전하고 싶은 말', '', FB.memo || '', v => { FB.memo = v; }, { memo: true, ph: '예) 전체적으로 좋아요. 마지막 장면만 한 번 더 봐 주세요' }));
+    const [ms, mp] = vwSec('추가 요청');
+    mp.append(fixField('콘티 전체에 대한 요청', '', FB.memo || '', v => { FB.memo = v; }, { memo: true, ph: '예) 제품 이름이 영상 앞부분에 한 번 더 나오면 좋겠어요 / BGM은 2번 후보로 부탁드려요' }));
     w.append(ms);
   }
 
@@ -2681,7 +2681,7 @@ function renderFb() {
       });
       card.append(sec);
     }
-    if ((f.memo || '').trim()) { const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', '전체 의견'), el('div', 'fbc-memo', f.memo.trim())); card.append(sec); }
+    if ((f.memo || '').trim()) { const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', '추가 요청'), el('div', 'fbc-memo', f.memo.trim())); card.append(sec); }
     box.append(card);
   });
 }
