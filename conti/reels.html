@@ -452,7 +452,8 @@ ins.lg{padding:0 3px}
 .ig-bars b{display:block;height:100%;width:0;background:#fff}
 .ig-top{position:absolute;left:14px;right:14px;top:22px;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:16px}
 .ig-top span{font-size:11.5px;background:rgba(0,0,0,.4);padding:2px 9px;border-radius:99px}
-.ig-sub{position:absolute;left:7%;right:17%;top:57%;text-align:center;color:#fff;font-weight:800;font-size:clamp(15px,2.6vh,22px);line-height:1.35;text-shadow:0 0 4px #000,0 2px 8px rgba(0,0,0,.9);word-break:keep-all;pointer-events:none}
+.ig-sub{position:absolute;left:6%;right:15%;top:57%;text-align:center;color:#fff;font-weight:800;font-size:clamp(15px,2.6vh,22px);line-height:1.38;text-shadow:0 0 4px #000,0 2px 8px rgba(0,0,0,.9);word-break:keep-all;white-space:pre-line;pointer-events:none}
+.ig-sub.long{font-size:clamp(13.5px,2.25vh,19px)}
 .ig-side{position:absolute;right:10px;bottom:96px;display:flex;flex-direction:column;gap:15px;align-items:center;color:#fff;font-size:22px;pointer-events:none}
 .ig-side small{display:block;font-size:10px;text-align:center;margin-top:1px}
 .ig-bottom{position:absolute;left:12px;right:58px;bottom:14px;color:#fff;font-size:12.5px;pointer-events:none}
@@ -509,6 +510,11 @@ ins.lg{padding:0 3px}
 .photo.add{display:grid;place-items:center;border:2px dashed #d6cfc1;background:#fcfbf8;color:var(--muted);font-size:12.5px;text-align:center;min-height:128px;cursor:pointer;padding:10px;outline:none}
 .photo.add.on,.photo.add:focus{border-color:var(--brand);background:var(--brand-soft);color:#8a5a00}
 .est{font-size:12px;color:var(--muted);margin-top:4px}
+.subprev{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:6px}
+.subprev .k{font-size:11.5px;color:var(--muted);font-weight:600}
+.subprev .ch{white-space:pre-line;text-align:center;font-size:12px;line-height:1.35;background:#2b2926;color:#fff;border-radius:6px;padding:4px 8px;font-weight:600}
+.subprev .ch.long{background:#4a4038}
+.subprev .hint{font-size:11px;color:#b9b2a6}
 .ed-body .field textarea{resize:none;overflow:hidden;min-height:44px}
 .savebadge{font-size:12px;color:var(--muted)}
 .filemenu{display:flex;flex-direction:column;gap:10px}
@@ -1189,7 +1195,7 @@ async function addPhotos(c, files) {
 }
 
 const CLIP_FIELDS = [
-  ['narration', '콘텐츠 내용', '자막 및 나레이션', 4, '이 클립에서 나갈 자막·나레이션'],
+  ['narration', '콘텐츠 내용', '자막 및 나레이션 · 줄을 바꾸면 자막도 거기서 나뉩니다', 4, '이 클립에서 나갈 자막·나레이션'],
   ['shots', '영상 클립', '촬영할 컷 — 한 줄에 한 컷', 4, '예) 매장을 배경으로 제품 2개 보여주는 컷 (패키지 텍스트가 잘 보이도록)'],
   ['notes', '촬영 주의사항', '한 줄에 하나 — PPT 영상 클립 아래 빨간 *글씨', 2, '예) 손에 부스러기 안 보이도록 / 바삭 효과음 추가'],
 ];
@@ -1243,8 +1249,9 @@ function renderClipEditor() {
     const ta = el('textarea'); ta.rows = rows; ta.placeholder = ph; ta.value = c[f]; ta.classList.add('grow');
     fd.append(ta);
     let est = null;
-    if (f === 'narration') { est = el('div', 'est'); fd.append(est); }
-    const upd = () => { if (est) { const n = c.narration.replace(/\s/g, '').length; est.textContent = `약 ${fmtSec(secs(c.narration))} · ${n}자 (전체 예상 약 ${fmtSec(totalSecs())} / ${S.info.length || '1분 이내'})`; est.classList.toggle('bad', totalSecs() > limitSecs()); } };
+    let subp = null;
+    if (f === 'narration') { est = el('div', 'est'); subp = el('div', 'subprev'); fd.append(est, subp); }
+    const upd = () => { if (subp) { subp.textContent = ''; const ch = chunkCaption(c.narration); if (ch.length) { subp.append(el('span', 'k', '자막 나뉨')); ch.forEach(x => subp.append(el('span', 'ch' + (subLen(x) > 20 ? ' long' : ''), subLines(x)))); subp.append(el('span', 'hint', '줄을 바꾸면 거기서 나뉩니다')); } } if (est) { const n = c.narration.replace(/\s/g, '').length; est.textContent = `약 ${fmtSec(secs(c.narration))} · ${n}자 (전체 예상 약 ${fmtSec(totalSecs())} / ${S.info.length || '1분 이내'})`; est.classList.toggle('bad', totalSecs() > limitSecs()); } };
     ta.addEventListener('input', () => {
       c[f] = ta.value; grow(ta); upd();
       const t = document.querySelector(`#clipGrid .tile[data-id="${c.id}"]`); if (t) fillClipTile(t, c);
@@ -1640,18 +1647,44 @@ async function buildPptx() {
 // 클립마다 사진을 천천히 넘기고(살짝 확대), 나레이션을 자막으로 나눠 보여준다.
 // [소리] 를 켜면 브라우저의 한국어 음성으로 나레이션을 읽고, 읽기가 끝나면 다음 클립으로 넘어간다.
 const IG = { i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, take: null, takeSrc: null, seg: null };
+// 자막 나누기 — ① 글에서 줄을 바꾼 곳 ② 문장 끝(. ! ? …) ③ 그래도 길면(두 줄 26자 넘게) 가운데에 가까운 자연스러운 띄어쓰기
+//   (쉼표 뒤를 가장 먼저, '~고/~서/~며/~면/~는데/~지만' 같은 이음말 뒤를 그다음으로). 낱말 중간에서는 끊지 않는다
+const SUB_MAX = 26, SUB_LINE = 13;
+const subLen = t => t.replace(/\s/g, '').length;
+function subBreak(words, minLeft = 1) {   // 둘로 나눌 띄어쓰기 자리(왼쪽 낱말 개수)
+  const total = subLen(words.join(''));
+  let best = minLeft, bs = Infinity, acc = 0;
+  for (let i = 0; i < words.length - 1; i++) {
+    acc += subLen(words[i]);
+    let sc = Math.abs(acc - total / 2);
+    const w = words[i].replace(/[.!?…~"')]+$/, ''), nx = words[i + 1] || '';
+    if (/[,，]$/.test(words[i])) sc -= 7;
+    else if (/(고|서|며|면|는데|은데|지만|니까|라서|해서|려고|면서)$/.test(w)) sc -= 3;
+    else if (/(은|는|을|를|에서|으로|로|에게|한테)$/.test(w)) sc -= 2;   // 조사·꾸밈말 뒤는 끊어도 자연스럽다
+    if (/^(제대로|진짜|정말|너무|딱|꼭|더|완전|엄청|바로|다|잘|또|안|못|좀|이|그|저|이런|그런|요즘|이번|매일)$/.test(w)) sc += 6;   // 다음 말을 꾸미는 말 뒤에선 끊지 않는다
+    if (/^(팩|개|원|명|번|분|초|잔|병|봉|장|가지|만원|천원|%)/.test(nx) || /^\d/.test(w) && /^[가-힣]{1,2}$/.test(nx)) sc += 6;   // '10만 | 팩' 처럼 수와 단위 사이
+
+    if (sc < bs) { bs = sc; best = i + 1; }
+  }
+  return best;
+}
+function splitLong(t) {
+  if (subLen(t) <= SUB_MAX) return [t];
+  const w = t.split(' '); if (w.length < 2) return [t];
+  const k = subBreak(w);
+  return [...splitLong(w.slice(0, k).join(' ')), ...splitLong(w.slice(k).join(' '))];
+}
 function chunkCaption(text) {
-  // 자막은 15자 안팎으로 끊는다. 문장부호에서 먼저 끊고, 길면 띄어쓰기에서 끊는다
   const out = [];
-  (text || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?…~])\s+/).forEach(sent => {
-    let cur = '';
-    sent.split(' ').forEach(w => {
-      if ((cur + ' ' + w).trim().replace(/\s/g, '').length > 15 && cur) { out.push(cur.trim()); cur = w; }
-      else cur = (cur + ' ' + w).trim();
-    });
-    if (cur) out.push(cur);
-  });
+  (text || '').split(/\n+/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    .forEach(para => para.split(/(?<=[.!?…~])\s+/).forEach(sent => splitLong(sent).forEach(ch => out.push(ch))));
   return out;
+}
+function subLines(t) {   // 한 줄(13자)이 넘으면 가운데에 가까운 자연스러운 띄어쓰기에서 두 줄로
+  if (subLen(t) <= SUB_LINE) return t;
+  const w = t.split(' '); if (w.length < 2) return t;
+  const k = subBreak(w);
+  return w.slice(0, k).join(' ') + '\n' + w.slice(k).join(' ');
 }
 const clipDur = c => Math.max(3, secs(c.narration) || 3);
 function pickKoVoice() {
@@ -1707,6 +1740,7 @@ function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어�
     d.dataset.k = k; stage.append(d);
   });
   IG.chunks = chunkCaption(c.narration);
+  { let acc = 0; const tot = IG.chunks.reduce((a, x) => a + subLen(x), 0) || 1; IG.cum = IG.chunks.map(x => (acc += subLen(x)) / tot); }
   IG.photoN = photos.length;
   IG.seg = null;
   const t = IG.sound && takeOf();
@@ -1735,8 +1769,10 @@ function tick() {
   const k = Math.min(IG.photoN - 1, Math.floor(p * IG.photoN));
   document.querySelectorAll('#igStage .ig-shot').forEach(d => d.classList.toggle('on', +d.dataset.k === k));
   // 자막
-  const n = IG.chunks.length;
-  $('#igSub').textContent = n ? IG.chunks[Math.min(n - 1, Math.floor(p * n))] : '';
+  const n = IG.chunks.length, sub = $('#igSub');
+  let ci = IG.cum.findIndex(x => p < x); if (ci < 0) ci = n - 1;
+  const txt = n ? IG.chunks[ci] : '';
+  if (sub.dataset.t !== txt) { sub.dataset.t = txt; sub.textContent = subLines(txt); sub.classList.toggle('long', subLen(txt) > 20); }
   if (p >= 1 && !(IG.sound && !onTake && 'speechSynthesis' in window && speechSynthesis.speaking)) { playClip(IG.i + 1, !!onTake); return; }
   IG.raf = requestAnimationFrame(tick);
 }
