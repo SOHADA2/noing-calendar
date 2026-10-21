@@ -308,8 +308,10 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
 .pv-banner .btn{color:var(--ink)}
 .vw-hero{margin-top:22px;padding:22px 24px}
 .vw-kicker{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
-.vw-hero h1{font-size:24px;line-height:1.3;margin:4px 0 16px;word-break:keep-all}
-.vw-meta{margin-bottom:18px}
+.vw-hero h1{font-size:23px;line-height:1.3;margin:2px 0 12px;word-break:keep-all}
+.vw-meta{display:flex;flex-wrap:wrap;gap:8px 44px;margin-bottom:16px}
+.vw-meta .k{font-size:12px;color:var(--muted);margin-bottom:1px}
+.vw-meta .v{font-size:14px}
 .vw-acts{display:flex;gap:8px;flex-wrap:wrap}
 .vw-acts .btn{padding:9px 16px;font-size:14px}
 .vw-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
@@ -562,7 +564,6 @@ ins.lg{padding:0 3px}
         <button class="btn" id="btnFile" onclick="toggleFileMenu(event)" aria-haspopup="true" aria-expanded="false">파일 ▾</button>
         <div class="menu" id="fileMenu" hidden>
           <button onclick="closeFileMenu();downloadPptx($('#btnFile'))">PPT 받기</button>
-          <button onclick="closeFileMenu();printPdf()">PDF 받기</button>
           <hr>
           <button onclick="closeFileMenu();openM(mFile)">저장·불러오기…</button>
         </div>
@@ -572,7 +573,7 @@ ins.lg{padding:0 3px}
     </div>
   </div>
 </header>
-<div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 (고칠 수 없고, 보기·PPT·PDF 받기만 됩니다)</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
+<div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 (콘티는 고칠 수 없고, 보기·PPT 받기·수정 요청만 됩니다)</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
 
 <main class="wrap">
 
@@ -597,17 +598,17 @@ ins.lg{padding:0 3px}
       <div class="brief-files" id="briefFiles"></div>
       <div class="drop" id="briefDrop" tabindex="0" role="button" aria-label="소구포인트 캡처나 파일 넣기">
         캡처를 <b>붙여넣기(Ctrl+V)</b> 하거나 파일을 <b>끌어다 놓으세요</b> · 눌러서 파일 선택
-        <small>이미지는 화면·PPT·PDF에 그대로 들어가고, PDF·문서 파일은 원본으로 첨부됩니다</small>
+        <small>이미지는 화면·PPT에 그대로 들어가고, PDF·문서 파일은 원본으로 첨부됩니다</small>
       </div>
       <div class="brief-list" id="briefList">
-        <div class="hint"><b>요청 내용 메모 (선택)</b> — 캡처만으로 부족할 때 고객사가 원한 내용을 글로 적어 두세요. 담당자 화면·PPT·PDF에 그대로 들어갑니다</div>
+        <div class="hint"><b>요청 내용 메모 (선택)</b> — 캡처만으로 부족할 때 고객사가 원한 내용을 글로 적어 두세요. 담당자 화면·PPT에 그대로 들어갑니다</div>
         <textarea id="briefText" rows="3" placeholder="예) 100% 홍천 쌀로 만들어 건강한 간식이라는 점을 꼭 보여 주세요"></textarea>
       </div>
     </div>
   </section>
 
   <section id="feedSection">
-    <h2 class="sec-title">멘션 텍스트 <span class="sub">피드 예시 사진과 썸네일 안내('첫 장면 혹은 인스타그램 자체 설정에 의해…')는 PPT·PDF에 자동으로 들어갑니다</span></h2>
+    <h2 class="sec-title">멘션 텍스트 <span class="sub">피드 예시 사진과 썸네일 안내('첫 장면 혹은 인스타그램 자체 설정에 의해…')는 PPT에 자동으로 들어갑니다</span></h2>
     <div class="panel">
       <div class="cap-cols">
         <div class="field">
@@ -1543,17 +1544,33 @@ async function placePanelPhotos(s, photos, ax, ay, aw, ah) {
   if (ph.length <= 3) {
     const nat = [];
     for (const p of ph) { const im = await loadImg(p.url); nat.push(aw * im.naturalHeight / im.naturalWidth); }
-    // 기존 콘티처럼 사진이 판을 꽉 채운다: 원래 비율대로 높이를 나눈 뒤 판 높이에 맞춰 늘이고 줄임(넘치는 부분은 잘라냄)
-    const k = (ah - gap * (ph.length - 1)) / nat.reduce((a, b) => a + b, 0);
-    let y = ay;
-    nat.forEach(h => { boxes.push([ax, y, aw, h * k]); y += h * k + gap; });
+    // 기존 콘티처럼 사진이 판을 꽉 채운다: 원래 비율대로 높이를 나눈 뒤 판 높이에 맞춰 늘이고 줄임(조금 넘치면 잘라냄)
+    //   단, 가로 사진 1장처럼 판을 채우려면 크게 잘려야 하는 경우엔 늘이지 않고 원래 비율 그대로 판 가운데에 둔다
+    const room = ah - gap * (ph.length - 1), sum = nat.reduce((a, b) => a + b, 0), k = room / sum;
+    if (k > 1.2) {
+      let y = ay + (room - sum) / 2;
+      nat.forEach(h => { boxes.push([ax, y, aw, h, true]); y += h + gap; });
+    } else if (k < 0.85) {   // 세로 사진이 여러 장이라 넘치면 폭도 함께 줄여 잘리지 않게
+      let y = ay;
+      nat.forEach(h => { boxes.push([ax + (aw - aw * k) / 2, y, aw * k, h * k, true]); y += h * k + gap; });
+    } else {
+      let y = ay;
+      nat.forEach(h => { boxes.push([ax, y, aw, h * k]); y += h * k + gap; });
+    }
   } else {
     const rows = Math.ceil(ph.length / 2), w = (aw - gap) / 2;
     const h = (ah - gap * (rows - 1)) / rows;
     ph.forEach((_, i) => boxes.push([ax + (i % 2) * (w + gap), ay + Math.floor(i / 2) * (h + gap), w, h]));
   }
   for (let i = 0; i < ph.length; i++) {
-    const [x, y, w, h] = boxes[i];
+    let [x, y, w, h, exact] = boxes[i];
+    if (!exact) {   // 칸과 사진 비율이 많이 다르면(30% 넘게 잘림) 자르지 않고 칸 안에 원래 비율로
+      const im = await loadImg(ph[i].url), r = im.naturalWidth / im.naturalHeight, rb = w / h;
+      if (1 - Math.min(r, rb) / Math.max(r, rb) > 0.3) {
+        const bw = r > rb ? w : h * r, bh = r > rb ? w / r : h;
+        x += (w - bw) / 2; y += (h - bh) / 2; w = bw; h = bh;
+      }
+    }
     s.addImage({ data: await coverImage(ph[i].url, Math.round(w * 200), Math.round(h * 200)), x, y, w, h });
     if (ph[i].caption) s.addText(ph[i].caption, { ...HEAD, x, y: y + 0.04, w, h: Math.min(0.7, h), fontSize: ph.length > 3 ? 10.5 : 12.5, color: RC.red, highlight: RC.hl, valign: 'top', margin: 2, fit: 'shrink' });
   }
@@ -1946,8 +1963,7 @@ function renderViewer() {
   const acts = el('div', 'vw-acts');
   const b1 = el('button', 'btn brand', '▶ 인스타 릴스 화면으로 보기'); b1.onclick = openInsta;
   const b2 = el('button', 'btn', 'PPT 받기'); b2.onclick = () => downloadPptx(b2);
-  const b3 = el('button', 'btn', 'PDF 받기'); b3.onclick = printPdf;
-  acts.append(b1, b2, b3); hero.append(acts);
+  acts.append(b1, b2); hero.append(acts);
   const notes = [];
   if (S.info.narration) notes.push(`*${S.info.length || '1분 이내'}의 릴스 영상을 제작하며 나레이션 작업이 포함됩니다.`);
   notes.push(takeOf() ? '*릴스 화면으로 보기에서 나레이션을 들어 볼 수 있습니다. 실제 영상의 목소리·속도와는 다를 수 있습니다.'
