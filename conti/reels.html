@@ -427,6 +427,9 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
 .field.from-cal input{background:#f6f3ed;color:var(--ink-2);cursor:not-allowed}
 .field.from-cal label::after{content:" · 달력";color:#b07a00;font-weight:600}
 .feed-grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start}
+.cap-cols{display:grid;grid-template-columns:1.4fr 1fr;gap:6px 22px}
+.cap-cols > .field:first-child{grid-row:span 2}
+@media (max-width:760px){.cap-cols{grid-template-columns:1fr}.cap-cols > .field:first-child{grid-row:auto}}
 .phone9{position:relative;min-height:240px;width:100%;border-radius:16px;overflow:hidden;background:#2b2926;display:grid;place-items:center;color:#cfc8ba;font-size:12.5px;text-align:center;cursor:pointer;white-space:pre-line;padding:12px;outline:none}
 .phone9.on,.phone9:focus{box-shadow:0 0 0 3px var(--brand)}
 .phone9 img{display:block;width:100%;height:auto;border-radius:10px}
@@ -474,7 +477,8 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
   .pr-clip h3{font-size:12px;margin:0 0 3px}
   .pr-clip p{margin:0 0 4px;white-space:pre-line}
   .pr-clip .k{color:#777;font-weight:700}
-  .pr-feed{float:left;width:30mm;margin:0 5mm 3mm 0}
+  .pr-feed{float:left;width:70mm;margin:0 5mm 3mm 0;border-radius:2mm}
+  .pr-thumb{color:#d23b2a;margin-bottom:2mm!important}
 }
 </style>
 </head>
@@ -543,13 +547,9 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
   </section>
 
   <section id="feedSection">
-    <h2 class="sec-title">피드 예시 · 멘션 텍스트</h2>
-    <div class="panel feed-grid">
-      <div>
-        <div class="phone9" id="feedBox" tabindex="0" role="button" aria-label="피드 예시(첫 장면) 이미지 넣기"></div>
-        <div class="feed-note">릴스는 따로 썸네일을 만들지 않습니다. PPT에는 기존 콘티처럼 '첫 장면 혹은 인스타그램 자체 설정에 의해 효과적인 첫 장면으로 배치됩니다' 안내가 함께 들어갑니다.</div>
-      </div>
-      <div>
+    <h2 class="sec-title">멘션 텍스트 <span class="sub">피드 예시 사진과 썸네일 안내('첫 장면 혹은 인스타그램 자체 설정에 의해…')는 PPT·PDF에 자동으로 들어갑니다</span></h2>
+    <div class="panel">
+      <div class="cap-cols">
         <div class="field">
           <label>멘션 텍스트</label>
           <textarea rows="8" data-capf="mention"></textarea>
@@ -1003,7 +1003,7 @@ async function addBriefFiles(files) {
 
 // ───────── 피드 예시(첫 장면) ─────────
 function renderFeed() {
-  const b = $('#feedBox'); b.textContent = '';
+  const b = $('#feedBox'); if (!b) return; b.textContent = '';
   if (S.feed) {
     b.classList.add('has');
     const im = el('img'); im.src = S.feed; im.alt = '피드 예시'; b.append(im);
@@ -1013,7 +1013,7 @@ function renderFeed() {
 }
 async function setFeed(file) { if (!file) return; S.feed = await fitStore(await fileToDataURL(file)); S.feedId = 'f' + uid(); renderFeed(); save(); toast('피드 예시를 넣었습니다'); }
 (() => {
-  const b = $('#feedBox');
+  const b = $('#feedBox'); if (!b) return;   // 피드 예시 칸은 10.21 에 사이트에서 뺐다(PPT·PDF 는 기본 사진)
   b.onclick = () => { $('#feedPick').value = ''; $('#feedPick').click(); };
   b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); } };
   $('#feedPick').addEventListener('change', e => setFeed(e.target.files[0]));
@@ -1210,7 +1210,7 @@ let pasteTarget = 'clip';
 ['pointerdown', 'focusin'].forEach(t => document.addEventListener(t, e => {
   const x = e.target.closest?.('#clipEditor, #clipGrid, #feedSection, #briefSection');
   if (!x) return;
-  pasteTarget = x.id === 'feedSection' ? 'feed' : x.id === 'briefSection' ? 'brief' : 'clip';
+  pasteTarget = x.id === 'briefSection' ? 'brief' : 'clip';
 }, true));
 document.addEventListener('paste', e => {
   const files = imagesOf(e.clipboardData?.files);
@@ -1273,7 +1273,9 @@ function printPdf() {
     pa.append(bs);
   }
   const sec = el('div', 'pa-sec'); sec.append(el('h2', null, '피드 예시 · 멘션 텍스트'));
-  if (S.feed) { const im = el('img', 'pr-feed'); im.src = S.feed; sec.append(im); }
+  const feed = S.feed || IMG.reelsFeed;
+  if (feed) { const im = el('img', 'pr-feed'); im.src = feed; sec.append(im); }
+  sec.append(el('p', 'pr-thumb', '<릴스 콘텐츠에 별도로 썸네일 작업이 진행되지 않습니다.> 첫 장면 혹은 인스타그램 자체 설정에 의해 효과적인 첫 장면으로 배치됩니다.'));
   sec.append(el('p', null, S.caption.mention + '\n' + S.caption.tags + (S.caption.account ? '\n계정 태그: ' + S.caption.account : '')));
   pa.append(sec);
   S.clips.forEach((c, i) => {
@@ -1530,9 +1532,10 @@ async function buildPptx() {
   // 3. 피드 예시 + 멘션 예시 (릴스 광고 콘텐츠 콘티(1))
   s = reelsFrame(pptx, '릴스 광고 콘텐츠 콘티(1)', { bandNote: '표지 디자인의 레퍼런스 입니다. (디자인 확인)' });
   s.addText('<릴스 피드 예시>', { ...BODY, x: 2.18, y: 1.23, w: 2.0, h: 0.44, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
-  if (S.feed) {
-    const b = await containBox(S.feed, 5.16, 2.95);
-    s.addImage({ data: raw(S.feed), x: 0.6 + (5.16 - b.w) / 2, y: 1.85, w: b.w, h: b.h });
+  const feed = S.feed || IMG.reelsFeed;   // 기존 콘티의 피드 예시 사진(one_home.mag 릴스 탭)
+  if (feed) {
+    const b = await containBox(feed, 5.16, 2.95);
+    s.addImage({ data: raw(feed), x: 0.6 + (5.16 - b.w) / 2, y: 1.85, w: b.w, h: b.h });
   } else s.addText('피드 예시 이미지', { ...BODY, x: 0.6, y: 1.85, w: 5.16, h: 2.95, align: 'center', valign: 'middle', fontSize: 12, color: PPT.muted, fill: { color: 'F4F1EA' }, margin: 0 });
   s.addText('<릴스 콘텐츠에 별도로 썸네일 작업이 진행되지 않습니다.>\n첫 장면 혹은 인스타그램 자체 설정에 의해\n효과적인 첫 장면으로 배치됩니다.',
     { ...BODY, x: 0.57, y: 5.0, w: 5.41, h: 1.2, align: 'center', valign: 'top', fontSize: 14, color: RC.red, margin: 0, lineSpacingMultiple: 1.25 });
@@ -1835,16 +1838,12 @@ function renderViewer() {
   }
 
   // 피드 예시·멘션
-  const [fs, fp] = vwSec('피드 예시 · 멘션 텍스트');
-  const fg = el('div', 'vw-feed');
-  const ph = el('div', 'vw-feedimg');
-  if (S.feed) { const im = el('img'); im.src = S.feed; im.alt = '피드 예시'; ph.append(zoomable(im, S.feed)); }
-  else ph.append(el('div', 'nop', '첫 장면 혹은 인스타그램 자체 설정에 의해\n효과적인 첫 장면으로 배치됩니다'));
+  const [fs, fp] = vwSec('멘션 텍스트');
   const cap = el('div', 'vw-cap');
   cap.append(el('div', 'k', '멘션 텍스트'), el('div', 'vw-text', S.caption.mention || '-'));
   if (S.caption.tags.trim()) cap.append(el('div', 'k', '해시태그'), el('div', 'vw-text', S.caption.tags));
   if (S.caption.account.trim()) cap.append(el('div', 'k', '계정 태그'), el('div', 'vw-text', S.caption.account));
-  fg.append(ph, cap); fp.append(fg); w.append(fs);
+  fp.append(cap); w.append(fs);
 
   // 클립
   const [cs, cp] = vwSec('클립 구성');
