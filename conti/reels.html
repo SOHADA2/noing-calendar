@@ -704,7 +704,7 @@ ins.lg{padding:0 3px}
     </div>
   </div>
 </header>
-<div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 (콘티는 고칠 수 없고, 보기·PPT 받기·수정 요청만 됩니다)</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
+<div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 — 담당자는 글을 눌러 바로 고친 뒤 [수정 요청 보내기]로 보내거나 PPT를 받을 수 있습니다. 원본 콘티는 [💬 수정 요청]에서 반영해야 바뀝니다</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
 
 <main class="wrap">
 
@@ -791,7 +791,7 @@ ins.lg{padding:0 3px}
     <div class="filemenu">
       <div class="row"><button class="btn primary" onclick="exportJson()">저장 파일 받기</button><span>사진까지 모두 들어 있는 파일 하나로 받습니다</span></div>
       <div class="row"><button class="btn" onclick="$('#jsonPick').value='';$('#jsonPick').click()">저장 파일 열기</button><span>받아 둔 저장 파일로 이어서 작업합니다 (지금 내용은 바뀝니다)</span></div>
-      <div class="row" id="delRow" hidden><button class="btn" style="color:#c0392b;border-color:#f0c4bc" onclick="deleteThisConti()">이 콘티 삭제</button><span>서버에서 글과 사진을 모두 지웁니다 (되돌릴 수 없음)</span></div>
+      <div class="row" id="delRow" hidden><button class="btn" style="color:#c0392b;border-color:#f0c4bc" onclick="deleteThisConti()">이 콘티 삭제</button><span>서버에서 글·사진·담당자 링크·받은 수정 요청을 모두 지웁니다 (되돌릴 수 없음)</span></div>
       <div class="row"><button class="btn" onclick="startNew()">새 콘티 시작</button><span>지금 내용을 비우고 처음부터 (먼저 저장 파일을 받아 두세요)</span></div>
     </div>
     <div class="foot"><button class="btn" onclick="closeM(mFile)">닫기</button></div>
@@ -802,7 +802,7 @@ ins.lg{padding:0 3px}
 <div class="modal" id="mShare" hidden onclick="if(event.target===this)closeM(this)">
   <div class="dialog" style="max-width:620px">
     <h3>담당자에게 보낼 링크</h3>
-    <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 콘티 자체는 고칠 수 없고, 클립마다 고칠 글이나 메모를 적어 <b>수정 요청</b>으로 보낼 수 있습니다(PPT를 받아 고쳐 보내도 됩니다). 콘티를 고친 뒤 [지금 내용으로 갱신]을 누르면 같은 링크에서 바뀐 내용이 보입니다.</p>
+    <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 글을 눌러 바로 고친 뒤 <b>[수정 요청 보내기]</b>로 보내거나, PPT를 받아 고쳐 보낼 수 있습니다. 보낸 내용은 위쪽 <b>[💬 수정 요청]</b>에서 원본과 비교해 반영합니다(반영하기 전엔 원본 콘티가 바뀌지 않습니다). 콘티를 고친 뒤 [지금 내용으로 갱신]을 누르면 같은 링크에서 바뀐 내용이 보입니다.</p>
     <div id="shareBody"></div>
     <div class="foot"><button class="btn" onclick="closeM(mShare);enterViewer(true)">👁 담당자 화면 미리보기</button><button class="btn" onclick="closeM(mShare)">닫기</button></div>
   </div>
@@ -2087,7 +2087,7 @@ function toggleSound() {
 //   Firestore shares/{번호} = { key, url, contiId, title, at, updatedAt } — 규칙상 누구나 '그 한 장'만 읽을 수 있다(목록은 못 봄)
 //   url = 콘티 내용을 담은 Storage 스크립트(window.__CONTI_SHARE=…). Storage 는 CORS 가 없어 fetch 는 안 되지만 <script> 로는 읽힌다
 //   [지금 내용으로 갱신] = 새 스크립트를 올리고 shares 의 url 만 바꾼다 → 링크 주소는 그대로
-// 담당자는 클립 오른쪽 [✎ 고치기]로 글을 고치거나 메모를 남기고 [수정 요청 보내기] → Firestore feedback/{id}
+// 담당자는 카드의 글을 눌러 바로 고치거나 메모를 남기고 [수정 요청 보내기] → Firestore feedback/{id}
 //   (규칙: 링크의 열쇠가 맞을 때만 쓸 수 있다). 제작자는 편집 화면 [💬 수정 요청]에서 원본과 비교해 반영한다.
 // 예전 링크(#s=파일.토큰)는 보기만 된다.
 const SHARE = /^#s=([\w-]+)\.([\w-]+)$/.exec(location.hash);    // 예전 링크
@@ -2702,7 +2702,7 @@ function renderAll() {
 let deleted = false;
 async function deleteThisConti() {
   if (!FBX || !CONTI_ID) return;
-  if (!confirm(`'${S.info.title || '제목 없음'}' 콘티를 삭제할까요?\n사진까지 모두 지워지고 되돌릴 수 없습니다.`)) return;
+  if (!confirm(`'${S.info.title || '제목 없음'}' 콘티를 삭제할까요?\n사진·담당자 링크·받은 수정 요청까지 모두 지워지고 되돌릴 수 없습니다.`)) return;
   clearTimeout(saveTimer); deleted = true;
   const F = FBX.F;
   try {
