@@ -255,6 +255,34 @@ body[data-view="noing"] .only-client{display:none!important}
   .bottombar .reset{display:none}
 }
 
+/* 클립 구성: 왼쪽 목록(따라옴) + 오른쪽 편집 */
+.clip-ws{display:grid;grid-template-columns:272px minmax(0,1fr);gap:20px;align-items:start}
+.clip-list{position:sticky;top:calc(var(--tbh,72px) + 12px);max-height:calc(100vh - var(--tbh,72px) - 90px);overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 4px 2px 2px;margin:-2px -4px -2px -2px;scrollbar-width:thin}
+.clip-list .tile{display:grid;grid-template-columns:60px minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:10px;row-gap:2px;padding:7px 8px;border-radius:10px;transform:none;flex:none}
+.clip-list .tile:hover{transform:none;box-shadow:0 0 0 1px #cfc8ba}
+.clip-list .tile.sel{box-shadow:0 0 0 1px var(--brand),0 3px 10px rgba(255,176,32,.22)}
+.clip-list .tile .ph43{grid-row:1/3;grid-column:1;width:60px;align-self:start}
+.clip-list .tile .tn{grid-column:2;font-size:12px}
+.clip-list .tile .tb{grid-column:2;-webkit-line-clamp:2;font-size:12px;line-height:1.4}
+.clip-list .tile .ti{display:none}   /* 촬영 컷은 오른쪽 편집에서 — 목록은 짧게 해서 한 화면에 10개 안팎 */
+.clip-list .tile .ph43 .nop{font-size:10px}
+.clip-list .tile.drop-before{box-shadow:0 -3px 0 0 var(--brand)}
+.clip-list .tile.drop-after{box-shadow:0 3px 0 0 var(--brand)}
+.clip-list .tile.add{display:flex;min-height:44px;padding:8px}
+.clip-ws .clip-ed{margin-top:0;grid-template-columns:minmax(240px,.9fr) minmax(300px,1.1fr);gap:20px}
+@media (max-width:980px){
+  .clip-ws{grid-template-columns:1fr}
+  .clip-list{position:relative;top:auto;max-height:none;flex-direction:row;overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+  .clip-list .tile{width:200px}
+  .clip-list .tile.add{width:110px}
+  .clip-list .tile.drop-before{box-shadow:-3px 0 0 0 var(--brand)}
+  .clip-list .tile.drop-after{box-shadow:3px 0 0 0 var(--brand)}
+}
+@media (max-width:760px){
+  .clip-list .tile .tb{display:-webkit-box}
+  .clip-ws .clip-ed{grid-template-columns:1fr}
+}
+
 /* 담당자 화면(보기 전용) · 미리보기 */
 #viewer{display:none}
 body.viewer #viewer{display:block}
@@ -528,9 +556,9 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
   </section>
 
   <section>
-    <h2 class="sec-title">클립 구성 <span class="sub">클립을 누르면 아래에서 고칠 수 있습니다 · 끌어서 순서 변경 · 사진 파일을 클립 위에 놓으면 그 클립에 추가</span></h2>
-    <div class="panel">
-      <div class="grid2" id="clipGrid"></div>
+    <h2 class="sec-title">클립 구성 <span class="sub">왼쪽에서 클립을 고르면 오른쪽에서 고칩니다 · 끌어서 순서 변경 · 사진 파일을 클립 위에 놓으면 그 클립에 추가</span></h2>
+    <div class="panel clip-ws">
+      <div class="clip-list" id="clipGrid"></div>
       <div class="clip-ed" id="clipEditor"></div>
     </div>
   </section>
@@ -1003,14 +1031,35 @@ document.querySelectorAll('[data-capf]').forEach(inp => inp.addEventListener('in
   S.caption[inp.dataset.capf] = inp.value; renderCaption(false); save();
 }));
 
-// ───────── 클립 구성: 2줄 한눈에 + 편집 ─────────
+// ───────── 클립 구성: 왼쪽 목록(화면에 붙어 따라옴) + 오른쪽 편집 ─────────
 function renderClips() {
   if (!S.clips.some(c => c.id === SEL)) SEL = S.clips[0]?.id;
   const grid = $('#clipGrid'); grid.textContent = '';
-  grid.style.setProperty('--cols', Math.max(5, Math.ceil((S.clips.length + 1) / 2)));   // 몇 개든 2줄 안에 (적을 때도 칸이 커지지 않게 최소 5열)
   S.clips.forEach((c, i) => grid.append(buildClipTile(c, i)));
   const a = el('button', 'tile add', '+ 클립 추가'); a.type = 'button'; a.onclick = addClip; grid.append(a);
-  renderClipEditor(); renderHead(); renderPoints(); }
+  renderClipEditor(); renderHead(); renderPoints();
+  revealSel();
+}
+// 고른 클립이 목록 안에서 보이게(목록만 스크롤 — 페이지는 움직이지 않는다)
+function revealSel() {
+  const g = $('#clipGrid'), t = g?.querySelector('.tile.sel'); if (!t) return;
+  const v = getComputedStyle(g).flexDirection === 'column';
+  const a = v ? t.offsetTop : t.offsetLeft, n = v ? t.offsetHeight : t.offsetWidth, view = v ? g.clientHeight : g.clientWidth, cur = v ? g.scrollTop : g.scrollLeft;
+  const to = a < cur ? a - 4 : a + n > cur + view ? a + n - view + 4 : cur;
+  if (to !== cur) { if (v) g.scrollTop = to; else g.scrollLeft = to; }
+}
+// 목록이 세로(넓은 화면)면 위·아래 반, 가로(좁은 화면)면 왼쪽·오른쪽 반으로 앞뒤를 정한다
+function dropAfter(t, e) {
+  const r = t.getBoundingClientRect(), vertical = getComputedStyle($('#clipGrid')).flexDirection === 'column';
+  return vertical ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2;
+}
+// 위 막대 높이만큼 아래에 목록을 붙인다(막대가 두 줄로 접히면 높아진다)
+(() => {
+  const tb = document.querySelector('.topbar'); if (!tb) return;
+  const set = () => document.documentElement.style.setProperty('--tbh', tb.offsetHeight + 'px');
+  set(); if (window.ResizeObserver) new ResizeObserver(set).observe(tb);
+  window.addEventListener('resize', () => revealSel());
+})();
 function fillClipTile(t, c) {
   const one = (node, text, empty) => { node.textContent = text || empty; node.classList.toggle('none', !text); };
   one(t.querySelector('.tb'), c.narration, '(자막·나레이션 없음)');
@@ -1031,15 +1080,14 @@ function buildClipTile(c, i) {
   t.draggable = true;
   t.addEventListener('dragstart', e => { t.classList.add('dragging'); e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; });
   t.addEventListener('dragend', () => { t.classList.remove('dragging'); clearDrop(); });
-  t.addEventListener('dragover', e => { e.preventDefault(); const r = t.getBoundingClientRect(); clearDrop(); t.classList.add(e.clientX > r.left + r.width / 2 ? 'drop-after' : 'drop-before'); });
+  t.addEventListener('dragover', e => { e.preventDefault(); clearDrop(); t.classList.add(dropAfter(t, e) ? 'drop-after' : 'drop-before'); });
   t.addEventListener('drop', e => {
     e.preventDefault(); clearDrop();
     const imgs = imagesOf(e.dataTransfer.files);
     if (imgs.length) { addPhotos(c, imgs); return; }                       // 사진 파일을 클립 위에 놓으면 그 클립에 추가
     const from = S.clips.findIndex(x => x.id === e.dataTransfer.getData('text/plain'));
     if (from < 0) return;
-    const r = t.getBoundingClientRect();
-    let to = S.clips.indexOf(c) + (e.clientX > r.left + r.width / 2 ? 1 : 0);
+    let to = S.clips.indexOf(c) + (dropAfter(t, e) ? 1 : 0);
     if (from < to) to--;
     moveClip(from, to);
   });
@@ -1050,6 +1098,7 @@ function selectClip(id) {
   SEL = id;
   document.querySelectorAll('#clipGrid .tile').forEach(t => t.classList.toggle('sel', t.dataset.id === id));
   renderClipEditor();
+  revealSel();
 }
 function addClip() {
   const c = newClip(); S.clips.push(c); SEL = c.id; renderClips(); save();
