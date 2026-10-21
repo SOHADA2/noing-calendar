@@ -260,6 +260,7 @@ body[data-view="noing"] .only-client{display:none!important}
 body.viewer #viewer{display:block}
 body.viewer main,body.viewer .bottombar,body.viewer .mock-banner,body.viewer .ed-only{display:none!important}
 body.viewer .ig-voice,body.viewer .ig-hint{display:none}
+body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링크: 불러오기 전·실패 시 빈 머리 안 보이게 */
 .pv-banner{position:sticky;top:0;z-index:21;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:#2b2926;color:#f3efe7;font-size:13px;padding:8px 16px}
 .pv-banner[hidden]{display:none}
 .pv-banner b{color:var(--brand)}
@@ -1751,11 +1752,11 @@ const SHARE = /^#s=([\w-]+)\.([\w-]+)$/.exec(location.hash);
 let VIEW = null;   // null = 편집 · 'preview' = 내 미리보기 · 'share' = 담당자
 function enterViewer(preview) {
   VIEW = preview ? 'preview' : 'share';
-  document.body.classList.add('viewer');
+  document.body.classList.add('viewer'); document.body.classList.toggle('pv', !!preview);
   $('#pvBanner').hidden = !preview;
   renderViewer(); window.scrollTo(0, 0);
 }
-function exitViewer() { VIEW = null; document.body.classList.remove('viewer'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
+function exitViewer() { VIEW = null; document.body.classList.remove('viewer', 'pv'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
 function vwSec(title) { const s = el('section'); s.append(el('h2', 'sec-title', title)); const p = el('div', 'panel'); s.append(p); return [s, p]; }
 function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { $('#mImgSrc').src = url; openM(mImg); }; return im; }
 function renderViewer() {
@@ -1838,7 +1839,7 @@ async function openShared() {
     const d = window.__CONTI_SHARE;
     if (!d || !d.conti) throw new Error('내용 없음');
     S = normalize(d.conti); SEL = S.clips[0].id;
-    renderHead(); renderViewer();
+    renderHead(); renderViewer(); document.body.classList.add('loaded');
     document.title = `[콘티] ${S.info.title || '릴스'} (릴스)`;
   } catch (e) {
     v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 보내 드린 링크를 다시 눌러 주세요.'));
