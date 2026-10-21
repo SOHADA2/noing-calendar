@@ -1562,7 +1562,7 @@ function openInsta() {
   $('#igCap').textContent = cap;
   $('#igSound').classList.toggle('on', IG.sound);
   $('#igSound').hidden = !('speechSynthesis' in window) && !takeOf();
-  voiceRow();
+  if (!VIEW) voiceRow();   // 담당자 화면에서는 이 PC 의 목소리 중계를 찾지 않는다
   const bars = $('#igBars'); bars.textContent = '';
   S.clips.forEach(() => { const b = el('i'); b.append(el('b')); bars.append(b); });
   openM(mInsta);
@@ -1832,6 +1832,7 @@ async function openShared() {
   VIEW = 'share'; document.body.classList.add('viewer');
   const v = $('#viewer'); v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 불러오는 중…'));
   try {
+    if (!SHARE) throw new Error('링크 아님');
     const url = `https://firebasestorage.googleapis.com/v0/b/${window.__BUCKET}/o/${encodeURIComponent('conti-share/' + SHARE[1] + '.js')}?alt=media&token=${SHARE[2]}`;
     await loadScript(url);
     const d = window.__CONTI_SHARE;
@@ -1840,19 +1841,20 @@ async function openShared() {
     renderHead(); renderViewer();
     document.title = `[콘티] ${S.info.title || '릴스'} (릴스)`;
   } catch (e) {
-    v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 담당자에게 새 링크를 받아 주세요.'));
+    v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 보내 드린 링크를 다시 눌러 주세요.'));
   }
 }
 
 // ───────── 담당자 링크 만들기 (서버 모드) ─────────
 function shareSnapshot() {
   const c = JSON.parse(JSON.stringify(S));
-  delete c.share; delete c.voiceProfile; delete c.status;
-  if (c.cal) c.cal = { company: c.cal.company || '' };
+  delete c.share; delete c.voiceProfile; delete c.status; delete c.info.titleFromCal;
+  if (c.cal) c.cal = { company: c.cal.company || '' };   // 달력 콘텐츠 번호·담당자 등은 넣지 않는다
+  if (c.take) c.take = { id: c.take.id, texts: c.take.texts, url: c.take.url, dur: c.take.dur, marks: c.take.marks, v: c.take.v };   // 목소리 프로필 이름·번호 빼기
   return c;
 }
 function hashOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + s.length.toString(36); }
-const shareLink = sh => `${location.origin}${location.pathname}#s=${sh.sid}.${sh.token}`;
+const shareLink = sh => `${location.origin}${location.pathname.replace(/[^/]*$/, 'view.html')}#s=${sh.sid}.${sh.token}`;
 const fmtWhen = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 function openShare() { renderShare(); openM(mShare); }
 function renderShare(msg) {
@@ -1915,7 +1917,7 @@ function renderAll() {
 }
 (async () => {
   FBX = await (window.FBX_READY || Promise.resolve(null));
-  if (SHARE) { await openShared(); return; }
+  if (SHARE || window.VIEW_ONLY) { await openShared(); return; }
   if (FBX && !FBX.user) { openM(mLogin); setTimeout(() => $('#lgEmail').focus(), 50); return; }
   if (FBX) {
     $('.mock-banner').innerHTML = '<b>릴스 콘티</b> · 서버에 자동 저장됩니다(달력과 같은 계정). 팀원도 달력의 <b>[콘텐츠 기획]</b> 탭에서 볼 수 있습니다.';
