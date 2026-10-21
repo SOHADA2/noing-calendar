@@ -28,6 +28,15 @@ button{cursor:pointer}
 .brand img{width:38px;height:38px;border-radius:50%;flex:none}
 .brand .t1{font-size:12px;color:var(--muted);letter-spacing:.02em}
 .brand .t2{font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-acts{display:flex;align-items:center;gap:8px}
+.tb-acts .btn{height:36px;padding:0 14px;display:inline-flex;align-items:center}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:170px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:5px}
+.menu[hidden]{display:none}
+.menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 12px;border-radius:7px;font-size:13px}
+.menu button:hover{background:#f3f0e9}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+.brand .t1 .status-sel{margin-left:4px;vertical-align:1px;padding:1px 6px;border-radius:99px;font-size:11.5px}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:12px;padding:3px 9px;border-radius:99px;background:#efebe3;color:var(--ink-2);white-space:nowrap}
 .chip.status{background:var(--brand-soft);color:#8a5a00;font-weight:600}
@@ -403,7 +412,6 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
 .ig-voice #igVoiceMsg{min-width:0;max-width:340px}
 .ig-hint{color:#cfc8ba;font-size:12px;text-align:center;max-width:520px}
 .seg a{display:inline-block;padding:6px 12px;border-radius:7px;font-size:13px;color:var(--ink-2);text-decoration:none}
-.seg a.off{color:#b9b2a6;cursor:default}
 .seg a.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .chip.bad,.est.bad{color:var(--warn);font-weight:600}
 .info-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 18px;align-items:end}
@@ -475,24 +483,25 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
     <div class="brand">
       <img src="img/logo.png" alt="">
       <div style="min-width:0">
-        <div class="t1">자취생으로 살아남기 · 광고 콘텐츠 콘티</div>
+        <div class="t1">릴스 콘티 <select class="status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select></div>
         <div class="t2" id="tTitle">새 릴스 콘티</div>
       </div>
     </div>
-    <div class="chips">
-      <span class="chip">릴스 · 클립 <span id="clipCount"></span>개</span>
-      <span class="chip" id="estTotal"></span>
-      <span class="chip" id="verChip"></span>
-      <select class="chip status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select>
-    </div>
     <div class="spacer"></div>
-    <div class="seg ed-only" aria-label="콘티 종류"><a class="off" title="카드뉴스 콘티는 준비 중입니다">카드뉴스</a><a class="on" aria-current="page">릴스</a></div>
-    <button class="btn" onclick="openInsta()">인스타로 보기</button>
-    <button class="btn" onclick="printPdf()">PDF 받기</button>
-    <button class="btn" onclick="downloadPptx(this)">PPT 받기</button>
-    <button class="btn ed-only" onclick="enterViewer(true)" title="담당자가 링크를 열면 보는 화면">👁 담당자 화면 미리보기</button>
-    <button class="btn ed-only" id="btnShare" onclick="openShare()" hidden>🔗 담당자 링크</button>
-    <button class="btn brand ed-only" onclick="openM(mFile)">저장·불러오기</button>
+    <div class="tb-acts ed-only">
+      <button class="btn" onclick="openInsta()">▶ 인스타로 보기</button>
+      <button class="btn" onclick="enterViewer(true)" title="담당자가 링크를 열면 보는 화면">미리보기</button>
+      <div class="menu-wrap">
+        <button class="btn" id="btnFile" onclick="toggleFileMenu(event)" aria-haspopup="true" aria-expanded="false">파일 ▾</button>
+        <div class="menu" id="fileMenu" hidden>
+          <button onclick="closeFileMenu();downloadPptx($('#btnFile'))">PPT 받기</button>
+          <button onclick="closeFileMenu();printPdf()">PDF 받기</button>
+          <hr>
+          <button onclick="closeFileMenu();openM(mFile)">저장·불러오기…</button>
+        </div>
+      </div>
+      <button class="btn brand" id="btnShare" onclick="openShare()" hidden>🔗 담당자 링크</button>
+    </div>
   </div>
 </header>
 <div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 (고칠 수 없고, 보기·PPT·PDF 받기만 됩니다)</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
@@ -930,12 +939,8 @@ $('#statusSel').addEventListener('change', e => { S.status = e.target.value; ren
 function renderHead() {
   $('#tTitle').textContent = S.info.title || '새 릴스 콘티';
   document.title = '릴스 콘티 · ' + (S.info.title || '새 콘티');
-  $('#clipCount').textContent = S.clips.length;
-  $('#verChip').textContent = S.info.version || 'v1';
-  const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'chip status-sel ed-only ' + ss.value;
+  const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'status-sel ed-only ' + ss.value;
   const t = totalSecs(), over = t > limitSecs();
-  const e = $('#estTotal'); e.textContent = `예상 약 ${fmtSec(t)}`; e.classList.toggle('bad', over);
-  e.title = '자막·나레이션 글자 수로 계산한 대략값 (1초에 약 6.5자)';
   const tl = $('#tally'); tl.textContent = '';
   const a = el('span', null, '클립 '); a.append(el('b', null, S.clips.length)); tl.append(a);
   const b = el('span', over ? 'est bad' : null, '예상 길이 '); b.append(el('b', null, `약 ${fmtSec(t)}`)); b.append(` / ${S.info.length || '1분 이내'}`); tl.append(b);
@@ -1957,6 +1962,16 @@ async function closeShare(btn) {
   try { await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${S.share.sid}.js`)); } catch (e) { if (!/not-found/.test(e.code || '')) { renderShare('닫지 못했습니다 — ' + e.message); return; } }
   S.share = null; save(); renderShare('링크를 닫았습니다.');
 }
+
+// ───────── 위 막대 [파일 ▾] 메뉴 ─────────
+function toggleFileMenu(e) {
+  e.stopPropagation();
+  const m = $('#fileMenu'), open = m.hidden;
+  m.hidden = !open; $('#btnFile').setAttribute('aria-expanded', String(open));
+}
+function closeFileMenu() { $('#fileMenu').hidden = true; $('#btnFile').setAttribute('aria-expanded', 'false'); }
+document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeFileMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileMenu(); });
 
 // ───────── 공통 ─────────
 function openM(m) { m.hidden = false; }
