@@ -1773,11 +1773,13 @@ function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어�
   if (shotTxt) note.append('촬영: ' + shotTxt);
   else if (c.photos.length) note.append('실제 촬영 사진이 아닌 참고용 사진입니다');
   note.hidden = !IG.note || !note.textContent;
-  IG.seg = null;
+  IG.seg = null; IG.subAbs = null;
   const t = IG.sound && takeOf();
   if (t) {   // 만들어 둔 나레이션
     const a = takeAudio(t), s0 = t.marks[i], s1 = i + 1 < t.marks.length ? t.marks[i + 1] : t.dur;
     IG.seg = [s0, s1];
+    const sc = t.subs?.[i], same = sc && JSON.stringify(t.subC?.[i] || []) === JSON.stringify(IG.chunks);
+    IG.subAbs = same && sc.length === IG.chunks.length ? sc : null;
     if (!flow || Math.abs(a.currentTime - s0) > 0.25) a.currentTime = s0;
     if (a.paused) a.play().catch(() => {});
     IG.dur = Math.max(300, (s1 - s0) * 1000);
@@ -1801,7 +1803,11 @@ function tick() {
   document.querySelectorAll('#igStage .ig-shot').forEach(d => d.classList.toggle('on', +d.dataset.k === k));
   // 자막
   const n = IG.chunks.length, sub = $('#igSub');
-  let ci = IG.cum.findIndex(x => p < x); if (ci < 0) ci = n - 1;
+  let ci;
+  if (onTake && IG.subAbs) {   // 나레이션에서 그 말을 시작한 시각에 맞춰
+    const ct = IG.take.currentTime + 0.05; ci = 0;
+    for (let q = 0; q < IG.subAbs.length; q++) if (IG.subAbs[q] <= ct) ci = q;
+  } else { ci = IG.cum.findIndex(x => p < x); if (ci < 0) ci = n - 1; }
   const txt = n ? IG.chunks[ci] : '';
   if (sub.dataset.t !== txt) { sub.dataset.t = txt; sub.textContent = subLines(txt); sub.classList.toggle('long', subLen(txt) > 20); }
   if (p >= 1 && !(IG.sound && !onTake && 'speechSynthesis' in window && speechSynthesis.speaking)) { playClip(IG.i + 1, !!onTake); return; }
@@ -1862,7 +1868,7 @@ async function voiceRow() {
     } catch (e) { RELAY_OK = false; }
   }
   const t = takeOf(), stale = !!S.take?.url && !t;
-  const have = t ? `나레이션 준비됨 · ${t.name} · ${fmtSec(Math.round(t.dur))}` : stale ? '클립 글이 바뀌어 나레이션을 다시 만들어야 합니다' : '';
+  const have = t ? `나레이션 준비됨 · ${t.name} · ${fmtSec(Math.round(t.dur))}` + (t.bad?.length ? ` · 클립 ${t.bad.join(', ')}은 대본과 다르게 읽혔을 수 있어요(들어 보고 이상하면 [다시 만들기])` : '') : stale ? '클립 글이 바뀌어 나레이션을 다시 만들어야 합니다' : '';
   sel.hidden = !RELAY_OK; btn.hidden = false;
   btn.disabled = !S.clips.some(c => c.narration.trim());
   btn.textContent = !S.take?.url ? '🎙 목소리로 만들기' : stale ? '🎙 바뀐 글로 다시 만들기'
@@ -1880,16 +1886,16 @@ async function makeVoices() {
   const prof = { id: sel.value, name: sel.selectedOptions[0]?.textContent || '' };
   if (!prof.id) return;
   S.voiceProfile = prof;
-  const texts = narrTexts(), est = Math.round(totalSecs() * 2.2 + 12), t0 = Date.now();
+  const texts = narrTexts(), subC = S.clips.map(c => chunkCaption(c.narration)), est = Math.round(totalSecs() * 2.2 + 12), t0 = Date.now();
   VOICE_BUSY = true; btn.disabled = sel.disabled = true;
   stopInsta(); $('#igPlay').textContent = '▶ 재생';
   const show = () => { msg.textContent = `전체 나레이션 만드는 중… ${Math.round((Date.now() - t0) / 1000)}초 (보통 ${est}초 안팎, 컴퓨터를 켜고 처음이면 1분 더)`; };
   show(); const timer = setInterval(show, 1000);
   try {
-    const r = await relay('/speak_all', { parts: texts, profile: prof.id });
+    const r = await relay('/speak_all', { parts: texts, subs: subC, profile: prof.id });
     clearInterval(timer);
     if (narrTexts().join('\n') !== texts.join('\n')) { msg.textContent = '만드는 사이 글이 바뀌었습니다. 다시 눌러 주세요'; return; }
-    S.take = { id: 'v' + uid(), texts, profile: prof.id, name: prof.name, url: r.url, dur: r.dur, marks: r.marks, v: r.v || 3 };
+    S.take = { id: 'v' + uid(), texts, profile: prof.id, name: prof.name, url: r.url, dur: r.dur, marks: r.marks, v: r.v || 3, subs: r.subs || null, subC, bad: r.bad || [] };
     save();
     VOICE_BUSY = false;
     await voiceRow();
@@ -2184,7 +2190,7 @@ function shareSnapshot() {
   const c = JSON.parse(JSON.stringify(S));
   delete c.share; delete c.voiceProfile; delete c.status; delete c.info.titleFromCal;
   if (c.cal) c.cal = { company: c.cal.company || '' };   // 달력 콘텐츠 번호·담당자 등은 넣지 않는다
-  if (c.take) c.take = { id: c.take.id, texts: c.take.texts, url: c.take.url, dur: c.take.dur, marks: c.take.marks, v: c.take.v };   // 목소리 프로필 이름·번호 빼기
+  if (c.take) c.take = { id: c.take.id, texts: c.take.texts, url: c.take.url, dur: c.take.dur, marks: c.take.marks, v: c.take.v, subs: c.take.subs || null, subC: c.take.subC || null };   // 목소리 프로필 이름·번호 빼기
   return c;
 }
 function hashOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + s.length.toString(36); }
