@@ -152,7 +152,15 @@ section{margin-top:22px}
 .brief-list textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;margin-bottom:8px}
 .brief-list textarea:focus{outline:2px solid var(--brand);outline-offset:-1px}
 .lightbox{cursor:zoom-out}
-.lightbox img{max-width:min(1200px,96vw);max-height:90vh;border-radius:8px;background:#fff}
+.lightbox{flex-direction:column;gap:10px}
+.lightbox img{max-width:min(1200px,90vw);max-height:80vh;border-radius:8px;background:#fff}
+.lb-wrap{display:flex;align-items:center;gap:10px}
+.lb-nav{border:0;background:rgba(255,255,255,.18);color:#fff;font-size:30px;line-height:1;width:44px;height:64px;border-radius:10px}
+.lb-nav:hover{background:rgba(255,255,255,.3)}
+.lb-cap{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;max-width:min(900px,92vw);color:#f3efe7;font-size:13.5px;text-align:center}
+.lb-cap[hidden]{display:none}
+.lb-cap b{color:var(--brand)}
+.lb-cap .m{color:#ffd0c8}
 
 /* 카드 그림: 시안(완성 이미지) 또는 참고 이미지(속지 틀 + 대략적인 사진). 문구는 카드 밖 글로 적는다 */
 .cv{position:relative;aspect-ratio:4/5;width:100%;overflow:hidden;border-radius:8px;background:#ece8df}
@@ -360,15 +368,31 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
 
 /* 담당자 화면 — 클립 표 · 수정 요청 */
 .vw-table{padding:0;overflow:hidden}
-.vw-row{display:grid;grid-template-columns:46px minmax(140px,1fr) minmax(0,1.35fr) minmax(0,1.1fr) minmax(0,1.15fr);gap:14px;padding:12px 16px;border-top:1px solid var(--line);align-items:start}
-.vw-table.nofix .vw-row{grid-template-columns:46px minmax(160px,1fr) minmax(0,1.5fr) minmax(0,1.2fr)}
+.vw-row{display:grid;grid-template-columns:46px 222px minmax(0,1.35fr) minmax(0,1.1fr) minmax(0,1.15fr);gap:14px;padding:12px 16px;border-top:1px solid var(--line);align-items:start}
+.vw-table.small .vw-row{grid-template-columns:46px 150px minmax(0,1.35fr) minmax(0,1.1fr) minmax(0,1.15fr)}
+.vw-fr{position:relative;margin:0;height:176px;aspect-ratio:9/16;border-radius:9px;overflow:hidden;background:#1d1b19;cursor:zoom-in;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.vw-ph2.many .vw-fr{height:124px}
+.vw-table.small .vw-fr{height:84px;border-radius:6px}
+.vw-fr .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(9px) brightness(.62);transform:scale(1.25)}
+.vw-fr .fg{position:relative;display:block;width:100%;height:100%;object-fit:contain}
+.vw-fr.wide .bg{display:none}
+.vw-fr.wide{background:#f3f0e9;height:auto;width:100%;max-width:100%}
+.vw-table.small .vw-fr.wide{height:auto}
+.vw-fr figcaption{position:absolute;left:4px;right:4px;bottom:4px;font-size:10px;line-height:1.3;color:#fff;background:rgba(210,59,42,.88);border-radius:4px;padding:1px 4px;max-height:2.7em;overflow:hidden}
+.vw-table.small .vw-fr figcaption{display:none}
+.vw-fr:hover{box-shadow:0 0 0 2px var(--brand)}
+.vw-size{margin-left:auto;display:inline-flex;background:#ece7dd;border-radius:8px;padding:2px}
+.vw-size button{border:0;background:transparent;font-size:12px;padding:4px 10px;border-radius:6px;color:var(--ink-2)}
+.vw-size button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.vw-table.nofix .vw-row{grid-template-columns:46px 222px minmax(0,1.5fr) minmax(0,1.2fr)}
+.vw-table.nofix.small .vw-row{grid-template-columns:46px 150px minmax(0,1.5fr) minmax(0,1.2fr)}
 .vw-table.nofix .vw-head > :last-child{display:none}
 .vw-row:first-child{border-top:0}
 .vw-head{background:#faf7f1;font-size:12px;color:var(--muted);font-weight:600;padding-block:8px}
 .vw-no b{display:block;font-size:17px;line-height:1.2}
 .vw-no small{font-size:11px;color:var(--muted);white-space:nowrap}
 .vw-ph2{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
-.vw-ph2 img{height:84px;width:auto;max-width:100%;border-radius:6px;background:#f3f0e9;cursor:zoom-in;object-fit:contain}
+
 .vw-ph2 .nop,.vw-shot .nop{font-size:12px;color:#b9b2a6}
 .vw-nar{font-size:14.5px;font-weight:600;line-height:1.55}
 .vw-shot .vw-text{font-size:13px;line-height:1.5}
@@ -405,7 +429,7 @@ ins{background:#dff3e6;color:#1d5e40;text-decoration:none}
 ins.lg{padding:0 3px}
 #btnFb b{margin-left:2px}
 @media (max-width:900px){
-  .vw-row,.vw-table.nofix .vw-row{grid-template-columns:36px minmax(0,1fr)}
+  .vw-row,.vw-table.nofix .vw-row,.vw-table.small .vw-row,.vw-table.nofix.small .vw-row{grid-template-columns:36px minmax(0,1fr)}
   .vw-head{display:none}
   .vw-row > :not(.vw-no){grid-column:2}
   .vw-capwrap{grid-template-columns:1fr}
@@ -739,7 +763,14 @@ ins.lg{padding:0 3px}
   </form>
 </div>
 
-<div class="modal lightbox" id="mImg" hidden onclick="closeM(this)"><img id="mImgSrc" alt=""></div>
+<div class="modal lightbox" id="mImg" hidden onclick="closeM(this)">
+  <div class="lb-wrap">
+    <button class="lb-nav prev" id="lbPrev" hidden aria-label="이전 사진" onclick="event.stopPropagation();galStep(-1)">‹</button>
+    <img id="mImgSrc" alt="">
+    <button class="lb-nav next" id="lbNext" hidden aria-label="다음 사진" onclick="event.stopPropagation();galStep(1)">›</button>
+  </div>
+  <div class="lb-cap" id="mImgCap" hidden></div>
+</div>
 
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
@@ -1956,7 +1987,25 @@ function enterViewer(preview) {
 }
 function exitViewer() { VIEW = null; document.body.classList.remove('viewer', 'pv'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
 function vwSec(title) { const s = el('section'); s.append(el('h2', 'sec-title', title)); const p = el('div', 'panel'); s.append(p); return [s, p]; }
-function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { $('#mImgSrc').src = url; openM(mImg); }; return im; }
+function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { GAL = null; $('#mImgSrc').src = url; $('#mImgCap').hidden = true; $('#lbPrev').hidden = $('#lbNext').hidden = true; openM(mImg); }; return im; }
+let GAL = null;   // 크게 보기 중인 클립 사진 { c, i, k }
+function openGallery(c, i, k) { GAL = { c, i, k }; galShow(); openM(mImg); }
+function galStep(d) { if (!GAL) return; const n = GAL.c.photos.length; GAL.k = (GAL.k + d + n) % n; galShow(); }
+function galShow() {
+  const { c, i, k } = GAL, p = c.photos[k], n = c.photos.length;
+  $('#mImgSrc').src = p.url;
+  const cap = $('#mImgCap'); cap.textContent = '';
+  cap.append(el('b', null, `클립 ${i + 1} · 예시 사진 ${k + 1}/${n}`));
+  if (p.caption) cap.append(el('span', 'm', p.caption));
+  const shots = c.shots.split('\n').map(x => x.trim()).filter(Boolean).join(' / ');
+  if (shots) cap.append(el('span', null, '촬영: ' + shots));
+  cap.hidden = false;
+  $('#lbPrev').hidden = $('#lbNext').hidden = n < 2;
+}
+document.addEventListener('keydown', e => {
+  if (!GAL || $('#mImg').hidden) return;
+  if (e.key === 'ArrowRight') galStep(1); else if (e.key === 'ArrowLeft') galStep(-1);
+});
 
 // 담당자 수정 요청 초안 — 이 브라우저에 남겨 두고(다시 열어도 이어서), 보낼 때 서버로
 let FB = null;   // { id, name, clips: {클립id: {narration, shots, memo}}, caption: {mention, tags, account} | null, memo, sentAt, sentHash }
@@ -2017,9 +2066,18 @@ function renderViewer() {
   // 클립 — 표 한 장(번호 · 사진 · 자막·나레이션 · 영상 클립 · 수정 요청)
   const [cs, cp] = vwSec('클립 구성');
   cp.classList.add('vw-table');
+  let big = true; try { big = localStorage.getItem('noing-vw-photo') !== 'small'; } catch (e) {}
+  cp.classList.toggle('small', !big);
+  const sz = el('span', 'vw-size');
+  [['크게', true], ['한눈에', false]].forEach(([t, v]) => {
+    const b = el('button', big === v ? 'on' : null, t); b.type = 'button';
+    b.onclick = () => { cp.classList.toggle('small', !v); sz.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); try { localStorage.setItem('noing-vw-photo', v ? 'big' : 'small'); } catch (e) {} };
+    sz.append(b);
+  });
+  cs.querySelector('.sec-title').append(el('span', 'sub', '사진은 촬영할 장면의 예시 구도입니다'), sz);
   if (!canFix()) cp.classList.add('nofix');
   const head = el('div', 'vw-row vw-head');
-  ['클립', '참고 사진', '자막 · 나레이션', '영상 클립 · 촬영 참고', '수정 요청'].forEach(t => head.append(el('div', null, t)));
+  ['클립', '예시 구도 (참고 사진)', '자막 · 나레이션', '영상 클립 · 촬영 참고', '수정 요청'].forEach(t => head.append(el('div', null, t)));
   cp.append(head);
   S.clips.forEach((c, i) => cp.append(vwClipRow(c, i)));
   w.append(cs);
@@ -2059,8 +2117,18 @@ const canFix = () => VIEW === 'preview' || (VIEW === 'share' && !!SH);
 function vwClipRow(c, i) {
   const row = el('div', 'vw-row'); row.dataset.id = c.id;
   const no = el('div', 'vw-no'); no.append(el('b', null, String(i + 1)), el('small', null, `약 ${fmtSec(secs(c.narration))}`));
-  const ph = el('div', 'vw-ph2');
-  if (c.photos.length) c.photos.forEach(p => { const im = el('img'); im.src = p.url; im.alt = p.caption || ''; if (p.caption) im.title = p.caption; ph.append(zoomable(im, p.url)); });
+  const ph = el('div', 'vw-ph2' + (c.photos.length > 2 ? ' many' : ''));
+  if (c.photos.length) c.photos.forEach((p, k) => {
+    const f = el('figure', 'vw-fr'); f.title = '크게 보기';
+    const bg = el('img', 'bg'); bg.src = p.url; bg.alt = ''; bg.setAttribute('aria-hidden', 'true');
+    const im = el('img', 'fg'); im.src = p.url; im.alt = p.caption || `클립 ${i + 1} 예시 사진 ${k + 1}`;
+    // 가로·정사각 사진(화면 캡처 등)은 세로 틀에 넣으면 너무 작아진다 → 사진 비율대로 넓힌 틀(최대 16:10)
+    im.onload = () => { const r = im.naturalWidth / im.naturalHeight; if (r > 0.9) { f.style.aspectRatio = String(Math.min(r, 1.6)); f.classList.add('wide'); } };
+    f.append(bg, im);
+    if (p.caption) f.append(el('figcaption', null, p.caption));
+    f.onclick = () => openGallery(c, i, k);
+    ph.append(f);
+  });
   else ph.append(el('span', 'nop', '사진 없음'));
   const nar = el('div', 'vw-text vw-nar', c.narration.trim() || '—');
   const shot = el('div', 'vw-shot');
