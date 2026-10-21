@@ -466,9 +466,19 @@ ins.lg{padding:0 3px}
 .fx-l{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:1px;min-height:18px}
 .fx-st{display:inline-flex;gap:8px;align-items:center;margin-left:auto}
 .fx-st em{font-style:normal;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:4px;padding:0 6px}
+.fx-hint{font-size:11px;font-weight:600;color:#b9a06a;transition:color .12s}
+.fx.ed:hover .fx-hint,.fx.ed:focus-within .fx-hint{color:#a0700a}
+.fx-chip{font-size:11px}
+.fx-undo{border:1px solid #e3dccd;background:#fff;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:600;color:var(--ink-2)}
+.fx-undo:hover{border-color:#c9a64a}
+.fx-cmp{margin-top:6px;background:#f6f3ed;border-radius:8px;padding:6px 9px}
+.fx-cmp[hidden]{display:none}
+.fx-cmp .k{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.fx-cmp .df{background:none;border:0;padding:0;font-size:12.5px;line-height:1.55;color:var(--ink-2)}
 .fx-a{border:0;background:none;padding:0;font-size:11px;color:var(--ink-2);text-decoration:underline;text-underline-offset:2px}
 .fx-t{display:block;width:calc(100% + 14px);margin:0 -7px;resize:none;overflow:hidden;font:inherit;font-size:13.5px;line-height:1.55;color:var(--ink);border:1px dashed transparent;border-radius:7px;padding:4px 7px;background:transparent;word-break:keep-all;transition:background .12s,border-color .12s}
-.fx-t:not([readonly]):hover{border-color:#d6cfc1;background:#fcfbf8;cursor:text}
+.fx.ed:not(.memo) .fx-t{border-color:#e3dccd}
+.fx-t:not([readonly]):hover{border-color:#c9a64a;background:#fffdf6;cursor:text}
 .fx-t:focus{outline:none;border:1px solid var(--brand);background:#fff}
 .fx-t[readonly]{cursor:default}
 .fx.chg:not(.memo) .fx-t{background:#fff6d8;border-color:#f0c040}
@@ -2228,29 +2238,39 @@ async function panelPhotos(box, c, i) {
     box.append(line);
   });
 }
-// 바로 고칠 수 있는 글 칸 — 평소엔 글처럼 보이고, 누르면 고칠 수 있다. 고치면 노랗게 + [원래 글] [되돌리기]
+// 바로 고칠 수 있는 글 칸 — 점선 테두리 + '✎ 눌러서 고치기'로 고칠 수 있다는 걸 보여 주고, 누르면 그 자리에서 고친다
+//   고치기 시작하면 아래에 '원래 글과 비교'(지운 글 빨간 줄 · 더한 글 초록)가 계속 따라 나온다. [↺ 원래대로]로 되돌린다
 function fixField(label, orig, cur, onval, o = {}) {
-  const wrap = el('div', 'fx' + (o.cls ? ' ' + o.cls : '') + (o.memo ? ' memo' : ''));
+  const edit = canFix();
+  const wrap = el('div', 'fx' + (o.cls ? ' ' + o.cls : '') + (o.memo ? ' memo' : '') + (edit ? ' ed' : ''));
   const lab = el('div', 'fx-l'); lab.append(el('span', null, label));
   const st = el('span', 'fx-st'); lab.append(st);
   const ta = el('textarea', 'fx-t'); ta.rows = 1; ta.value = cur ?? orig ?? ''; ta.placeholder = o.ph || ''; ta.spellcheck = false;
-  if (!canFix()) { ta.readOnly = true; ta.tabIndex = -1; }
-  const org = el('div', 'fx-org'); org.hidden = true;
-  org.append(el('span', null, '원래 글  '), el('s', null, orig || '(비어 있음)'));
+  if (!edit) { ta.readOnly = true; ta.tabIndex = -1; }
+  else if (!o.memo) ta.title = '눌러서 고칠 수 있어요';
+  const cmp = el('div', 'fx-cmp'); cmp.hidden = true;
   const mark = () => {
     const ch = o.memo ? !!ta.value.trim() : !same(ta.value, orig);
     wrap.classList.toggle('chg', ch);
-    st.textContent = '';
-    if (ch && !o.memo) {
-      const a = el('button', 'fx-a', '원래 글'); a.type = 'button'; a.onclick = () => { org.hidden = !org.hidden; };
-      const b = el('button', 'fx-a', '되돌리기'); b.type = 'button';
-      b.onclick = () => { ta.value = orig || ''; onval(ta.value); grow(ta); org.hidden = true; mark(); fbSave(); fbBar(); };
-      st.append(el('em', null, '고침'), a, b);
-    } else org.hidden = true;
-    const card = wrap.closest('.vc'); if (card) card.classList.toggle('chg', !!card.querySelector('.fx.chg:not(.memo)') || !!card.querySelector('.fx.memo.chg'));
+    if (!edit) return;
+    if (wrap._ch !== ch) {   // 상태가 바뀔 때만 다시 그린다(누르는 중인 버튼이 사라지지 않게)
+    wrap._ch = ch; st.textContent = '';
+    if (o.memo) { if (!ch) st.append(el('span', 'fx-hint', '선택')); }
+    else if (ch) {
+      const b = el('button', 'fx-undo', '↺ 원래대로'); b.type = 'button';
+      b.onclick = () => { ta.value = orig || ''; onval(ta.value); grow(ta); mark(); fbSave(); fbBar(); };
+      st.append(el('em', 'fx-chip', '✎ 고친 글'), b);
+    } else st.append(el('span', 'fx-hint', '✎ 눌러서 고치기'));
+    }
+    // 비교: 고쳤거나 고치는 중(누른 상태)이면 원래 글을 보여 준다
+    const show = !o.memo && (ch || document.activeElement === ta);
+    cmp.hidden = !show; cmp.textContent = '';
+    if (show) { cmp.append(el('span', 'k', ch ? '원래 글과 비교' : '원래 글'), ch ? diffEl(orig || '', ta.value) : el('div', 'df', orig || '(비어 있음)')); }
+    const card = wrap.closest('.vc'); if (card) card.classList.toggle('chg', !!card.querySelector('.fx.chg'));
   };
   ta.oninput = () => { onval(ta.value); grow(ta); mark(); fbSave(); fbBar(); };
-  wrap.append(lab, ta, org);
+  ta.onfocus = ta.onblur = () => mark();
+  wrap.append(lab, ta, cmp);
   requestAnimationFrame(() => { grow(ta); mark(); });
   return wrap;
 }
@@ -2448,12 +2468,27 @@ function diffEl(a, b) {
   const L = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
   for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
   const out = el('div', 'df');
-  let i = 0, j = 0;
+  let i = 0, j = 0, dels = [], inss = [];
+  // 바뀐 구간은 '지운 글 전부 → 더한 글 전부'로 묶어 보여 준다(낱말이 섞여 읽기 어려워지지 않게)
+  const flush = () => {
+    const d = dels.join('').trim(), s2 = inss.join('').trim();
+    if ((d || s2) && /^\s/.test((dels.length ? dels : inss).join(''))) out.append(' ');
+    if (d) out.append(el('del', null, d));
+    if (d && s2) out.append(' ');
+    if (s2) out.append(el('ins', null, s2));
+    if ((d || s2) && /\s$/.test((inss.length ? inss : dels).join(''))) out.append(' ');
+    dels = []; inss = [];
+  };
   while (i < n || j < m) {
-    if (i < n && j < m && A[i] === B[j]) { out.append(A[i]); i++; j++; }
-    else if (i < n && (j >= m || L[i + 1][j] >= L[i][j + 1])) { out.append(el('del', null, A[i])); i++; }   // 바뀐 곳은 지운 글 → 더한 글 순서
-    else { out.append(el('ins', null, B[j])); j++; }
+    if (i < n && j < m && A[i] === B[j]) {
+      // 바뀐 낱말 사이의 띄어쓰기는 같은 구간으로 이어 붙인다('화제성 제대로 찍은' → '화제가 된' 이 한 덩어리)
+      if (/^[ \t]+$/.test(A[i]) && (dels.length || inss.length)) { dels.push(A[i]); inss.push(B[j]); i++; j++; continue; }
+      flush(); out.append(A[i]); i++; j++;
+    }
+    else if (i < n && (j >= m || L[i + 1][j] >= L[i][j + 1])) { dels.push(A[i]); i++; }
+    else { inss.push(B[j]); j++; }
   }
+  flush();
   return out;
 }
 function openFb() { renderFb(); openM(mFb); }
