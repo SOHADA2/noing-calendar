@@ -356,6 +356,59 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
   .vw-hero h1{font-size:20px}
 }
 
+/* 담당자 화면 — 클립 표 · 수정 요청 */
+.vw-table{padding:0;overflow:hidden}
+.vw-row{display:grid;grid-template-columns:46px minmax(140px,1fr) minmax(0,1.35fr) minmax(0,1.1fr) minmax(0,1.15fr);gap:14px;padding:12px 16px;border-top:1px solid var(--line);align-items:start}
+.vw-table.nofix .vw-row{grid-template-columns:46px minmax(160px,1fr) minmax(0,1.5fr) minmax(0,1.2fr)}
+.vw-table.nofix .vw-head > :last-child{display:none}
+.vw-row:first-child{border-top:0}
+.vw-head{background:#faf7f1;font-size:12px;color:var(--muted);font-weight:600;padding-block:8px}
+.vw-no b{display:block;font-size:17px;line-height:1.2}
+.vw-no small{font-size:11px;color:var(--muted);white-space:nowrap}
+.vw-ph2{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.vw-ph2 img{height:84px;width:auto;max-width:100%;border-radius:6px;background:#f3f0e9;cursor:zoom-in;object-fit:contain}
+.vw-ph2 .nop,.vw-shot .nop{font-size:12px;color:#b9b2a6}
+.vw-nar{font-size:14.5px;font-weight:600;line-height:1.55}
+.vw-shot .vw-text{font-size:13px;line-height:1.5}
+.vw-red{color:#d23b2a;margin-top:4px}
+.vw-edit{min-width:0}
+.vw-edit textarea,.vw-memo,.fb-name{width:100%;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:#fff}
+.vw-edit textarea{resize:vertical}
+.vw-edit textarea.chg{background:#fff6d8;border-color:#e9a800}
+.vw-edit textarea:focus,.vw-memo:focus,.fb-name:focus{outline:2px solid var(--brand);outline-offset:-1px}
+.vw-el{display:block;font-size:11px;color:var(--muted);margin:6px 0 2px;font-weight:600}
+.vw-el:first-child{margin-top:0}
+.vw-fix{padding:5px 11px;font-size:12.5px}
+.vw-undo{border:0;background:none;color:var(--muted);font-size:11.5px;text-decoration:underline;padding:4px 0}
+.vw-capwrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.fb-send{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.fb-name{flex:1;min-width:200px}
+.fb-bar{position:sticky;bottom:12px;z-index:5;margin:18px auto 6px;max-width:720px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:#2b2926;color:#f3efe7;border-radius:12px;padding:10px 16px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.fb-bar .btn{padding:6px 14px}
+.fbc{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px}
+.fbc.done{opacity:.6}
+.fbc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fbc-h span{font-size:12.5px;color:var(--muted)}
+.fbc-h .sp{flex:1}
+.fbc-s{border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+.fbc-t{font-weight:700;font-size:13px;margin-bottom:4px}
+.fbc-f{margin-top:6px}
+.fbc-l{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:3px}
+.fbc-l .btn{padding:2px 10px;font-size:12px}
+.fbc-memo{font-size:13px;background:#faf7f1;border-radius:8px;padding:6px 10px;margin-top:6px;white-space:pre-line}
+.fbc-warn{font-size:12px;color:#a3631a;margin:6px 0 0}
+.df{font-size:13.5px;line-height:1.6;white-space:pre-wrap;background:#fcfbf8;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+del,.lg del{background:#fde4e1;color:#a3271a}
+ins{background:#dff3e6;color:#1d5e40;text-decoration:none}
+ins.lg{padding:0 3px}
+#btnFb b{margin-left:2px}
+@media (max-width:900px){
+  .vw-row,.vw-table.nofix .vw-row{grid-template-columns:36px minmax(0,1fr)}
+  .vw-head{display:none}
+  .vw-row > :not(.vw-no){grid-column:2}
+  .vw-capwrap{grid-template-columns:1fr}
+}
+
 /* 인쇄 = PDF 받기 */
 #printArea{display:none}
 @media print{
@@ -508,6 +561,7 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
           <button onclick="closeFileMenu();openM(mFile)">저장·불러오기…</button>
         </div>
       </div>
+      <button class="btn" id="btnFb" onclick="openFb()" hidden>💬 수정 요청 <b id="fbN"></b></button>
       <button class="btn brand" id="btnShare" onclick="openShare()" hidden>🔗 담당자 링크</button>
     </div>
   </div>
@@ -610,9 +664,19 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
 <div class="modal" id="mShare" hidden onclick="if(event.target===this)closeM(this)">
   <div class="dialog" style="max-width:620px">
     <h3>담당자에게 보낼 링크</h3>
-    <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 고칠 수는 없고, 인스타 릴스 화면으로 보기와 PPT·PDF 받기만 됩니다. 링크에는 만든 순간의 내용이 들어가니, 고친 뒤에는 새 링크를 만들어 보내 주세요.</p>
+    <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 콘티 자체는 고칠 수 없고, 클립마다 고칠 글이나 메모를 적어 <b>수정 요청</b>으로 보낼 수 있습니다(PPT를 받아 고쳐 보내도 됩니다). 콘티를 고친 뒤 [지금 내용으로 갱신]을 누르면 같은 링크에서 바뀐 내용이 보입니다.</p>
     <div id="shareBody"></div>
     <div class="foot"><button class="btn" onclick="closeM(mShare);enterViewer(true)">👁 담당자 화면 미리보기</button><button class="btn" onclick="closeM(mShare)">닫기</button></div>
+  </div>
+</div>
+
+<!-- 담당자 수정 요청 -->
+<div class="modal" id="mFb" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog" style="max-width:820px">
+    <h3>담당자 수정 요청</h3>
+    <p class="desc">담당자가 링크에서 고쳐 보낸 내용입니다. <del class="lg">지운 글</del> <ins class="lg">더한 글</ins> — [반영]을 누르면 콘티에 바로 들어갑니다.</p>
+    <div id="fbBody"></div>
+    <div class="foot"><button class="btn" onclick="loadFeedback().then(renderFb)">↻ 새로 불러오기</button><button class="btn" onclick="closeM(mFb)">닫기</button></div>
   </div>
 </div>
 
@@ -680,7 +744,7 @@ const cfg = {
     messagingSenderId: "511910681269",
     appId: "1:511910681269:web:cd0efba8cb5bfa67f93cfc"
   };
-window.__BUCKET = cfg && cfg.storageBucket;
+window.__BUCKET = cfg && cfg.storageBucket; window.__PROJECT = cfg && cfg.projectId;
 if (!cfg || /^#s=/.test(location.hash)) window.__fbxDone(null);   // 담당자 링크는 로그인·서버 없이 본다
 else {
   try {
@@ -1787,23 +1851,52 @@ function toggleSound() {
   });
 })();
 
-// ───────── 담당자 화면 (보기 전용) ─────────
-// 담당자는 링크(reels.html#s=파일.토큰)로 들어와 로그인 없이 본다. 고칠 수 없고, 인스타로 보기·PPT·PDF 받기만 된다.
-// 링크 내용 = 링크를 만든 순간의 콘티 전체(사진·나레이션 포함)를 스크립트 파일 하나로 Firebase Storage 에 올린 것.
-//   Storage 는 다른 사이트에서 fetch 로 읽는 걸 막지만(CORS 설정 없음) <script> 로는 읽힌다.
-//   같은 파일을 다시 올리면 토큰이 바뀌어 옛 링크가 죽는다 → 고친 뒤에는 새 링크를 만든다.
-const SHARE = /^#s=([\w-]+)\.([\w-]+)$/.exec(location.hash);
+// ───────── 담당자 화면 (보기 + 수정 요청) ─────────
+// 링크 = noing-conti.web.app/#v=번호.열쇠
+//   Firestore shares/{번호} = { key, url, contiId, title, at, updatedAt } — 규칙상 누구나 '그 한 장'만 읽을 수 있다(목록은 못 봄)
+//   url = 콘티 내용을 담은 Storage 스크립트(window.__CONTI_SHARE=…). Storage 는 CORS 가 없어 fetch 는 안 되지만 <script> 로는 읽힌다
+//   [지금 내용으로 갱신] = 새 스크립트를 올리고 shares 의 url 만 바꾼다 → 링크 주소는 그대로
+// 담당자는 클립 오른쪽 [✎ 고치기]로 글을 고치거나 메모를 남기고 [수정 요청 보내기] → Firestore feedback/{id}
+//   (규칙: 링크의 열쇠가 맞을 때만 쓸 수 있다). 제작자는 편집 화면 [💬 수정 요청]에서 원본과 비교해 반영한다.
+// 예전 링크(#s=파일.토큰)는 보기만 된다.
+const SHARE = /^#s=([\w-]+)\.([\w-]+)$/.exec(location.hash);    // 예전 링크
+const SHARE2 = /^#v=([\w-]+)\.([\w-]+)$/.exec(location.hash);   // 지금 링크
 let VIEW = null;   // null = 편집 · 'preview' = 내 미리보기 · 'share' = 담당자
+let SH = null;     // 담당자 화면에서 연 링크 정보 { sid, key, contiId, at } — 지금 링크일 때만(수정 요청 가능)
 function enterViewer(preview) {
   VIEW = preview ? 'preview' : 'share';
   document.body.classList.add('viewer'); document.body.classList.toggle('pv', !!preview);
   $('#pvBanner').hidden = !preview;
+  if (preview) FB = null;
   renderViewer(); window.scrollTo(0, 0);
 }
 function exitViewer() { VIEW = null; document.body.classList.remove('viewer', 'pv'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
 function vwSec(title) { const s = el('section'); s.append(el('h2', 'sec-title', title)); const p = el('div', 'panel'); s.append(p); return [s, p]; }
 function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { $('#mImgSrc').src = url; openM(mImg); }; return im; }
+
+// 담당자 수정 요청 초안 — 이 브라우저에 남겨 두고(다시 열어도 이어서), 보낼 때 서버로
+let FB = null;   // { id, name, clips: {클립id: {narration, shots, memo}}, caption: {mention, tags, account} | null, memo, sentAt, sentHash }
+const fbKey = () => 'noing-fb:' + (SH?.sid || 'preview');
+function fbLoad() {
+  if (VIEW === 'share') { try { FB = JSON.parse(localStorage.getItem(fbKey()) || 'null'); } catch (e) { FB = null; } }
+  if (!FB) FB = { id: 'f' + Date.now().toString(36) + uid() + uid(), name: '', clips: {}, caption: null, memo: '' };
+}
+function fbSave() { if (VIEW !== 'share') return; try { localStorage.setItem(fbKey(), JSON.stringify(FB)); } catch (e) {} }
+const same = (a, b) => (a || '').trim() === (b || '').trim();
+const clipChanged = (c, d) => d && (!same(d.narration, c.narration) || !same(d.shots, c.shots) || (d.memo || '').trim());
+const capChanged = d => d && (!same(d.mention, S.caption.mention) || !same(d.tags, S.caption.tags) || !same(d.account, S.caption.account));
+function fbPayload() {
+  return {
+    clips: S.clips.map((c, i) => ({ c, i, d: FB.clips[c.id] })).filter(x => clipChanged(x.c, x.d))
+      .map(({ c, i, d }) => ({ id: c.id, no: i + 1, narration: d.narration, shots: d.shots, memo: d.memo || '', base: { narration: c.narration, shots: c.shots } })),
+    caption: capChanged(FB.caption) ? { ...FB.caption, base: { mention: S.caption.mention, tags: S.caption.tags, account: S.caption.account } } : null,
+    memo: (FB.memo || '').trim(),
+  };
+}
+const fbCount = p => p.clips.length + (p.caption ? 1 : 0) + (p.memo ? 1 : 0);
+
 function renderViewer() {
+  fbLoad();
   const v = $('#viewer'); v.textContent = '';
   const w = el('div', 'wrap'); v.append(w);
   // 머리: 무엇을, 언제, 어디에
@@ -1823,6 +1916,7 @@ function renderViewer() {
   if (S.info.narration) notes.push(`*${S.info.length || '1분 이내'}의 릴스 영상을 제작하며 나레이션 작업이 포함됩니다.`);
   notes.push(takeOf() ? '*릴스 화면으로 보기에서 나레이션을 들어 볼 수 있습니다. 실제 영상의 목소리·속도와는 다를 수 있습니다.'
     : '*릴스 화면으로 보기는 사진과 자막으로 흐름만 보여 드립니다. 실제 영상과는 다를 수 있습니다.');
+  if (canFix()) notes.push('*고칠 내용은 클립 오른쪽 [✎ 고치기]로 바로 적어 보내 주시거나, PPT를 받아 고쳐 보내 주셔도 됩니다.');
   notes.forEach(t => hero.append(el('p', 'vw-note', t)));
   w.append(hero);
   const [ns, np] = vwSec('릴스 제작 안내'); np.append(noticeList()); w.append(ns);
@@ -1837,51 +1931,173 @@ function renderViewer() {
     w.append(s);
   }
 
-  // 피드 예시·멘션
+  // 클립 — 표 한 장(번호 · 사진 · 자막·나레이션 · 영상 클립 · 수정 요청)
+  const [cs, cp] = vwSec('클립 구성');
+  cp.classList.add('vw-table');
+  if (!canFix()) cp.classList.add('nofix');
+  const head = el('div', 'vw-row vw-head');
+  ['클립', '참고 사진', '자막 · 나레이션', '영상 클립 · 촬영 참고', '수정 요청'].forEach(t => head.append(el('div', null, t)));
+  cp.append(head);
+  S.clips.forEach((c, i) => cp.append(vwClipRow(c, i)));
+  w.append(cs);
+
+  // 멘션
   const [fs, fp] = vwSec('멘션 텍스트');
+  fp.classList.add('vw-capwrap');
   const cap = el('div', 'vw-cap');
   cap.append(el('div', 'k', '멘션 텍스트'), el('div', 'vw-text', S.caption.mention || '-'));
   if (S.caption.tags.trim()) cap.append(el('div', 'k', '해시태그'), el('div', 'vw-text', S.caption.tags));
   if (S.caption.account.trim()) cap.append(el('div', 'k', '계정 태그'), el('div', 'vw-text', S.caption.account));
-  fp.append(cap); w.append(fs);
+  fp.append(cap);
+  if (canFix()) { const ed = el('div', 'vw-edit'); fillCapEdit(ed); fp.append(ed); }
+  w.append(fs);
 
-  // 클립
-  const [cs, cp] = vwSec('클립 구성');
-  cp.classList.add('vw-clips');
-  S.clips.forEach((c, i) => {
-    const card = el('article', 'vw-clip');
-    const h = el('div', 'vw-ch');
-    h.append(el('b', null, `클립 ${i + 1}`), el('span', 'sec', `약 ${fmtSec(secs(c.narration))}`));
-    card.append(h);
-    const body = el('div', 'vw-cb');
-    const pg = el('div', 'vw-ph');
-    if (c.photos.length) c.photos.forEach(p => { const f = el('figure'); const im = el('img'); im.src = p.url; im.alt = p.caption || ''; f.append(zoomable(im, p.url)); if (p.caption) f.append(el('figcaption', null, p.caption)); pg.append(f); });
-    else pg.append(el('div', 'nop', '참고 사진 없음'));
-    const tx = el('div', 'vw-tx');
-    const add = (k, x, cls) => { if (!x || !x.trim()) return; tx.append(el('div', 'k', k), el('div', 'vw-text' + (cls ? ' ' + cls : ''), x.trim())); };
-    add('자막 · 나레이션', c.narration, 'big');
-    add('영상 클립', c.shots);
-    add('촬영 참고', c.notes.split('\n').filter(Boolean).map(x => '*' + x.replace(/^\*\s*/, '')).join('\n'));
-    body.append(pg, tx); card.append(body); cp.append(card);
-  });
-  w.append(cs);
+  // 전체 의견 + 보내기
+  if (canFix()) {
+    const [ms, mp] = vwSec('전체 의견 · 수정 요청 보내기');
+    const ta = el('textarea', 'vw-memo'); ta.rows = 3; ta.placeholder = '클립과 상관없이 전하고 싶은 말이 있으면 적어 주세요'; ta.value = FB.memo || '';
+    ta.oninput = () => { FB.memo = ta.value; fbSave(); fbBar(); };
+    const row = el('div', 'fb-send');
+    const nm = el('input', 'fb-name'); nm.placeholder = '보내는 분 (이름 또는 회사명)'; nm.value = FB.name || ''; nm.id = 'fbName';
+    nm.oninput = () => { FB.name = nm.value; fbSave(); };
+    const go = el('button', 'btn brand', '수정 요청 보내기'); go.onclick = () => sendFeedback(go);
+    row.append(nm, go);
+    mp.append(ta, row, el('p', 'vw-note', '보낸 뒤에도 이 화면에서 계속 고쳐 다시 보낼 수 있습니다. 적어 둔 내용은 이 브라우저에 남아 있습니다.'));
+    w.append(ms);
+  }
+
   const ft = el('footer', 'vw-foot');
-  ft.append(el('div', null, '고칠 내용은 PPT를 받아 직접 고쳐 보내 주시거나, 담당자에게 말씀해 주세요.'), el('div', 'vw-brand', '노잉커뮤니케이션즈 · 자취생으로 살아남기'));
+  ft.append(el('div', 'vw-brand', '노잉커뮤니케이션즈 · 자취생으로 살아남기'));
   w.append(ft);
+  if (canFix()) { const bar = el('div', 'fb-bar'); bar.id = 'fbBar'; w.append(bar); fbBar(); }
 }
+// 수정 요청은 지금 링크(#v=)로 연 담당자 화면에서만 보낼 수 있다. 미리보기에선 칸만 보여 준다
+const canFix = () => VIEW === 'preview' || (VIEW === 'share' && !!SH);
+function vwClipRow(c, i) {
+  const row = el('div', 'vw-row'); row.dataset.id = c.id;
+  const no = el('div', 'vw-no'); no.append(el('b', null, String(i + 1)), el('small', null, `약 ${fmtSec(secs(c.narration))}`));
+  const ph = el('div', 'vw-ph2');
+  if (c.photos.length) c.photos.forEach(p => { const im = el('img'); im.src = p.url; im.alt = p.caption || ''; if (p.caption) im.title = p.caption; ph.append(zoomable(im, p.url)); });
+  else ph.append(el('span', 'nop', '사진 없음'));
+  const nar = el('div', 'vw-text vw-nar', c.narration.trim() || '—');
+  const shot = el('div', 'vw-shot');
+  if (c.shots.trim()) shot.append(el('div', 'vw-text', c.shots.trim()));
+  const notes = c.notes.split('\n').map(x => x.trim()).filter(Boolean);
+  if (notes.length) shot.append(el('div', 'vw-text vw-red', notes.map(x => '*' + x.replace(/^\*\s*/, '')).join('\n')));
+  if (!shot.childNodes.length) shot.append(el('span', 'nop', '—'));
+  row.append(no, ph, nar, shot);
+  if (canFix()) { const ed = el('div', 'vw-edit'); fillEdit(ed, c); row.append(ed); }
+  return row;
+}
+function editArea(ed, label, value, orig, rows, ph, onval) {
+  ed.append(el('label', 'vw-el', label));
+  const ta = el('textarea'); ta.rows = rows; ta.value = value || ''; ta.placeholder = ph || '';
+  const mark = () => ta.classList.toggle('chg', orig != null && !same(ta.value, orig));
+  ta.oninput = () => { onval(ta.value); mark(); fbSave(); fbBar(); }; mark();
+  ed.append(ta); return ta;
+}
+function fillEdit(ed, c) {
+  ed.textContent = '';
+  const d = FB.clips[c.id];
+  if (!d) {
+    const b = el('button', 'btn vw-fix', '✎ 고치기');
+    b.onclick = () => { FB.clips[c.id] = { narration: c.narration, shots: c.shots, memo: '' }; fbSave(); fillEdit(ed, c); ed.querySelector('textarea')?.focus(); };
+    ed.append(b); return;
+  }
+  editArea(ed, '자막 · 나레이션', d.narration, c.narration, 3, '', x => { d.narration = x; });
+  editArea(ed, '영상 클립', d.shots, c.shots, 2, '', x => { d.shots = x; });
+  editArea(ed, '메모', d.memo, null, 2, '예) 이 장면은 제품을 더 가까이 보여 주세요', x => { d.memo = x; });
+  const x = el('button', 'vw-undo', '고치기 취소'); x.onclick = () => { delete FB.clips[c.id]; fbSave(); fillEdit(ed, c); fbBar(); };
+  ed.append(x);
+}
+function fillCapEdit(ed) {
+  ed.textContent = '';
+  const d = FB.caption;
+  if (!d) {
+    const b = el('button', 'btn vw-fix', '✎ 멘션 고치기');
+    b.onclick = () => { FB.caption = { mention: S.caption.mention, tags: S.caption.tags, account: S.caption.account }; fbSave(); fillCapEdit(ed); ed.querySelector('textarea')?.focus(); };
+    ed.append(b); return;
+  }
+  editArea(ed, '멘션 텍스트', d.mention, S.caption.mention, 5, '', x => { d.mention = x; });
+  editArea(ed, '해시태그', d.tags, S.caption.tags, 1, '', x => { d.tags = x; });
+  editArea(ed, '계정 태그', d.account, S.caption.account, 1, '', x => { d.account = x; });
+  const x = el('button', 'vw-undo', '고치기 취소'); x.onclick = () => { FB.caption = null; fbSave(); fillCapEdit(ed); fbBar(); };
+  ed.append(x);
+}
+function fbBar() {
+  const bar = $('#fbBar'); if (!bar || !FB) return;
+  const p = fbPayload(), n = fbCount(p), h = hashOf(JSON.stringify(p));
+  bar.textContent = '';
+  let msg = n ? `수정 요청 ${n}곳 적음` : '고칠 곳이 있으면 클립 오른쪽 [✎ 고치기]를 눌러 주세요';
+  if (FB.sentAt) msg = FB.sentHash === h ? `${fmtWhen(FB.sentAt)}에 보냈습니다 · 고치면 다시 보낼 수 있습니다` : `${fmtWhen(FB.sentAt)}에 보낸 뒤 고친 곳이 있습니다`;
+  bar.append(el('span', null, msg));
+  if (n && FB.sentHash !== h) { const go = el('button', 'btn brand', FB.sentAt ? '다시 보내기' : '수정 요청 보내기'); go.onclick = () => sendFeedback(go); bar.append(go); }
+  bar.classList.toggle('on', !!n);
+}
+async function sendFeedback(btn) {
+  if (VIEW !== 'share' || !SH) { toast('미리보기에서는 보내지지 않습니다 — 담당자 화면에서만 보낼 수 있습니다'); return; }
+  const p = fbPayload();
+  if (!fbCount(p)) { toast('고친 곳이 없습니다'); return; }
+  if (!(FB.name || '').trim()) { const nm = $('#fbName'); nm?.scrollIntoView({ block: 'center' }); nm?.focus(); toast('보내는 분 이름(또는 회사명)을 적어 주세요'); return; }
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '보내는 중…';
+  try {
+    await fsSet('feedback/' + FB.id, { sid: SH.sid, key: SH.key, contiId: SH.contiId, name: FB.name.trim().slice(0, 60), clips: p.clips, caption: p.caption, memo: p.memo, at: Date.now(), base: SH.at || 0 });
+    FB.sentAt = Date.now(); FB.sentHash = hashOf(JSON.stringify(p)); fbSave(); fbBar();
+    toast('수정 요청을 보냈습니다. 고마워요!');
+  } catch (e) {
+    console.error(e); alert('보내지 못했습니다. 잠시 뒤 다시 눌러 주시거나, PPT를 받아 고쳐 보내 주세요.\n(' + e.message + ')');
+  } finally { btn.disabled = false; btn.textContent = t; }
+}
+
+// Firestore REST (담당자 화면은 Firebase 프로그램 없이 주소로만 읽고 쓴다)
+const FS_BASE = () => `https://firestore.googleapis.com/v1/projects/${window.__PROJECT}/databases/(default)/documents`;
+function fsVal(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(fsVal) } };
+  return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fsVal(x)])) } };
+}
+function fsPlain(f) {
+  if ('stringValue' in f) return f.stringValue;
+  if ('integerValue' in f) return +f.integerValue;
+  if ('doubleValue' in f) return f.doubleValue;
+  if ('booleanValue' in f) return f.booleanValue;
+  if ('timestampValue' in f) return Date.parse(f.timestampValue);
+  if ('arrayValue' in f) return (f.arrayValue.values || []).map(fsPlain);
+  if ('mapValue' in f) return Object.fromEntries(Object.entries(f.mapValue.fields || {}).map(([k, x]) => [k, fsPlain(x)]));
+  return null;
+}
+async function fsGet(path) {
+  const r = await fetch(`${FS_BASE()}/${path}`);
+  if (!r.ok) throw new Error('읽기 ' + r.status);
+  return fsPlain({ mapValue: { fields: (await r.json()).fields || {} } });
+}
+async function fsSet(path, obj) {   // 없으면 만들고 있으면 통째로 바꾼다
+  const r = await fetch(`${FS_BASE()}/${path}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fsVal(obj).mapValue.fields }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error?.message || ('쓰기 ' + r.status));
+}
+
 async function openShared() {
   VIEW = 'share'; document.body.classList.add('viewer');
   const v = $('#viewer'); v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 불러오는 중…'));
   try {
-    if (!SHARE) throw new Error('링크 아님');
-    const url = `https://firebasestorage.googleapis.com/v0/b/${window.__BUCKET}/o/${encodeURIComponent('conti-share/' + SHARE[1] + '.js')}?alt=media&token=${SHARE[2]}`;
-    await loadScript(url);
+    if (SHARE2) {
+      const d = await fsGet('shares/' + SHARE2[1]);
+      if (!d.url || d.key !== SHARE2[2]) throw new Error('열쇠 다름');
+      SH = { sid: SHARE2[1], key: d.key, contiId: d.contiId, at: d.updatedAt || d.at || 0 };
+      await loadScript(d.url);
+    } else if (SHARE) {
+      await loadScript(`https://firebasestorage.googleapis.com/v0/b/${window.__BUCKET}/o/${encodeURIComponent('conti-share/' + SHARE[1] + '.js')}?alt=media&token=${SHARE[2]}`);
+    } else throw new Error('링크 아님');
     const d = window.__CONTI_SHARE;
     if (!d || !d.conti) throw new Error('내용 없음');
     S = normalize(d.conti); SEL = S.clips[0].id;
     renderHead(); renderViewer(); document.body.classList.add('loaded');
     document.title = `[콘티] ${S.info.title || '릴스'} (릴스)`;
   } catch (e) {
+    console.warn(e);
     v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 보내 드린 링크를 다시 눌러 주세요.'));
   }
 }
@@ -1897,7 +2113,7 @@ function shareSnapshot() {
 function hashOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + s.length.toString(36); }
 // 담당자 화면은 달력과 떨어진 별도 주소(Firebase Hosting 사이트 noing-conti = view.html). _deploy.sh 가 같이 올린다
 const VIEW_SITE = 'https://noing-conti.web.app/';
-const shareLink = sh => `${VIEW_SITE}#s=${sh.sid}.${sh.token}`;
+const shareLink = sh => sh.key ? `${VIEW_SITE}#v=${sh.sid}.${sh.key}` : `${VIEW_SITE}#s=${sh.sid}.${sh.token}`;
 const fmtWhen = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 function openShare() { renderShare(); openM(mShare); }
 function renderShare(msg) {
@@ -1915,38 +2131,135 @@ function renderShare(msg) {
     const op = el('a', 'btn', '열어 보기'); op.href = inp.value; op.target = '_blank'; op.rel = 'noopener';
     r.append(inp, cp, op); b.append(r);
     const changed = hashOf(JSON.stringify(shareSnapshot())) !== sh.hash;
-    b.append(el('p', 'sh-note', `${fmtWhen(sh.at)}에 만든 링크${sh.by ? ' · ' + sh.by.split('@')[0] : ''}` + (changed ? ' · 링크를 만든 뒤 콘티를 고쳤습니다. 담당자에게는 아직 예전 내용이 보입니다.' : ' · 지금 내용과 같습니다.')));
+    const when = sh.updatedAt && sh.updatedAt !== sh.at ? `${fmtWhen(sh.at)}에 만든 링크 · ${fmtWhen(sh.updatedAt)}에 갱신` : `${fmtWhen(sh.at)}에 만든 링크`;
+    b.append(el('p', 'sh-note', when + (sh.by ? ' · ' + sh.by.split('@')[0] : '') + (changed ? ' · 링크를 만든 뒤 콘티를 고쳤습니다. 담당자에게는 아직 예전 내용이 보입니다.' : ' · 지금 내용과 같습니다.')));
     const r2 = el('div', 'sh-row');
-    const up = el('button', 'btn' + (changed ? ' primary' : ''), '지금 내용으로 새 링크 만들기'); up.onclick = () => publishShare(up);
+    const up = el('button', 'btn' + (changed ? ' primary' : ''), sh.key ? '지금 내용으로 갱신' : '새 방식 링크 만들기'); up.onclick = () => publishShare(up);
     const cut = el('button', 'btn sh-cut', '링크 닫기'); cut.onclick = () => closeShare(cut);
     r2.append(up, cut); b.append(r2);
-    b.append(el('p', 'sh-note', '새 링크를 만들면 이전 링크는 열리지 않습니다. 새 링크를 다시 보내 주세요.'));
+    b.append(el('p', 'sh-note', sh.key ? '갱신해도 링크 주소는 그대로입니다. 담당자는 같은 링크로 바뀐 내용을 봅니다.'
+      : '예전 방식 링크라 담당자가 수정 요청을 보낼 수 없습니다. [새 방식 링크 만들기]를 누르면 새 링크가 생기고 이 링크는 닫힙니다.'));
   }
   if (msg) b.append(el('p', 'sh-msg', msg));
 }
 async function publishShare(btn) {
   if (!FBX?.storage) return;
-  const old = S.share;
-  btn.disabled = true; btn.textContent = '만드는 중…';
+  const old = S.share, fresh = !old?.key;   // 예전 방식(토큰) 링크면 새로 만든다
+  btn.disabled = true; btn.textContent = '올리는 중…';
   try {
-    const snap = shareSnapshot();
-    const sid = 's' + Date.now().toString(36) + uid() + uid();
-    const ref = FBX.ST.ref(FBX.storage, `conti-share/${sid}.js`);
-    await FBX.ST.uploadString(ref, 'window.__CONTI_SHARE = ' + JSON.stringify({ v: 1, at: Date.now(), conti: snap }) + ';\n', 'raw',
+    const snap = shareSnapshot(), now = Date.now();
+    const sid = fresh ? 's' + now.toString(36) + uid() + uid() : old.sid;
+    const key = fresh ? uid() + uid() + uid() + uid() : old.key;
+    const file = `conti-share/${sid}-${now.toString(36)}.js`;
+    const ref = FBX.ST.ref(FBX.storage, file);
+    await FBX.ST.uploadString(ref, 'window.__CONTI_SHARE = ' + JSON.stringify({ v: 2, at: now, conti: snap }) + ';\n', 'raw',
       { contentType: 'application/javascript; charset=utf-8', cacheControl: 'no-cache' });
-    const token = new URL(await FBX.ST.getDownloadURL(ref)).searchParams.get('token');
-    S.share = { sid, token, at: Date.now(), by: FBX.user?.email || '', hash: hashOf(JSON.stringify(snap)) };
-    if (old?.sid) FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${old.sid}.js`)).catch(() => {});
-    save(); renderShare(old ? '새 링크를 만들었습니다. 이전 링크는 닫혔습니다.' : '링크를 만들었습니다. [복사]해서 담당자에게 보내 주세요.');
+    const url = await FBX.ST.getDownloadURL(ref);
+    const at = fresh ? now : old.at;
+    await FBX.F.setDoc(FBX.F.doc(FBX.db, 'shares', sid), { key, url, contiId: CONTI_ID, title: S.info.title || '', at, updatedAt: now, by: FBX.user?.email || '' });
+    // 지난 내용 파일 정리
+    const gone = old ? (old.key ? old.file : `conti-share/${old.sid}.js`) : null;
+    if (gone && gone !== file) FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, gone)).catch(() => {});
+    S.share = { sid, key, file, at, updatedAt: now, by: FBX.user?.email || '', hash: hashOf(JSON.stringify(snap)) };
+    save();
+    renderShare(fresh ? (old ? '새 링크를 만들었습니다. 예전 링크는 닫혔으니 새 링크를 보내 주세요.' : '링크를 만들었습니다. [복사]해서 담당자에게 보내 주세요.')
+      : '담당자 화면을 지금 내용으로 바꿨습니다. 링크는 그대로입니다.');
   } catch (e) {
-    console.error(e); renderShare('링크를 만들지 못했습니다 — ' + e.message);
+    console.error(e); renderShare('링크를 만들지 못했습니다 — ' + (/permission/i.test(e.message) ? '권한이 없습니다(보안 규칙)' : e.message));
   }
 }
 async function closeShare(btn) {
   if (!S.share || !confirm('이 링크를 닫을까요? 담당자가 더 이상 열 수 없습니다.')) return;
   btn.disabled = true;
-  try { await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${S.share.sid}.js`)); } catch (e) { if (!/not-found/.test(e.code || '')) { renderShare('닫지 못했습니다 — ' + e.message); return; } }
+  const sh = S.share;
+  try {
+    if (sh.key) await FBX.F.deleteDoc(FBX.F.doc(FBX.db, 'shares', sh.sid));
+    await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, sh.key ? sh.file : `conti-share/${sh.sid}.js`)).catch(e => { if (!/not-found/.test(e.code || '')) throw e; });
+  } catch (e) { renderShare('닫지 못했습니다 — ' + e.message); return; }
   S.share = null; save(); renderShare('링크를 닫았습니다.');
+}
+
+// ───────── 담당자 수정 요청 보기 (편집 화면) ─────────
+let FBLIST = [];
+async function loadFeedback() {
+  if (!FBX || !CONTI_ID) return;
+  try {
+    const F = FBX.F, q = await F.getDocs(F.query(F.collection(FBX.db, 'feedback'), F.where('contiId', '==', CONTI_ID)));
+    FBLIST = q.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0));
+  } catch (e) { console.warn('수정 요청 읽기 실패', e); FBLIST = []; }
+  const n = FBLIST.filter(f => !f.done).length, b = $('#btnFb');
+  b.hidden = !FBLIST.length; $('#fbN').textContent = n ? String(n) : '';
+  b.classList.toggle('brand', n > 0);
+}
+// 낱말 단위 비교: 지운 곳은 빨간 줄, 더한 곳은 초록
+function diffEl(a, b) {
+  const A = (a || '').split(/(\s+)/), B = (b || '').split(/(\s+)/), n = A.length, m = B.length;
+  const L = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = el('div', 'df');
+  let i = 0, j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) { out.append(A[i]); i++; j++; }
+    else if (i < n && (j >= m || L[i + 1][j] >= L[i][j + 1])) { out.append(el('del', null, A[i])); i++; }   // 바뀐 곳은 지운 글 → 더한 글 순서
+    else { out.append(el('ins', null, B[j])); j++; }
+  }
+  return out;
+}
+function openFb() { renderFb(); openM(mFb); }
+function renderFb() {
+  const box = $('#fbBody'); box.textContent = '';
+  if (!FBLIST.length) { box.append(el('p', 'sh-note', '아직 받은 수정 요청이 없습니다.')); return; }
+  FBLIST.forEach(f => {
+    const card = el('div', 'fbc' + (f.done ? ' done' : ''));
+    const h = el('div', 'fbc-h');
+    h.append(el('b', null, f.name || '(이름 없음)'), el('span', null, fmtWhen(f.at || 0) + (f.done ? ' · 처리함' : ' · 새 요청')));
+    const sp = el('span', 'sp'); h.append(sp);
+    const all = el('button', 'btn', '모두 반영'); all.onclick = () => { applyAll(f); renderFb(); };
+    const dn = el('button', 'btn', f.done ? '다시 새 요청으로' : '처리 완료'); dn.onclick = () => markFb(f, !f.done);
+    h.append(all, dn); card.append(h);
+    if (f.base && S.share?.updatedAt && f.base !== S.share.updatedAt) card.append(el('p', 'fbc-warn', '이 요청은 지금 담당자 화면보다 예전 내용을 보고 보낸 것입니다. 비교는 담당자가 본 글 기준입니다.'));
+    (f.clips || []).forEach(x => {
+      const c = S.clips.find(k => k.id === x.id);
+      const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', `클립 ${x.no}` + (c ? (S.clips.indexOf(c) + 1 !== x.no ? ` (지금 ${S.clips.indexOf(c) + 1}번)` : '') : ' — 지금 콘티에 없는 클립')));
+      [['narration', '자막 · 나레이션'], ['shots', '영상 클립']].forEach(([k, lab]) => {
+        if (same(x[k], x.base?.[k])) return;
+        sec.append(fbField(lab, x.base?.[k], x[k], c ? c[k] : null, () => { c[k] = x[k]; afterApply(); }));
+      });
+      if ((x.memo || '').trim()) sec.append(el('div', 'fbc-memo', '메모: ' + x.memo.trim()));
+      card.append(sec);
+    });
+    if (f.caption) {
+      const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', '멘션'));
+      [['mention', '멘션 텍스트'], ['tags', '해시태그'], ['account', '계정 태그']].forEach(([k, lab]) => {
+        if (same(f.caption[k], f.caption.base?.[k])) return;
+        sec.append(fbField(lab, f.caption.base?.[k], f.caption[k], S.caption[k], () => { S.caption[k] = f.caption[k]; afterApply(); }));
+      });
+      card.append(sec);
+    }
+    if ((f.memo || '').trim()) { const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', '전체 의견'), el('div', 'fbc-memo', f.memo.trim())); card.append(sec); }
+    box.append(card);
+  });
+}
+function fbField(label, base, next, cur, apply) {
+  const d = el('div', 'fbc-f');
+  const top = el('div', 'fbc-l'); top.append(el('span', null, label));
+  const now = cur != null && same(cur, next);
+  const b = el('button', 'btn', now ? '반영됨' : '반영'); b.disabled = now || cur == null;
+  b.onclick = () => { apply(); b.textContent = '반영됨'; b.disabled = true; };
+  top.append(b); d.append(top, diffEl(base, next));
+  if (cur != null && !now && !same(cur, base)) d.append(el('div', 'fbc-warn', '※ 담당자가 본 뒤 이 칸을 고쳤습니다. 반영하면 지금 글이 담당자 글로 바뀝니다.'));
+  return d;
+}
+function applyAll(f) {
+  (f.clips || []).forEach(x => { const c = S.clips.find(k => k.id === x.id); if (!c) return; ['narration', 'shots'].forEach(k => { if (!same(x[k], x.base?.[k])) c[k] = x[k]; }); });
+  if (f.caption) ['mention', 'tags', 'account'].forEach(k => { if (!same(f.caption[k], f.caption.base?.[k])) S.caption[k] = f.caption[k]; });
+  afterApply(); toast('담당자 수정 내용을 반영했습니다');
+}
+function afterApply() { renderAll(); save(); }
+async function markFb(f, done) {
+  try { await FBX.F.updateDoc(FBX.F.doc(FBX.db, 'feedback', f.id), { done }); f.done = done; }
+  catch (e) { toast('표시하지 못했습니다 — ' + e.message); return; }
+  renderFb(); const n = FBLIST.filter(x => !x.done).length; $('#fbN').textContent = n ? String(n) : ''; $('#btnFb').classList.toggle('brand', n > 0);
 }
 
 // ───────── 릴스 제작 안내 ─────────
@@ -2017,6 +2330,7 @@ function renderAll() {
   if (CID) { applyCalendar(await calendarInfo()); if (!S.cal) $('#saveBadge').textContent = '달력 정보를 찾지 못했습니다 — 달력에서 [콘티 만들기]로 다시 열어 주세요'; }
   renderAll();
   if (CID && S.cal) save();
+  if (FBX && CONTI_ID) loadFeedback();
 })();
 // 이 콘티 삭제 (서버 모드) — 글 문서와 사진을 모두 지우고 달력의 콘텐츠 기획 탭으로 돌아간다
 let deleted = false;
@@ -2028,7 +2342,12 @@ async function deleteThisConti() {
   try {
     const ms = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'media'));
     for (const d of ms.docs) await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'media', d.id));
-    if (S.share?.sid) await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, `conti-share/${S.share.sid}.js`)).catch(() => {});
+    if (S.share?.sid) {
+      if (S.share.key) await F.deleteDoc(F.doc(FBX.db, 'shares', S.share.sid)).catch(() => {});
+      await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, S.share.key ? S.share.file : `conti-share/${S.share.sid}.js`)).catch(() => {});
+    }
+    const fq = await F.getDocs(F.query(F.collection(FBX.db, 'feedback'), F.where('contiId', '==', CONTI_ID))).catch(() => null);
+    if (fq) for (const d of fq.docs) await F.deleteDoc(d.ref).catch(() => {});
     await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID));
     alert('콘티를 삭제했습니다. 달력의 콘텐츠 기획 탭으로 이동합니다.');
     location.href = '../';
