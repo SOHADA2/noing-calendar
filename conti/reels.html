@@ -1893,7 +1893,8 @@ async function makeVoices() {
     save();
     VOICE_BUSY = false;
     await voiceRow();
-    if (!IG.sound) toggleSound(); else playClip(0);
+    if (!$('#mInsta').hidden) { if (!IG.sound) toggleSound(); else playClip(0); }   // 미리보기를 닫았으면 소리 내지 않고 알림만
+    else toast('나레이션을 다 만들었습니다 · [인스타로 보기]에서 들어 보세요');
   } catch (e) {
     RELAY_OK = null;
     msg.textContent = /fetch/i.test(e.message) ? '목소리 중계와 연결이 끊겼습니다. PC 를 다시 켜면 자동으로 켜집니다' : '만들기 실패: ' + e.message;
@@ -1905,6 +1906,8 @@ function toggleShotNote() {
   IG.note = !IG.note; $('#igNoteBtn').classList.toggle('on', IG.note);
   const n = $('#igShot'); n.hidden = !IG.note || !n.textContent;
 }
+// 나레이션을 만드는 중에 창을 닫거나 새로고침하면 결과를 못 받는다 → 한 번 묻는다
+window.addEventListener('beforeunload', e => { if (VOICE_BUSY) { e.preventDefault(); e.returnValue = ''; } });
 function toggleSound() {
   IG.sound = !IG.sound; $('#igSound').classList.toggle('on', IG.sound);
   $('#igSound').textContent = IG.sound ? '🔊 나레이션 켜짐' : '🔇 나레이션 끔';
