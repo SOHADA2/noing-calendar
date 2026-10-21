@@ -445,6 +445,12 @@ ins.lg{padding:0 3px}
 .vc-h .vc-chg{display:none;margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:99px;padding:1px 9px}
 .vc.chg .vc-chg{display:inline-block}
 .vc-b{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.vc-panel{width:200px;display:flex;flex-direction:column;gap:4px;border-radius:10px;overflow:hidden;min-height:60px;background:#f3f0e9}
+.vc-row{display:flex;gap:4px}
+.vc-ph{position:relative;margin:0;height:100%;flex:none;overflow:hidden;cursor:zoom-in;background:#ece8df}
+.vc-ph img{display:block;width:100%;height:100%;object-fit:cover}
+.vc-ph:hover::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 0 2px var(--brand)}
+.vc-ph figcaption{position:absolute;left:4px;right:4px;top:4px;font-size:10.5px;font-weight:700;line-height:1.3;color:#d23b2a;background:#ffff00;padding:0 3px;max-height:2.7em;overflow:hidden;width:fit-content}
 .vc .vw-ph2{width:196px;display:flex;flex-wrap:wrap;gap:6px}
 .vc .vw-fr{height:168px}
 .vc .vw-ph2.many .vw-fr{height:118px}
@@ -455,7 +461,7 @@ ins.lg{padding:0 3px}
 .vw-cards.small .vc .vw-fr.wide{width:120px;height:auto}
 .vw-cards.small .vc .vw-ph2.multi .vw-fr.wide{width:auto;height:60px;max-width:120px}
 .vw-cards.small .vw-fr figcaption{display:none}
-.vw-nophoto{width:96px;height:120px;border-radius:9px;background:#f3f0e9;color:#b9b2a6;font-size:12px;display:grid;place-items:center}
+.vw-nophoto{width:200px;height:120px;border-radius:9px;background:#f3f0e9;color:#b9b2a6;font-size:12px;display:grid;place-items:center}
 .vc-t{display:flex;flex-direction:column;gap:8px;min-width:0}
 .fx-l{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:1px;min-height:18px}
 .fx-st{display:inline-flex;gap:8px;align-items:center;margin-left:auto}
@@ -491,7 +497,7 @@ ins.lg{padding:0 3px}
 .sent-dlg .desc{white-space:pre-line}
 .sent-dlg .foot{justify-content:center}
 @media (max-width:1040px){ .vw-cards{grid-template-columns:1fr} }
-@media (max-width:560px){ .vc-b{grid-template-columns:1fr} .vc .vw-ph2{width:auto} .vw-cap2{grid-template-columns:1fr} .fb-bar .fb-name{width:100%} }
+@media (max-width:560px){ .vc-b{grid-template-columns:1fr} .vw-cap2{grid-template-columns:1fr} .fb-bar .fb-name{width:100%} }
 
 /* 인쇄 = PDF 받기 */
 #printArea{display:none}
@@ -2138,15 +2144,7 @@ function renderViewer() {
   // 클립 — 카드 두 줄(사진 왼쪽 · 글 오른쪽). 글은 그 자리에서 바로 고칠 수 있다
   const [cs, cp] = vwSec('클립 구성');
   cp.classList.add('vw-cards');
-  let big = true; try { big = localStorage.getItem('noing-vw-photo') !== 'small'; } catch (e) {}
-  cp.classList.toggle('small', !big);
-  const sz = el('span', 'vw-size');
-  [['사진 크게', true], ['한눈에', false]].forEach(([t, v]) => {
-    const b = el('button', big === v ? 'on' : null, t); b.type = 'button';
-    b.onclick = () => { cp.classList.toggle('small', !v); sz.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); try { localStorage.setItem('noing-vw-photo', v ? 'big' : 'small'); } catch (e) {} };
-    sz.append(b);
-  });
-  cs.querySelector('.sec-title').append(el('span', 'sub', canFix() ? '사진은 촬영할 장면의 예시 구도 · 글을 누르면 바로 고칠 수 있어요' : '사진은 촬영할 장면의 예시 구도입니다'), sz);
+  cs.querySelector('.sec-title').append(el('span', 'sub', canFix() ? '사진은 촬영할 장면의 예시 구도 · 글을 누르면 바로 고칠 수 있어요' : '사진은 촬영할 장면의 예시 구도입니다'));
   S.clips.forEach((c, i) => cp.append(vwClipCard(c, i)));
   w.append(cs);
 
@@ -2181,18 +2179,8 @@ function vwClipCard(c, i) {
   const card = el('article', 'vc'); card.dataset.id = c.id;
   const head = el('div', 'vc-h');
   head.append(el('b', null, `클립 ${i + 1}`), el('span', null, `약 ${fmtSec(secs(c.narration))}`), el('i', 'vc-chg', '고친 곳 있음'));
-  const ph = el('div', 'vw-ph2' + (c.photos.length > 2 ? ' many' : '') + (c.photos.length > 1 ? ' multi' : ''));
-  if (c.photos.length) c.photos.forEach((p, k) => {
-    const f = el('figure', 'vw-fr'); f.title = '크게 보기';
-    const bg = el('img', 'bg'); bg.src = p.url; bg.alt = ''; bg.setAttribute('aria-hidden', 'true');
-    const im = el('img', 'fg'); im.src = p.url; im.alt = p.caption || `클립 ${i + 1} 예시 사진 ${k + 1}`;
-    // 가로·정사각 사진(화면 캡처 등)은 세로 틀에 넣으면 너무 작아진다 → 사진 비율대로 넓힌 틀
-    im.onload = () => { const r = im.naturalWidth / im.naturalHeight; if (r > 0.9) { f.style.aspectRatio = String(Math.min(r, 1.6)); f.classList.add('wide'); } };
-    f.append(bg, im);
-    if (p.caption) f.append(el('figcaption', null, p.caption));
-    f.onclick = () => openGallery(c, i, k);
-    ph.append(f);
-  });
+  const ph = el('div', 'vc-panel');
+  if (c.photos.length) panelPhotos(ph, c, i);
   else ph.append(el('div', 'vw-nophoto', '사진 없음'));
   const tx = el('div', 'vc-t');
   const d = FB.clips[c.id];
@@ -2204,6 +2192,41 @@ function vwClipCard(c, i) {
   const body = el('div', 'vc-b'); body.append(ph, tx);
   card.append(head, body);
   return card;
+}
+// 사진 판 — PPT 노란 판처럼 빈틈없이: 사진을 줄로 묶고, 줄마다 높이를 맞춰 폭 200px 을 원래 비율대로 꽉 채운다
+//   어떻게 줄로 묶을지는 가능한 묶음을 다 따져 판 높이가 260px 에 가장 가까운 것을 고른다
+//   (줄 높이는 원래보다 최대 20% 낮출 수 있다 = 위아래를 조금 잘라 냄. 80px 보다 얇은 줄은 피한다)
+const PANEL_W = 200, PANEL_H = 260, PGAP = 4;
+async function panelPhotos(box, c, i) {
+  const ims = await Promise.all(c.photos.map(p => loadImg(p.url).catch(() => null)));
+  const rs = ims.map(im => im ? im.naturalWidth / im.naturalHeight : 0.75), n = rs.length;
+  let best = null;
+  for (let mask = 0; mask < (1 << (n - 1)); mask++) {   // mask 의 비트 = 그 사진 뒤에서 줄을 바꿈
+    const rows = []; let cur = [0];
+    for (let k = 1; k < n; k++) { if (mask & (1 << (k - 1))) { rows.push(cur); cur = [k]; } else cur.push(k); }
+    rows.push(cur);
+    if (rows.some(r => r.length > 3)) continue;
+    const hs = rows.map(r => (PANEL_W - PGAP * (r.length - 1)) / r.reduce((a, x) => a + rs[x], 0));
+    const H = hs.reduce((a, b) => a + b, 0) + PGAP * (rows.length - 1);
+    const k = Math.max(0.8, Math.min(1, PANEL_H / H));
+    const score = Math.abs(H * k - PANEL_H) + hs.filter(h => h * k < 80).length * 200;
+    if (!best || score < best.score) best = { score, rows, hs: hs.map(h => h * k) };
+  }
+  box.textContent = '';
+  best.rows.forEach((row, ri) => {
+    const sum = row.reduce((a, x) => a + rs[x], 0), wAvail = PANEL_W - PGAP * (row.length - 1);
+    const line = el('div', 'vc-row'); line.style.height = Math.round(best.hs[ri]) + 'px';
+    row.forEach(k => {
+      const p = c.photos[k], f = el('figure', 'vc-ph'); f.title = '크게 보기';
+      f.style.width = (wAvail * rs[k] / sum).toFixed(1) + 'px';
+      const im = el('img'); im.src = p.url; im.alt = p.caption || `클립 ${i + 1} 예시 사진 ${k + 1}`;
+      f.append(im);
+      if (p.caption) f.append(el('figcaption', null, p.caption));
+      f.onclick = () => openGallery(c, i, k);
+      line.append(f);
+    });
+    box.append(line);
+  });
 }
 // 바로 고칠 수 있는 글 칸 — 평소엔 글처럼 보이고, 누르면 고칠 수 있다. 고치면 노랗게 + [원래 글] [되돌리기]
 function fixField(label, orig, cur, onval, o = {}) {
