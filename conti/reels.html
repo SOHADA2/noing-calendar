@@ -435,6 +435,64 @@ ins.lg{padding:0 3px}
   .vw-capwrap{grid-template-columns:1fr}
 }
 
+/* 담당자 화면 — 클립 카드 · 바로 고치기 */
+.vw-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:none;border:0;padding:0}
+.vc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;transition:border-color .15s,box-shadow .15s}
+.vc.chg{border-color:#e9a800;box-shadow:0 0 0 1px #e9a800}
+.vc-h{display:flex;align-items:baseline;gap:8px}
+.vc-h b{font-size:14.5px}
+.vc-h span{font-size:12px;color:var(--muted)}
+.vc-h .vc-chg{display:none;margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:99px;padding:1px 9px}
+.vc.chg .vc-chg{display:inline-block}
+.vc-b{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.vc .vw-ph2{width:196px;display:flex;flex-wrap:wrap;gap:6px}
+.vc .vw-fr{height:168px}
+.vc .vw-ph2.many .vw-fr{height:118px}
+.vc .vw-fr.wide{width:196px;height:auto}
+.vc .vw-ph2.multi .vw-fr.wide{width:auto;height:96px;max-width:196px}
+.vw-cards.small .vc .vw-ph2{width:120px}
+.vw-cards.small .vc .vw-fr{height:90px}
+.vw-cards.small .vc .vw-fr.wide{width:120px;height:auto}
+.vw-cards.small .vc .vw-ph2.multi .vw-fr.wide{width:auto;height:60px;max-width:120px}
+.vw-cards.small .vw-fr figcaption{display:none}
+.vw-nophoto{width:96px;height:120px;border-radius:9px;background:#f3f0e9;color:#b9b2a6;font-size:12px;display:grid;place-items:center}
+.vc-t{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fx-l{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:1px;min-height:18px}
+.fx-st{display:inline-flex;gap:8px;align-items:center;margin-left:auto}
+.fx-st em{font-style:normal;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:4px;padding:0 6px}
+.fx-a{border:0;background:none;padding:0;font-size:11px;color:var(--ink-2);text-decoration:underline;text-underline-offset:2px}
+.fx-t{display:block;width:calc(100% + 14px);margin:0 -7px;resize:none;overflow:hidden;font:inherit;font-size:13.5px;line-height:1.55;color:var(--ink);border:1px dashed transparent;border-radius:7px;padding:4px 7px;background:transparent;word-break:keep-all;transition:background .12s,border-color .12s}
+.fx-t:not([readonly]):hover{border-color:#d6cfc1;background:#fcfbf8;cursor:text}
+.fx-t:focus{outline:none;border:1px solid var(--brand);background:#fff}
+.fx-t[readonly]{cursor:default}
+.fx.chg:not(.memo) .fx-t{background:#fff6d8;border-color:#f0c040}
+.fx.nar .fx-t{font-size:15px;font-weight:600;line-height:1.6}
+.fx.memo .fx-t{width:100%;margin:0;border:1px solid var(--line);background:#fcfbf8;font-size:13px}
+.fx.memo .fx-t:focus{border-color:var(--brand);background:#fff}
+.fx.memo.chg .fx-t{background:#fff;border-color:#e9a800}
+.fx-org{font-size:12px;color:var(--muted);background:#f6f3ed;border-radius:6px;padding:4px 8px;margin-top:4px;white-space:pre-line}
+.fx-org s{color:#8b847a}
+.vc-note{font-size:12.5px;line-height:1.5;color:#d23b2a;white-space:pre-line}
+.vc-note .fx-l{color:var(--muted)}
+.vw-capcard{display:flex;flex-direction:column;gap:8px}
+.vw-cap2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fb-bar{min-height:48px}
+.fb-bar .fb-ic{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:99px;background:var(--brand);color:#2b1d00;font-weight:800;font-size:12.5px;flex:none}
+.fb-bar .fb-msg{flex:1;min-width:200px}
+.fb-bar.on{box-shadow:0 0 0 2px var(--brand),0 8px 24px rgba(0,0,0,.22)}
+.fb-bar.ok{background:#1d5e40}
+.fb-bar.ok .fb-ic{background:#e6f4ec;color:#1d5e40}
+.fb-bar.pv{background:#4a4743}
+.fb-bar .fb-name{width:190px;flex:none;color:var(--ink);font-size:13px;border:1px solid transparent;border-radius:7px;padding:6px 9px}
+.fb-bar .fb-name.need{border-color:#ff7a5c;box-shadow:0 0 0 2px rgba(255,122,92,.35)}
+.fb-bar{max-width:980px}
+.sent-dlg{max-width:440px;text-align:center}
+.sent-dlg .sent-ic{width:56px;height:56px;margin:4px auto 6px;border-radius:50%;background:#e6f4ec;color:#1d5e40;font-size:30px;font-weight:800;display:grid;place-items:center}
+.sent-dlg .desc{white-space:pre-line}
+.sent-dlg .foot{justify-content:center}
+@media (max-width:1040px){ .vw-cards{grid-template-columns:1fr} }
+@media (max-width:560px){ .vc-b{grid-template-columns:1fr} .vc .vw-ph2{width:auto} .vw-cap2{grid-template-columns:1fr} .fb-bar .fb-name{width:100%} }
+
 /* 인쇄 = PDF 받기 */
 #printArea{display:none}
 @media print{
@@ -703,6 +761,16 @@ ins.lg{padding:0 3px}
     <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 콘티 자체는 고칠 수 없고, 클립마다 고칠 글이나 메모를 적어 <b>수정 요청</b>으로 보낼 수 있습니다(PPT를 받아 고쳐 보내도 됩니다). 콘티를 고친 뒤 [지금 내용으로 갱신]을 누르면 같은 링크에서 바뀐 내용이 보입니다.</p>
     <div id="shareBody"></div>
     <div class="foot"><button class="btn" onclick="closeM(mShare);enterViewer(true)">👁 담당자 화면 미리보기</button><button class="btn" onclick="closeM(mShare)">닫기</button></div>
+  </div>
+</div>
+
+<!-- 담당자: 수정 요청을 보냈을 때 -->
+<div class="modal" id="mSent" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog sent-dlg">
+    <div class="sent-ic">✓</div>
+    <h3>수정 요청을 노잉에 전달했습니다</h3>
+    <p class="desc" id="sentDesc"></p>
+    <div class="foot"><button class="btn brand" onclick="closeM(mSent)">확인</button></div>
   </div>
 </div>
 
@@ -2048,7 +2116,7 @@ function renderViewer() {
   if (S.info.narration) notes.push(`*${S.info.length || '1분 이내'}의 릴스 영상을 제작하며 나레이션 작업이 포함됩니다.`);
   notes.push(takeOf() ? '*릴스 화면으로 보기에서 나레이션을 들어 볼 수 있습니다. 실제 영상의 목소리·속도와는 다를 수 있습니다.'
     : '*릴스 화면으로 보기는 사진과 자막으로 흐름만 보여 드립니다. 실제 영상과는 다를 수 있습니다.');
-  if (canFix()) notes.push('*고칠 내용은 클립 오른쪽 [✎ 고치기]로 바로 적어 보내 주시거나, PPT를 받아 고쳐 보내 주셔도 됩니다.');
+  if (canFix()) notes.push('*고칠 내용은 아래 글을 눌러 바로 고친 뒤 [수정 요청 보내기]로 보내 주시거나, PPT를 받아 고쳐 보내 주셔도 됩니다.');
   notes.forEach(t => hero.append(el('p', 'vw-note', t)));
   w.append(hero);
   const [ns, np] = vwSec('릴스 제작 안내'); np.append(noticeList()); w.append(ns);
@@ -2063,47 +2131,36 @@ function renderViewer() {
     w.append(s);
   }
 
-  // 클립 — 표 한 장(번호 · 사진 · 자막·나레이션 · 영상 클립 · 수정 요청)
+  // 클립 — 카드 두 줄(사진 왼쪽 · 글 오른쪽). 글은 그 자리에서 바로 고칠 수 있다
   const [cs, cp] = vwSec('클립 구성');
-  cp.classList.add('vw-table');
+  cp.classList.add('vw-cards');
   let big = true; try { big = localStorage.getItem('noing-vw-photo') !== 'small'; } catch (e) {}
   cp.classList.toggle('small', !big);
   const sz = el('span', 'vw-size');
-  [['크게', true], ['한눈에', false]].forEach(([t, v]) => {
+  [['사진 크게', true], ['한눈에', false]].forEach(([t, v]) => {
     const b = el('button', big === v ? 'on' : null, t); b.type = 'button';
     b.onclick = () => { cp.classList.toggle('small', !v); sz.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); try { localStorage.setItem('noing-vw-photo', v ? 'big' : 'small'); } catch (e) {} };
     sz.append(b);
   });
-  cs.querySelector('.sec-title').append(el('span', 'sub', '사진은 촬영할 장면의 예시 구도입니다'), sz);
-  if (!canFix()) cp.classList.add('nofix');
-  const head = el('div', 'vw-row vw-head');
-  ['클립', '예시 구도 (참고 사진)', '자막 · 나레이션', '영상 클립 · 촬영 참고', '수정 요청'].forEach(t => head.append(el('div', null, t)));
-  cp.append(head);
-  S.clips.forEach((c, i) => cp.append(vwClipRow(c, i)));
+  cs.querySelector('.sec-title').append(el('span', 'sub', canFix() ? '사진은 촬영할 장면의 예시 구도 · 글을 누르면 바로 고칠 수 있어요' : '사진은 촬영할 장면의 예시 구도입니다'), sz);
+  S.clips.forEach((c, i) => cp.append(vwClipCard(c, i)));
   w.append(cs);
 
   // 멘션
   const [fs, fp] = vwSec('멘션 텍스트');
-  fp.classList.add('vw-capwrap');
-  const cap = el('div', 'vw-cap');
-  cap.append(el('div', 'k', '멘션 텍스트'), el('div', 'vw-text', S.caption.mention || '-'));
-  if (S.caption.tags.trim()) cap.append(el('div', 'k', '해시태그'), el('div', 'vw-text', S.caption.tags));
-  if (S.caption.account.trim()) cap.append(el('div', 'k', '계정 태그'), el('div', 'vw-text', S.caption.account));
-  fp.append(cap);
-  if (canFix()) { const ed = el('div', 'vw-edit'); fillCapEdit(ed); fp.append(ed); }
+  fp.classList.add('vw-capcard');
+  const capCur = k => FB.caption ? FB.caption[k] : S.caption[k];
+  const capSet = (k, v) => { FB.caption = FB.caption || { mention: S.caption.mention, tags: S.caption.tags, account: S.caption.account }; FB.caption[k] = v; if (!capChanged(FB.caption)) FB.caption = null; };
+  fp.append(fixField('멘션 텍스트', S.caption.mention, capCur('mention'), v => capSet('mention', v), { cls: 'cap' }));
+  const row2 = el('div', 'vw-cap2');
+  row2.append(fixField('해시태그', S.caption.tags, capCur('tags'), v => capSet('tags', v)), fixField('계정 태그', S.caption.account, capCur('account'), v => capSet('account', v)));
+  fp.append(row2);
   w.append(fs);
 
-  // 전체 의견 + 보내기
+  // 전체 의견
   if (canFix()) {
-    const [ms, mp] = vwSec('전체 의견 · 수정 요청 보내기');
-    const ta = el('textarea', 'vw-memo'); ta.rows = 3; ta.placeholder = '클립과 상관없이 전하고 싶은 말이 있으면 적어 주세요'; ta.value = FB.memo || '';
-    ta.oninput = () => { FB.memo = ta.value; fbSave(); fbBar(); };
-    const row = el('div', 'fb-send');
-    const nm = el('input', 'fb-name'); nm.placeholder = '보내는 분 (이름 또는 회사명)'; nm.value = FB.name || ''; nm.id = 'fbName';
-    nm.oninput = () => { FB.name = nm.value; fbSave(); };
-    const go = el('button', 'btn brand', '수정 요청 보내기'); go.onclick = () => sendFeedback(go);
-    row.append(nm, go);
-    mp.append(ta, row, el('p', 'vw-note', '보낸 뒤에도 이 화면에서 계속 고쳐 다시 보낼 수 있습니다. 적어 둔 내용은 이 브라우저에 남아 있습니다.'));
+    const [ms, mp] = vwSec('전체 의견');
+    mp.append(fixField('클립과 상관없이 전하고 싶은 말', '', FB.memo || '', v => { FB.memo = v; }, { memo: true, ph: '예) 전체적으로 좋아요. 마지막 장면만 한 번 더 봐 주세요' }));
     w.append(ms);
   }
 
@@ -2112,92 +2169,108 @@ function renderViewer() {
   w.append(ft);
   if (canFix()) { const bar = el('div', 'fb-bar'); bar.id = 'fbBar'; w.append(bar); fbBar(); }
 }
-// 수정 요청은 지금 링크(#v=)로 연 담당자 화면에서만 보낼 수 있다. 미리보기에선 칸만 보여 준다
+// 수정 요청은 지금 링크(#v=)로 연 담당자 화면에서만 보낼 수 있다. 미리보기에선 고쳐 볼 수만 있다
 const canFix = () => VIEW === 'preview' || (VIEW === 'share' && !!SH);
-function vwClipRow(c, i) {
-  const row = el('div', 'vw-row'); row.dataset.id = c.id;
-  const no = el('div', 'vw-no'); no.append(el('b', null, String(i + 1)), el('small', null, `약 ${fmtSec(secs(c.narration))}`));
-  const ph = el('div', 'vw-ph2' + (c.photos.length > 2 ? ' many' : ''));
+const fbClip = c => FB.clips[c.id] || (FB.clips[c.id] = { narration: c.narration, shots: c.shots, memo: '' });
+const fbTidy = c => { const d = FB.clips[c.id]; if (d && !clipChanged(c, d)) delete FB.clips[c.id]; };
+function vwClipCard(c, i) {
+  const card = el('article', 'vc'); card.dataset.id = c.id;
+  const head = el('div', 'vc-h');
+  head.append(el('b', null, `클립 ${i + 1}`), el('span', null, `약 ${fmtSec(secs(c.narration))}`), el('i', 'vc-chg', '고친 곳 있음'));
+  const ph = el('div', 'vw-ph2' + (c.photos.length > 2 ? ' many' : '') + (c.photos.length > 1 ? ' multi' : ''));
   if (c.photos.length) c.photos.forEach((p, k) => {
     const f = el('figure', 'vw-fr'); f.title = '크게 보기';
     const bg = el('img', 'bg'); bg.src = p.url; bg.alt = ''; bg.setAttribute('aria-hidden', 'true');
     const im = el('img', 'fg'); im.src = p.url; im.alt = p.caption || `클립 ${i + 1} 예시 사진 ${k + 1}`;
-    // 가로·정사각 사진(화면 캡처 등)은 세로 틀에 넣으면 너무 작아진다 → 사진 비율대로 넓힌 틀(최대 16:10)
+    // 가로·정사각 사진(화면 캡처 등)은 세로 틀에 넣으면 너무 작아진다 → 사진 비율대로 넓힌 틀
     im.onload = () => { const r = im.naturalWidth / im.naturalHeight; if (r > 0.9) { f.style.aspectRatio = String(Math.min(r, 1.6)); f.classList.add('wide'); } };
     f.append(bg, im);
     if (p.caption) f.append(el('figcaption', null, p.caption));
     f.onclick = () => openGallery(c, i, k);
     ph.append(f);
   });
-  else ph.append(el('span', 'nop', '사진 없음'));
-  const nar = el('div', 'vw-text vw-nar', c.narration.trim() || '—');
-  const shot = el('div', 'vw-shot');
-  if (c.shots.trim()) shot.append(el('div', 'vw-text', c.shots.trim()));
-  const notes = c.notes.split('\n').map(x => x.trim()).filter(Boolean);
-  if (notes.length) shot.append(el('div', 'vw-text vw-red', notes.map(x => '*' + x.replace(/^\*\s*/, '')).join('\n')));
-  if (!shot.childNodes.length) shot.append(el('span', 'nop', '—'));
-  row.append(no, ph, nar, shot);
-  if (canFix()) { const ed = el('div', 'vw-edit'); fillEdit(ed, c); row.append(ed); }
-  return row;
-}
-function editArea(ed, label, value, orig, rows, ph, onval) {
-  ed.append(el('label', 'vw-el', label));
-  const ta = el('textarea'); ta.rows = rows; ta.value = value || ''; ta.placeholder = ph || '';
-  const mark = () => ta.classList.toggle('chg', orig != null && !same(ta.value, orig));
-  ta.oninput = () => { onval(ta.value); mark(); fbSave(); fbBar(); }; mark();
-  ed.append(ta); return ta;
-}
-function fillEdit(ed, c) {
-  ed.textContent = '';
+  else ph.append(el('div', 'vw-nophoto', '사진 없음'));
+  const tx = el('div', 'vc-t');
   const d = FB.clips[c.id];
-  if (!d) {
-    const b = el('button', 'btn vw-fix', '✎ 고치기');
-    b.onclick = () => { FB.clips[c.id] = { narration: c.narration, shots: c.shots, memo: '' }; fbSave(); fillEdit(ed, c); ed.querySelector('textarea')?.focus(); };
-    ed.append(b); return;
-  }
-  editArea(ed, '자막 · 나레이션', d.narration, c.narration, 3, '', x => { d.narration = x; });
-  editArea(ed, '영상 클립', d.shots, c.shots, 2, '', x => { d.shots = x; });
-  editArea(ed, '메모', d.memo, null, 2, '예) 이 장면은 제품을 더 가까이 보여 주세요', x => { d.memo = x; });
-  const x = el('button', 'vw-undo', '고치기 취소'); x.onclick = () => { delete FB.clips[c.id]; fbSave(); fillEdit(ed, c); fbBar(); };
-  ed.append(x);
+  tx.append(fixField('자막 · 나레이션', c.narration, d ? d.narration : c.narration, v => { fbClip(c).narration = v; fbTidy(c); }, { cls: 'nar' }));
+  tx.append(fixField('영상 클립', c.shots, d ? d.shots : c.shots, v => { fbClip(c).shots = v; fbTidy(c); }, { ph: '(없음)' }));
+  const notes = c.notes.split('\n').map(x => x.trim()).filter(Boolean);
+  if (notes.length) { const nb = el('div', 'vc-note'); nb.append(el('span', 'fx-l', '촬영 참고'), el('div', null, notes.map(x => '*' + x.replace(/^\*\s*/, '')).join('\n'))); tx.append(nb); }
+  if (canFix()) tx.append(fixField('요청 메모', '', d ? d.memo : '', v => { fbClip(c).memo = v; fbTidy(c); }, { memo: true, cls: 'memo', ph: '이 장면에 바라는 점이 있으면 적어 주세요' }));
+  const body = el('div', 'vc-b'); body.append(ph, tx);
+  card.append(head, body);
+  return card;
 }
-function fillCapEdit(ed) {
-  ed.textContent = '';
-  const d = FB.caption;
-  if (!d) {
-    const b = el('button', 'btn vw-fix', '✎ 멘션 고치기');
-    b.onclick = () => { FB.caption = { mention: S.caption.mention, tags: S.caption.tags, account: S.caption.account }; fbSave(); fillCapEdit(ed); ed.querySelector('textarea')?.focus(); };
-    ed.append(b); return;
-  }
-  editArea(ed, '멘션 텍스트', d.mention, S.caption.mention, 5, '', x => { d.mention = x; });
-  editArea(ed, '해시태그', d.tags, S.caption.tags, 1, '', x => { d.tags = x; });
-  editArea(ed, '계정 태그', d.account, S.caption.account, 1, '', x => { d.account = x; });
-  const x = el('button', 'vw-undo', '고치기 취소'); x.onclick = () => { FB.caption = null; fbSave(); fillCapEdit(ed); fbBar(); };
-  ed.append(x);
+// 바로 고칠 수 있는 글 칸 — 평소엔 글처럼 보이고, 누르면 고칠 수 있다. 고치면 노랗게 + [원래 글] [되돌리기]
+function fixField(label, orig, cur, onval, o = {}) {
+  const wrap = el('div', 'fx' + (o.cls ? ' ' + o.cls : '') + (o.memo ? ' memo' : ''));
+  const lab = el('div', 'fx-l'); lab.append(el('span', null, label));
+  const st = el('span', 'fx-st'); lab.append(st);
+  const ta = el('textarea', 'fx-t'); ta.rows = 1; ta.value = cur ?? orig ?? ''; ta.placeholder = o.ph || ''; ta.spellcheck = false;
+  if (!canFix()) { ta.readOnly = true; ta.tabIndex = -1; }
+  const org = el('div', 'fx-org'); org.hidden = true;
+  org.append(el('span', null, '원래 글  '), el('s', null, orig || '(비어 있음)'));
+  const mark = () => {
+    const ch = o.memo ? !!ta.value.trim() : !same(ta.value, orig);
+    wrap.classList.toggle('chg', ch);
+    st.textContent = '';
+    if (ch && !o.memo) {
+      const a = el('button', 'fx-a', '원래 글'); a.type = 'button'; a.onclick = () => { org.hidden = !org.hidden; };
+      const b = el('button', 'fx-a', '되돌리기'); b.type = 'button';
+      b.onclick = () => { ta.value = orig || ''; onval(ta.value); grow(ta); org.hidden = true; mark(); fbSave(); fbBar(); };
+      st.append(el('em', null, '고침'), a, b);
+    } else org.hidden = true;
+    const card = wrap.closest('.vc'); if (card) card.classList.toggle('chg', !!card.querySelector('.fx.chg:not(.memo)') || !!card.querySelector('.fx.memo.chg'));
+  };
+  ta.oninput = () => { onval(ta.value); grow(ta); mark(); fbSave(); fbBar(); };
+  wrap.append(lab, ta, org);
+  requestAnimationFrame(() => { grow(ta); mark(); });
+  return wrap;
 }
+// 아래 고정 띠: 지금 상태(고친 곳 · 보냈는지 · 노잉이 확인했는지)와 보내기
 function fbBar() {
   const bar = $('#fbBar'); if (!bar || !FB) return;
   const p = fbPayload(), n = fbCount(p), h = hashOf(JSON.stringify(p));
-  bar.textContent = '';
-  let msg = n ? `수정 요청 ${n}곳 적음` : '고칠 곳이 있으면 클립 오른쪽 [✎ 고치기]를 눌러 주세요';
-  if (FB.sentAt) msg = FB.sentHash === h ? `${fmtWhen(FB.sentAt)}에 보냈습니다 · 고치면 다시 보낼 수 있습니다` : `${fmtWhen(FB.sentAt)}에 보낸 뒤 고친 곳이 있습니다`;
-  bar.append(el('span', null, msg));
-  if (n && FB.sentHash !== h) { const go = el('button', 'btn brand', FB.sentAt ? '다시 보내기' : '수정 요청 보내기'); go.onclick = () => sendFeedback(go); bar.append(go); }
-  bar.classList.toggle('on', !!n);
+  bar.textContent = ''; bar.className = 'fb-bar';
+  const msg = (ic, t) => bar.append(el('span', 'fb-ic', ic), el('span', 'fb-msg', t));
+  if (VIEW === 'preview') {
+    bar.classList.add('pv');
+    msg('👁', n ? `미리보기 · 고친 곳 ${n}곳 — 담당자는 여기서 [수정 요청 보내기]를 누르면 노잉에 전달됩니다` : '미리보기 · 담당자는 글을 눌러 바로 고치고 [수정 요청 보내기]로 보냅니다');
+    return;
+  }
+  if (FB.sentAt && FB.sentHash === h) {
+    bar.classList.add('ok');
+    msg('✓', FB.seen ? `노잉이 수정 요청을 확인했습니다 · ${fmtWhen(FB.sentAt)}에 보냄` : `${fmtWhen(FB.sentAt)} 노잉에 전달했습니다 · 확인되면 여기에 표시됩니다`);
+    return;
+  }
+  if (!n) { msg('✎', '글을 눌러 바로 고칠 수 있어요. 고친 뒤 [수정 요청 보내기]를 눌러야 노잉에 전달됩니다'); return; }
+  bar.classList.add('on');
+  msg(String(n), `${FB.sentAt ? '보낸 뒤 더 고친 곳' : '고친 곳'} ${n}곳 · 아직 보내지 않았어요 (이 브라우저에만 임시 저장)`);
+  const nm = el('input', 'fb-name'); nm.id = 'fbName'; nm.placeholder = '보내는 분 (이름·회사)'; nm.value = FB.name || '';
+  nm.oninput = () => { FB.name = nm.value; fbSave(); };
+  const go = el('button', 'btn brand', FB.sentAt ? '다시 보내기' : '수정 요청 보내기'); go.onclick = () => sendFeedback(go);
+  bar.append(nm, go);
 }
 async function sendFeedback(btn) {
   if (VIEW !== 'share' || !SH) { toast('미리보기에서는 보내지지 않습니다 — 담당자 화면에서만 보낼 수 있습니다'); return; }
   const p = fbPayload();
   if (!fbCount(p)) { toast('고친 곳이 없습니다'); return; }
-  if (!(FB.name || '').trim()) { const nm = $('#fbName'); nm?.scrollIntoView({ block: 'center' }); nm?.focus(); toast('보내는 분 이름(또는 회사명)을 적어 주세요'); return; }
+  if (!(FB.name || '').trim()) { const nm = $('#fbName'); nm?.focus(); nm?.classList.add('need'); toast('보내는 분 이름(또는 회사명)을 적어 주세요'); return; }
   btn.disabled = true; const t = btn.textContent; btn.textContent = '보내는 중…';
   try {
     await fsSet('feedback/' + FB.id, { sid: SH.sid, key: SH.key, contiId: SH.contiId, name: FB.name.trim().slice(0, 60), clips: p.clips, caption: p.caption, memo: p.memo, at: Date.now(), base: SH.at || 0 });
-    FB.sentAt = Date.now(); FB.sentHash = hashOf(JSON.stringify(p)); fbSave(); fbBar();
-    toast('수정 요청을 보냈습니다. 고마워요!');
+    FB.sentAt = Date.now(); FB.sentHash = hashOf(JSON.stringify(p)); FB.seen = false; fbSave(); fbBar();
+    $('#sentDesc').textContent = `고친 곳 ${fbCount(p)}곳 · 보낸 분 ${FB.name.trim()} · ${fmtWhen(FB.sentAt)}\n노잉 담당자에게 바로 알림이 갑니다. 더 고칠 것이 생기면 다시 고쳐서 [다시 보내기]를 누르시면 됩니다.`;
+    openM(mSent);
   } catch (e) {
     console.error(e); alert('보내지 못했습니다. 잠시 뒤 다시 눌러 주시거나, PPT를 받아 고쳐 보내 주세요.\n(' + e.message + ')');
-  } finally { btn.disabled = false; btn.textContent = t; }
+    btn.disabled = false; btn.textContent = t;
+  }
+}
+// 보낸 요청을 노잉이 확인(처리 완료)했는지 — 다시 열 때 한 번 본다
+async function fbCheckSeen() {
+  if (VIEW !== 'share' || !SH || !FB?.sentAt) return;
+  try { const d = await fsGet('feedback/' + FB.id); FB.seen = !!d.done; fbSave(); fbBar(); } catch (e) {}
 }
 
 // Firestore REST (담당자 화면은 Firebase 프로그램 없이 주소로만 읽고 쓴다)
@@ -2245,7 +2318,7 @@ async function openShared() {
     const d = window.__CONTI_SHARE;
     if (!d || !d.conti) throw new Error('내용 없음');
     S = normalize(d.conti); SEL = S.clips[0].id;
-    renderHead(); renderViewer(); document.body.classList.add('loaded');
+    renderHead(); renderViewer(); document.body.classList.add('loaded'); fbCheckSeen();
     document.title = `[콘티] ${S.info.title || '릴스'} (릴스)`;
   } catch (e) {
     console.warn(e);

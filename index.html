@@ -305,6 +305,9 @@
     .pc-badge.reels { background: var(--accent); }
     .pc-badge.cardnews { background: var(--info); }
     .pc-badge.draft { color: var(--warn); }
+    .pc-badge.fb { background: #d9472b; color: #fff; }
+    .plan-card.has-fb { box-shadow: 0 0 0 2px #d9472b; opacity: 1; filter: none; }
+    .view-tab.has-fb::after { content: attr(data-fb); display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 99px; background: #d9472b; color: #fff; font-size: 11px; font-weight: 700; vertical-align: 1px; }
     .pc-badge.done { color: var(--ok); }
     .pc-body { padding: 9px 10px 11px; }
     .pc-title { font-size: 13px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -2913,7 +2916,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.36.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.37.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3137,7 +3140,7 @@ async function doLogin() {
 }
 window.addEventListener('fb-auth', (ev) => {
   if (!USE_FB) return;
-  if (ev.detail) { showLoginGate(false); startFirestoreSync(); }
+  if (ev.detail) { showLoginGate(false); startFirestoreSync(); loadPlanFb(); }
   else { showLoginGate(true); setStatus('로그인 필요', 'warn'); }
 });
 document.addEventListener('keydown', (e) => {
@@ -3712,13 +3715,26 @@ document.querySelectorAll('#viewPlans .pill[data-pk]').forEach(p => p.addEventLi
   planF[p.dataset.pk] = p.dataset.v;
   renderPlans();
 }));
+// 담당자 수정 요청(feedback, 담당자 링크에서 보낸 것) — 처리 안 한 것만 콘티별로 센다
+let planFb = {};
+async function loadPlanFb() {
+  try {
+    const FB = await fbReady(); if (!FB.user) return;
+    const snap = await FB.getDocs(FB.collection(FB.db, 'feedback'));
+    planFb = {};
+    snap.docs.forEach(d => { const x = d.data(); if (!x.done && x.contiId) planFb[x.contiId] = (planFb[x.contiId] || 0) + 1; });
+    const n = Object.values(planFb).reduce((a, b) => a + b, 0);
+    const tab = document.querySelector('.view-tab[data-view="plans"]');
+    if (tab) { tab.dataset.fb = n ? String(n) : ''; tab.classList.toggle('has-fb', n > 0); tab.title = n ? `담당자 수정 요청 ${n}건 (처리 안 함)` : ''; }
+  } catch (e) { console.warn('수정 요청 읽기 실패', e); }
+}
 async function loadPlans(force) {
   if (plansLoaded && !force) { renderPlans(); return; }
   const FB = await fbReady();
   if (!FB.user) { renderPlans('로그인하면 저장된 콘티가 보입니다'); return; }
   if (!plansLoaded) renderPlans('불러오는 중…');
   try {
-    const snap = await FB.getDocs(FB.collection(FB.db, 'contis'));
+    const [snap] = await Promise.all([FB.getDocs(FB.collection(FB.db, 'contis')), loadPlanFb()]);
     plans = snap.docs.map(d => { const x = d.data(); delete x.data; return { ...x, id: d.id }; });
     plansLoaded = true; renderPlans();
   } catch (e) {
@@ -3736,6 +3752,7 @@ function planCard(p) {
   th.append(planThumb(p, 'large'));
   const bd = planEl('div', 'pc-badges');
   bd.append(planEl('span', 'pc-badge ' + type, type === 'reels' ? '릴스' : '카드뉴스'), planEl('span', 'pc-badge ' + st, st === 'done' ? '완성' : '작성 중'));
+  if (planFb[p.id]) { b.classList.add('has-fb'); bd.append(planEl('span', 'pc-badge fb', `💬 수정 요청 ${planFb[p.id]}`)); }
   th.append(bd); b.append(th);
   const body = planEl('div', 'pc-body');
   body.append(planEl('div', 'pc-title', p.title || '(서비스명 없음)'));
