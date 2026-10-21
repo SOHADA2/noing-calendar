@@ -1893,6 +1893,7 @@ function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어�
 }
 function tick() {
   if (!IG.playing) return;
+  if ($('#mInsta').hidden) { stopInsta(); return; }   // 어떤 길로 닫혔든 화면이 닫히면 소리도 멈춘다
   const onTake = IG.seg && IG.take;
   const t = onTake ? (IG.take.ended ? IG.dur : (IG.take.currentTime - IG.seg[0]) * 1000) : IG.elapsed + (performance.now() - IG.t0);
   const p = Math.max(0, Math.min(1, t / IG.dur));
@@ -2013,6 +2014,9 @@ function toggleShotNote() {
 }
 // 나레이션을 만드는 중에 창을 닫거나 새로고침하면 결과를 못 받는다 → 한 번 묻는다
 window.addEventListener('beforeunload', e => { if (VOICE_BUSY) { e.preventDefault(); e.returnValue = ''; } });
+// 다른 탭·창으로 나가면 미리보기를 잠시 멈춘다(숨은 탭에서도 소리는 계속 나기 때문), 페이지를 떠나면 완전히 멈춘다
+document.addEventListener('visibilitychange', () => { if (document.hidden && IG.playing && !$('#mInsta').hidden) togglePlay(); });
+window.addEventListener('pagehide', () => stopInsta());
 function toggleSound() {
   IG.sound = !IG.sound; $('#igSound').classList.toggle('on', IG.sound);
   $('#igSound').textContent = IG.sound ? '🔊 나레이션 켜짐' : '🔇 나레이션 끔';
