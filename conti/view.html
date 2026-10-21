@@ -1847,7 +1847,9 @@ function shareSnapshot() {
   return c;
 }
 function hashOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + s.length.toString(36); }
-const shareLink = sh => `${location.origin}${location.pathname.replace(/[^/]*$/, 'view.html')}#s=${sh.sid}.${sh.token}`;
+// 담당자 화면은 달력과 떨어진 별도 주소(Firebase Hosting 사이트 noing-conti = view.html). _deploy.sh 가 같이 올린다
+const VIEW_SITE = 'https://noing-conti.web.app/';
+const shareLink = sh => `${VIEW_SITE}#s=${sh.sid}.${sh.token}`;
 const fmtWhen = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 function openShare() { renderShare(); openM(mShare); }
 function renderShare(msg) {
