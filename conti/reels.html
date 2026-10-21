@@ -554,6 +554,11 @@ button.bgm-ad{cursor:pointer}
 .bgm-pl{flex:none}
 .bgm-x{border:0;background:none;font-size:20px;color:var(--muted);padding:0 4px;flex:none}
 .bgm-empty{font-size:13px;color:var(--muted);padding:6px 2px}
+.bgm-snd{font-size:11.5px;color:#1d5e40;margin-top:2px}
+.ig-bgmrow{display:flex;align-items:center;gap:8px;width:min(calc(min(76vh,720px) * 9 / 16), 92vw);color:#f3efe7;font-size:12.5px}
+.ig-bgmrow[hidden]{display:none}
+.ig-bgmrow select{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:6px 8px;border-radius:8px;border:1px solid #5a534a;background:#2b2722;color:#f3eee6}
+.ig-bgmrow input[type=range]{width:90px;accent-color:var(--brand)}
 .bgm-acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .bgm-form{display:grid;grid-template-columns:1fr 1.6fr auto;gap:8px;margin-top:8px}
 .bgm-form input,.bgm-sf input,.bgm-sf select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:13px}
@@ -903,7 +908,12 @@ body:has(#mInsta:not([hidden])) .fb-bar{visibility:hidden}
       <button class="btn" onclick="playClip(IG.i + 1)" title="다음 클립 (→)">다음 ▶</button>
       <button class="btn" id="igSound" onclick="toggleSound()" title="나레이션 켜고 끄기">🔇 나레이션</button>
     </div>
-    <div class="ig-bgm">배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.</div>
+    <div class="ig-bgmrow" id="igBgmRow" hidden>
+      <span class="k">🎵 BGM</span>
+      <select id="igBgmSel" onchange="bgmPick(this.value)"></select>
+      <input type="range" id="igBgmVol" min="0" max="100" value="22" title="BGM 크기" oninput="bgmVolume(this.value)">
+    </div>
+    <div class="ig-bgm" id="igBgmNote">배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.</div>
     <div class="ig-voice" id="igVoice">
       <select id="igVoiceSel" title="Voicebox 목소리" onchange="voiceRow()"></select>
       <button class="btn" id="igMake" onclick="makeVoices()">🎙 목소리로 만들기</button>
@@ -1077,6 +1087,7 @@ function mediaList(st) {
   if (st.take?.url && st.take.id) out.push({ mid: st.take.id, url: st.take.url });
   st.briefFiles.forEach(f => f.url && out.push({ mid: f.id, url: f.url }));
   if (st.feed && st.feedId) out.push({ mid: st.feedId, url: st.feed });
+  (st.bgm || []).forEach(b => b.sound && out.push({ mid: b.id + 's', url: b.sound }));
   return out;
 }
 function withoutMedia(st) {
@@ -1085,6 +1096,7 @@ function withoutMedia(st) {
   if (c.take) delete c.take.url;
   c.briefFiles.forEach(f => delete f.url);
   delete c.feed;
+  (c.bgm || []).forEach(b => { if (b.sound) { b.hasSound = true; delete b.sound; } else delete b.hasSound; });
   return c;
 }
 async function remoteLoad(id) {
@@ -1096,6 +1108,7 @@ async function remoteLoad(id) {
   if (st.take?.id) need.push([st.take.id, u => { st.take.url = u; }]);
   (st.briefFiles || []).forEach(f => need.push([f.id, u => { f.url = u; }]));
   if (st.feedId) need.push([st.feedId, u => { st.feed = u; }]);
+  (st.bgm || []).forEach(b => b.hasSound && need.push([b.id + 's', u => { b.sound = u; }]));
   await Promise.all(need.map(async ([mid, set]) => {
     const m = await F.getDoc(F.doc(FBX.db, 'contis', id, 'media', mid));
     if (m.exists()) { set(m.data().data); UPLOADED.add(mid); }
@@ -1929,12 +1942,13 @@ function openInsta() {
   $('#igSound').classList.toggle('on', IG.sound);
   $('#igSound').hidden = !('speechSynthesis' in window) && !takeOf();
   if (!VIEW) voiceRow();   // 담당자 화면에서는 이 PC 의 목소리 중계를 찾지 않는다
+  bgmRow();
   const bars = $('#igBars'); bars.textContent = '';
   S.clips.forEach(() => { const b = el('i'); b.append(el('b')); bars.append(b); });
   openM(mInsta);
   playClip(0);
 }
-function closeInsta() { stopInsta(); closeM(mInsta); }
+function closeInsta() { stopInsta(); bgmStop(); closeM(mInsta); }
 function stopInsta(keepTake) {
   IG.playing = false; clearTimeout(IG.timer); cancelAnimationFrame(IG.raf);
   if ('speechSynthesis' in window) speechSynthesis.cancel();
@@ -1948,7 +1962,8 @@ function takeAudio(t) {
 function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어옴 → 나레이션을 끊지 않고 이어 튼다
   stopInsta(flow);
   if (i < 0) i = 0;
-  if (i >= S.clips.length) { if (IG.take) IG.take.pause(); IG.i = S.clips.length - 1; renderBars(1); $('#igPlay').textContent = '↻ 처음부터'; return; }
+  if (i >= S.clips.length) { if (IG.take) IG.take.pause(); bgmFadeOut(); IG.i = S.clips.length - 1; renderBars(1); $('#igPlay').textContent = '↻ 처음부터'; return; }
+  if (i === 0 && !flow) bgmRestart();   // 처음부터 볼 때 BGM 도 처음부터 (클립을 건너뛸 땐 이어서)
   IG.i = i; IG.playing = true; IG.elapsed = 0;
   const c = S.clips[i];
   IG.dur = clipDur(c) * 1000;
@@ -1994,7 +2009,7 @@ function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어�
 }
 function tick() {
   if (!IG.playing) return;
-  if ($('#mInsta').hidden) { stopInsta(); return; }   // 어떤 길로 닫혔든 화면이 닫히면 소리도 멈춘다
+  if ($('#mInsta').hidden) { stopInsta(); bgmStop(); return; }   // 어떤 길로 닫혔든 화면이 닫히면 소리도 멈춘다
   const onTake = IG.seg && IG.take;
   const t = onTake ? (IG.take.ended ? IG.dur : (IG.take.currentTime - IG.seg[0]) * 1000) : IG.elapsed + (performance.now() - IG.t0);
   const p = Math.max(0, Math.min(1, t / IG.dur));
@@ -2023,12 +2038,14 @@ function togglePlay() {
     IG.elapsed += performance.now() - IG.t0; IG.playing = false; cancelAnimationFrame(IG.raf);
     if ('speechSynthesis' in window) speechSynthesis.pause();
     if (IG.seg && IG.take) IG.take.pause();
+    if (IG.bgm) IG.bgm.pause();
     $('#igPlay').textContent = '▶ 재생';
     document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'paused');
   } else {
     IG.playing = true; IG.t0 = performance.now();
     if ('speechSynthesis' in window) speechSynthesis.resume();
     if (IG.seg && IG.take) IG.take.play().catch(() => {});
+    if (IG.bgm && IG.bgmId) IG.bgm.play().catch(() => {});
     $('#igPlay').textContent = '❚❚ 멈춤';
     document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'running');
     tick();
@@ -2117,7 +2134,7 @@ function toggleShotNote() {
 window.addEventListener('beforeunload', e => { if (VOICE_BUSY) { e.preventDefault(); e.returnValue = ''; } });
 // 다른 탭·창으로 나가면 미리보기를 잠시 멈춘다(숨은 탭에서도 소리는 계속 나기 때문), 페이지를 떠나면 완전히 멈춘다
 document.addEventListener('visibilitychange', () => { if (document.hidden && IG.playing && !$('#mInsta').hidden) togglePlay(); });
-window.addEventListener('pagehide', () => stopInsta());
+window.addEventListener('pagehide', () => { stopInsta(); bgmStop(); });
 function toggleSound() {
   IG.sound = !IG.sound; $('#igSound').classList.toggle('on', IG.sound);
   $('#igSound').textContent = IG.sound ? '🔊 나레이션' : '🔇 나레이션';
@@ -2708,7 +2725,12 @@ function bgmItem(b, editable) {
     if (!b.audio_id) ad.onclick = () => { b.ads = b.ads === true ? false : b.ads === false ? null : true; renderBgm(); save(); };
   }
   tx.append(ad);
+  if (b.sound) tx.append(el('span', 'bgm-snd', editable ? '🎵 인스타로 보기에 BGM으로 깔림' : '🎵 릴스 화면으로 보기에서 나레이션과 함께 들어 볼 수 있어요'));
   r.append(cv, tx);
+  if (editable && !b.sound) {
+    if (b.audio_id) { const g = el('button', 'btn bgm-pl', '🎵 소리 받기'); g.type = 'button'; g.title = 'Meta 미리듣기 파일을 받아 인스타로 보기에 깝니다'; g.onclick = () => bgmFetchSound(b, g); r.append(g); }
+    const fb = el('button', 'btn bgm-pl', '🎵 소리 파일 넣기'); fb.type = 'button'; fb.title = '가진 음원 파일(mp3 등)을 붙입니다 — 콘티 길이만큼 잘라 넣습니다'; fb.onclick = () => bgmPickFile(b); r.append(fb);
+  }
   if (b.link) { const a = el('a', 'btn bgm-go', editable ? '열기 ↗' : '인스타그램에서 들어보기 ↗'); a.href = b.link; a.target = '_blank'; a.rel = 'noopener'; r.append(a); }
   if (editable) { const x = el('button', 'bgm-x', '×'); x.type = 'button'; x.title = '후보에서 빼기'; x.onclick = () => { S.bgm = S.bgm.filter(y => y !== b); renderBgm(); save(); }; r.append(x); }
   return r;
@@ -2775,8 +2797,9 @@ async function bgmSearch(q) {
         add.disabled = true; add.textContent = '넣는 중…';
         let cover = '';
         try { cover = (await relay('/bgm/cover?u=' + encodeURIComponent(it.cover))).url || ''; } catch (e) {}
-        S.bgm.push({ id: 'b' + uid(), title: it.title, artist: it.artist, link: it.link, ads: it.ads, cover, audio_id: it.audio_id, ms: it.ms });
-        renderBgm(); save(); add.textContent = '넣음'; toast('BGM 후보에 넣었습니다');
+        const nb = { id: 'b' + uid(), title: it.title, artist: it.artist, link: it.link, ads: it.ads, cover, audio_id: it.audio_id, ms: it.ms };
+        S.bgm.push(nb); renderBgm(); save(); add.textContent = '넣음'; toast('BGM 후보에 넣었습니다');
+        if (it.preview) bgmFetchSound(nb);   // 미리듣기가 있는 곡은 인스타로 보기에 깔 소리도 바로 받아 둔다
       };
       row.append(add);
       out.append(row);
@@ -2784,6 +2807,69 @@ async function bgmSearch(q) {
   } catch (e) { st.textContent = '찾지 못했습니다 — ' + e.message; }
 }
 function closeBgm() { const a = $('#bgmAudio'); a.pause(); closeM(mBgm); }
+
+// ───────── 인스타로 보기 BGM ─────────
+// 소리가 붙은 BGM 후보를 나레이션 뒤에 작게 깐다(되풀이). 고른 곡은 편집 화면이면 콘티에(S.bgmPick), 담당자 화면이면 이 브라우저에만
+const bgmWithSound = () => (S.bgm || []).filter(b => b.sound);
+function bgmRow() {
+  const list = bgmWithSound(), row = $('#igBgmRow'), sel = $('#igBgmSel');
+  row.hidden = !list.length;
+  sel.textContent = '';
+  const off = el('option', null, '끄기'); off.value = ''; sel.append(off);
+  list.forEach(b => { const o = el('option', null, [b.title, b.artist].filter(Boolean).join(' - ') || '(곡)'); o.value = b.id; sel.append(o); });
+  let pick = null; try { if (VIEW === 'share') pick = localStorage.getItem('noing-bgm-pick:' + (SH?.sid || '')); } catch (e) {}
+  if (pick === null) pick = S.bgmPick ?? (list[0]?.id || '');
+  if (pick && !list.some(b => b.id === pick)) pick = list[0]?.id || '';
+  sel.value = pick; IG.bgmId = pick || null;
+  let v = 22; try { v = +(localStorage.getItem('noing-bgm-vol') ?? 22); } catch (e) {}
+  $('#igBgmVol').value = v;
+  bgmNote();
+}
+function bgmNote() {
+  $('#igBgmNote').textContent = IG.bgmId ? 'BGM은 분위기를 보여 드리기 위한 예시입니다. 실제 영상의 BGM은 발행할 때 인스타그램 음악으로 붙입니다.'
+    : '배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.';
+}
+function bgmAudio() {
+  const b = bgmWithSound().find(x => x.id === IG.bgmId); if (!b) return null;
+  if (!IG.bgm || IG.bgmSrc !== b.sound) { if (IG.bgm) IG.bgm.pause(); IG.bgm = new Audio(b.sound); IG.bgm.loop = true; IG.bgmSrc = b.sound; }
+  IG.bgm.volume = Math.min(1, (+$('#igBgmVol').value || 0) / 100);
+  return IG.bgm;
+}
+function bgmRestart() { const a = bgmAudio(); if (!a) return; clearInterval(IG.bgmFade); a.currentTime = 0; a.play().catch(() => {}); }
+function bgmStop() { clearInterval(IG.bgmFade); if (IG.bgm) IG.bgm.pause(); }
+function bgmFadeOut() {   // 마지막 클립이 끝나면 1초에 걸쳐 작아지며 멈춤
+  const a = IG.bgm; if (!a || a.paused) return;
+  clearInterval(IG.bgmFade); const v0 = a.volume; let k = 0;
+  IG.bgmFade = setInterval(() => { k++; a.volume = Math.max(0, v0 * (1 - k / 10)); if (k >= 10) { clearInterval(IG.bgmFade); a.pause(); a.volume = v0; } }, 100);
+}
+function bgmPick(id) {
+  IG.bgmId = id || null; bgmNote();
+  if (VIEW === 'share') { try { localStorage.setItem('noing-bgm-pick:' + (SH?.sid || ''), id); } catch (e) {} }
+  else if (!VIEW) { S.bgmPick = id; save(); }
+  if (!IG.bgmId) { bgmStop(); return; }
+  const a = bgmAudio(); if (a && IG.playing) { a.currentTime = 0; a.play().catch(() => {}); }
+}
+function bgmVolume(v) { if (IG.bgm) IG.bgm.volume = Math.min(1, v / 100); try { localStorage.setItem('noing-bgm-vol', v); } catch (e) {} }
+// BGM 후보에 소리 붙이기 (편집 화면 · 목소리 중계 필요): Meta 미리듣기 파일 받기, 또는 가진 소리 파일 넣기
+const bgmSecs = () => Math.min(90, Math.max(30, limitSecs() + 5));
+async function bgmFetchSound(b, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '받는 중…'; }
+  try { b.sound = (await relay(`/bgm/sound?id=${encodeURIComponent(b.audio_id)}&secs=${bgmSecs()}`)).url; save(); toast(`'${b.title}' 소리를 붙였습니다`); }
+  catch (e) { toast(/fetch/i.test(e.message) ? '목소리 중계를 찾지 못했습니다 — 사장님 PC 에서만 됩니다' : e.message); }
+  renderBgm();
+}
+function bgmPickFile(b) {
+  const inp = el('input'); inp.type = 'file'; inp.accept = 'audio/*,.mp3,.m4a,.wav,.aac';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    toast('소리 파일을 줄이는 중…');
+    try {
+      const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(f); });
+      b.sound = (await relay('/bgm/encode', { data, secs: bgmSecs() })).url; save(); toast('소리를 붙였습니다'); renderBgm();
+    } catch (e) { toast(/fetch/i.test(e.message) ? '목소리 중계를 찾지 못했습니다 — 사장님 PC 에서만 됩니다' : e.message); }
+  };
+  inp.click();
+}
 
 // ───────── 릴스 제작 안내 ─────────
 // PPT 마지막 장의 '릴스 콘텐츠 제작 검토사항'(img reelsNotice) 문구 그대로. 담당자 화면·편집 화면에 글로 보여 준다.
