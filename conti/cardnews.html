@@ -1,0 +1,2406 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>카드뉴스 콘티</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{
+  --brand:#FFB020; --brand-soft:#FFF4D6; --ink:#1f1e1d; --ink-2:#4a4743; --muted:#7a756d;
+  --line:#e7e2d8; --bg:#faf8f4; --card:#ffffff; --warn:#d9472b; --warn-soft:#fdecea;
+  --ok:#2f8f62; --ok-soft:#e6f4ec; --chg:#fff1c7; --chg-line:#e9a800; --blue:#2f6fde;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Pretendard Variable",Pretendard,-apple-system,"Malgun Gothic",sans-serif;padding-bottom:84px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+
+/* 시안 안내 */
+.mock-banner{background:#2b2926;color:#f3efe7;font-size:12.5px;padding:7px 20px;text-align:center}
+.mock-banner b{color:var(--brand)}
+
+/* 상단 바 */
+.topbar{position:sticky;top:0;z-index:20;background:rgba(250,248,244,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand img{width:38px;height:38px;border-radius:50%;flex:none}
+.brand .t1{font-size:12px;color:var(--muted);letter-spacing:.02em}
+.brand .t2{font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-acts{display:flex;align-items:center;gap:8px}
+.tb-acts .btn{height:36px;padding:0 14px;display:inline-flex;align-items:center}
+.tb-acts .btn[hidden]{display:none}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:170px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:5px}
+.menu[hidden]{display:none}
+.menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 12px;border-radius:7px;font-size:13px}
+.menu button:hover{background:#f3f0e9}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+.brand .t1 .status-sel{margin-left:4px;vertical-align:1px;padding:1px 6px;border-radius:99px;font-size:11.5px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;padding:3px 9px;border-radius:99px;background:#efebe3;color:var(--ink-2);white-space:nowrap}
+.chip.status{background:var(--brand-soft);color:#8a5a00;font-weight:600}
+.spacer{flex:1}
+.seg{display:inline-flex;background:#ece7dd;border-radius:9px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-size:13px;color:var(--ink-2)}
+.seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:#cfc8ba}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{background:#000}
+.btn.brand{background:var(--brand);border-color:var(--brand);color:#2b1d00;font-weight:600}
+
+/* 섹션 */
+section{margin-top:22px}
+.sec-title{display:flex;align-items:center;gap:4px 8px;font-size:15px;font-weight:700;margin:0 0 10px}
+.sec-title::before{content:"";width:4px;height:16px;border-radius:2px;background:var(--brand)}
+.sec-title .sub{font-weight:400;font-size:12.5px;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 20px}
+.info-grid .k{font-size:12px;color:var(--muted)}
+.info-grid .v{font-weight:600}
+.info-grid .v.dim{font-weight:400;color:var(--muted)}
+
+
+/* 소구포인트 */
+.pn{width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+.where{font-size:12.5px;white-space:nowrap;text-align:right}
+.where .tag{display:inline-block;background:#efebe3;border-radius:6px;padding:1px 7px;margin-left:3px}
+.where.miss{color:var(--warn);font-weight:600}
+.where.miss-client{color:var(--muted)}
+
+/* 멘션 */
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px}
+.field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;resize:vertical}
+.field input:focus,.field textarea:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:var(--brand)}
+.field + .field{margin-top:10px}
+.editor .field textarea{resize:none;overflow:hidden;min-height:40px}
+.field.changed input,.field.changed textarea{background:var(--chg);border-color:var(--chg-line)}
+.was{display:none;font-size:12px;color:var(--muted);margin-top:4px;white-space:pre-line}
+.field.changed .was{display:block}
+.was s{color:#a39d92}
+.counter{font-size:12px;color:var(--muted);margin-top:4px}
+.counter.bad{color:var(--warn);font-weight:600}
+
+/* 카드 구성: 모든 장을 2줄 안에 한눈에 (각 장에 들어갈 글이 보이게) + 아래에서 고르기·고치기 */
+.grid2{display:grid;grid-template-columns:repeat(var(--cols,5),minmax(0,1fr));gap:10px}
+.tile{position:relative;border:2px solid transparent;background:#fff;border-radius:10px;padding:6px 7px 8px;text-align:left;box-shadow:0 0 0 1px var(--line);transition:border-color .12s,transform .12s;display:flex;flex-direction:column;gap:5px;min-width:0}
+.tile:hover{transform:translateY(-1px)}
+.tile.sel{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand),0 4px 14px rgba(255,176,32,.25)}
+.tile .tn{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;min-height:16px}
+.tile .dots{margin-left:auto;display:flex;gap:3px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.chg{background:var(--chg-line)}.dot.img{background:var(--blue)}.dot.move{background:#7a4bd1}.dot.new{background:var(--ok)}
+.tile .thumb{display:flex;justify-content:center;background:#f3f0e9;border-radius:6px;padding:5px}
+.tile .thumb .cv{width:auto;height:118px;border-radius:4px}
+.tile .tt,.tile .tb,.tile .ti{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
+.tile .tt{font-size:12.5px;font-weight:700;line-height:1.35;-webkit-line-clamp:2}
+.tile .tb{font-size:12px;line-height:1.45;color:var(--ink-2);-webkit-line-clamp:4;white-space:pre-line}
+.tile .ti{font-size:11.5px;line-height:1.4;color:var(--muted);-webkit-line-clamp:2;margin-top:auto;padding-top:4px;border-top:1px dashed var(--line)}
+.tile .none{color:#b9b2a6;font-weight:400}
+.tile .cmtn{position:absolute;right:8px;top:30px;background:var(--ink);color:#fff;font-size:11px;border-radius:99px;padding:0 7px;line-height:18px}
+.tile.dragging{opacity:.4}
+.tile.drop-before{box-shadow:-4px 0 0 0 var(--brand)}
+.tile.drop-after{box-shadow:4px 0 0 0 var(--brand)}
+.tile.add{border:2px dashed #d6cfc1;box-shadow:none;background:#fcfbf8;align-items:center;justify-content:center;color:var(--muted);font-weight:600;font-size:13px}
+.tile.add:hover{border-color:var(--brand);color:#8a5a00}
+.frame-ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#faf8f4;border-radius:10px;font-size:13px}
+.frame-ctl img{height:56px;aspect-ratio:4/5;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.frame-ctl .none{width:45px;height:56px;border:1.5px dashed #d6cfc1;border-radius:4px}
+.frame-ctl .btn{padding:5px 10px;font-size:12.5px}
+.frame-ctl .hint{color:var(--muted);font-size:12px;flex-basis:100%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 2px 0}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.editor{margin-top:16px;display:grid;grid-template-columns:minmax(240px,320px) 1fr;gap:22px;align-items:start}
+.ed-prev .cv{box-shadow:0 2px 14px rgba(0,0,0,.08)}
+.ed-prev .cv.dropping{outline:3px dashed var(--brand);outline-offset:3px}
+.ed-tools{display:flex;flex-direction:column;gap:6px;margin-top:10px;font-size:12px;color:var(--muted)}
+.ed-tools .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ed-tools .btn{padding:5px 10px;font-size:12.5px}
+.ed-tools .seg button{padding:4px 10px;font-size:12px}
+.ed-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ed-head .nav{margin-left:auto;display:flex;gap:4px}
+.ed-head .nav .btn{padding:5px 10px;font-size:12.5px}
+.ed-body > * + *{margin-top:12px}
+.num{font-weight:700;font-size:15px}
+.badge{font-size:11.5px;border-radius:6px;padding:1px 7px;font-weight:600}
+.badge.chg{background:var(--chg);color:#8a5a00}
+.badge.img{background:#e6efff;color:#1f4fa8}
+.badge.move{background:#efe6ff;color:#5b31a8}
+.badge.over{background:var(--warn-soft);color:var(--warn)}
+.badge.fixed{background:#efebe3;color:var(--muted);font-weight:500}
+
+/* 소구포인트: 고객사 캡처·파일 */
+.brief-files{display:flex;flex-wrap:wrap;gap:10px}
+.brief-files:empty{display:none}
+.bf{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;max-width:100%}
+.bf img{display:block;max-height:240px;max-width:100%;cursor:zoom-in}
+.bf .x{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:15px;line-height:24px;padding:0}
+.bf.file{display:flex;align-items:center;gap:8px;padding:12px 40px 12px 14px;font-size:13px}
+.bf.file a{color:var(--ink);font-weight:600;text-decoration:none}
+.bf .ext{background:#efebe3;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;color:var(--ink-2)}
+.drop{margin-top:12px;border:1.5px dashed #d6cfc1;border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px;background:#fcfbf8;cursor:pointer;outline:none}
+.drop.on,.drop:focus{border-color:var(--brand);background:var(--brand-soft);color:#8a5a00}
+.drop b{color:var(--ink)}
+.drop small{display:block;margin-top:3px;font-size:12px}
+.brief-list{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.brief-list .hint{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.brief-list .hint b{color:var(--ink-2)}
+.brief-list textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;margin-bottom:8px}
+.brief-list textarea:focus{outline:2px solid var(--brand);outline-offset:-1px}
+.lightbox{cursor:zoom-out;background:rgba(12,11,10,.9)}
+.lightbox{flex-direction:column;gap:10px}
+.lightbox img{max-width:min(1200px,90vw);max-height:80vh;border-radius:8px;background:#fff}
+.lb-wrap{display:flex;align-items:center;gap:10px}
+.lb-nav{border:0;background:rgba(255,255,255,.18);color:#fff;font-size:30px;line-height:1;width:44px;height:64px;border-radius:10px}
+.lb-nav:hover{background:rgba(255,255,255,.3)}
+.lb-cap{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;max-width:min(900px,92vw);color:#f3efe7;font-size:13.5px;text-align:center}
+.lb-cap[hidden]{display:none}
+.lb-cap b{color:var(--brand)}
+.lb-cap .m{color:#ffd0c8}
+
+/* 카드 그림: 시안(완성 이미지) 또는 참고 이미지(속지 틀 + 대략적인 사진). 문구는 카드 밖 글로 적는다 */
+.cv{position:relative;aspect-ratio:4/5;width:100%;overflow:hidden;border-radius:8px;background:#ece8df}
+.cv img.full,.cv img.frame{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cv img.slot{position:absolute;left:10%;top:8%;width:80%;height:60%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.25))}
+.cv .ph{position:absolute;inset:6%;display:grid;place-items:center;border:2px dashed rgba(0,0,0,.22);border-radius:6px;background:rgba(255,255,255,.78);color:var(--muted);font-size:13px;text-align:center}
+.cv.has-frame .ph{left:10%;top:8%;width:80%;height:60%;inset:auto}
+.kind-tag{position:absolute;left:6px;bottom:6px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;background:rgba(0,0,0,.62);color:#fff}
+.kind-tag.design{background:rgba(47,143,98,.92)}
+.thumb .kind-tag{font-size:9px;padding:0 4px;left:3px;bottom:3px;border-radius:3px}
+.thumb .ph{font-size:10px;border-width:1px}
+.ig-slide .kind-tag,.pa-card .kind-tag{display:none}
+
+.pts{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.pt{border:1px solid var(--line);background:#fff;border-radius:99px;min-width:26px;height:24px;padding:0 7px;font-size:12px;color:var(--muted)}
+.pt.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.pt[disabled]{cursor:default}
+body[data-view="client"] .pt:not(.on){display:none}
+body[data-view="client"] .pts.none{display:none}
+
+.card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.card-actions .btn{padding:6px 10px;font-size:12.5px}
+.card-actions .mv{margin-left:auto;display:flex;gap:4px}
+.card-actions .mv .btn{padding:6px 9px}
+.card-actions .btn[disabled]{opacity:.35;cursor:default}
+
+.comments{border-top:1px dashed var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.cmt{font-size:13px;background:#f6f3ed;border-radius:9px;padding:7px 10px}
+.cmt .who{font-weight:700;font-size:12px}
+.cmt .who.client{color:var(--blue)}
+.cmt .who.noing{color:#8a5a00}
+.cmt .when{color:var(--muted);font-size:11.5px;margin-left:6px;font-weight:400}
+.cmt-in{display:flex;gap:6px}
+.cmt-in input{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+
+/* 하단 바 */
+.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#fff;border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.05)}
+.bottombar .wrap{display:flex;align-items:center;gap:12px;padding-block:12px;flex-wrap:wrap}
+.tally{display:flex;gap:14px;font-size:13px;color:var(--ink-2);flex-wrap:wrap}
+.tally b{color:var(--ink)}
+
+/* 모달 */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(20,18,16,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal[hidden]{display:none}
+.dialog{background:#fff;border-radius:16px;max-width:620px;width:100%;max-height:88vh;overflow:auto;padding:22px}
+.dialog h3{margin:0 0 4px;font-size:18px}
+.dialog .desc{color:var(--muted);font-size:13px;margin:0 0 14px}
+.dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.chg-list{display:flex;flex-direction:column;gap:8px}
+.chg-item{border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13.5px}
+.chg-item .h{font-weight:700;font-size:12.5px;color:var(--ink-2);margin-bottom:3px}
+.chg-item .from{color:#9c958a;text-decoration:line-through;white-space:pre-line}
+.chg-item .to{background:var(--chg);white-space:pre-line;padding:0 3px;border-radius:3px}
+.empty{color:var(--muted);text-align:center;padding:18px 0}
+.linkbox{display:flex;gap:6px}
+.linkbox input{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#f6f3ed;font-size:13px}
+.perm{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:12px;font-size:13.5px}
+
+/* 인스타 미리보기 */
+.phone{background:#fff;width:min(390px,100%);border-radius:22px;overflow:hidden;max-height:92vh;display:flex;flex-direction:column}
+.ig-head{display:flex;align-items:center;gap:9px;padding:10px 12px}
+.ig-head img{width:32px;height:32px;border-radius:50%}
+.ig-head b{font-size:13.5px}
+.ig-head .x{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:#555}
+.ig-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;flex:none}
+.ig-track::-webkit-scrollbar{display:none}
+.ig-slide{flex:0 0 100%;scroll-snap-align:start}
+.ig-slide .cv{border-radius:0}
+.ig-bar{display:flex;align-items:center;gap:14px;padding:9px 12px 4px}
+.ig-bar svg{width:24px;height:24px}
+.ig-dots{flex:1;display:flex;justify-content:center;gap:4px;margin-right:62px}
+.ig-dots i{width:6px;height:6px;border-radius:50%;background:#d0d0d0}
+.ig-dots i.on{background:#3897f0}
+.ig-cap{padding:4px 12px 16px;font-size:13.5px;white-space:pre-line;overflow:auto}
+.ig-cap .hash{color:#00376b}
+
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+
+body[data-view="client"] .only-noing{display:none!important}
+body[data-view="noing"] .only-client{display:none!important}
+
+@media (max-width:760px){
+  .wrap{padding-inline:16px}
+  .cap-grid{grid-template-columns:1fr}
+  .topbar .wrap{gap:10px}
+  .brand .t2{font-size:15px}
+  .grid2{gap:6px}
+  .tile{padding:3px;border-radius:8px}
+  .tile .tn{font-size:10.5px;margin-bottom:2px}
+  .tile .dots{display:none}
+  .tile .thumb{padding:3px}
+  .tile .thumb .cv{height:auto;width:100%}
+  .tile .tb,.tile .ti{display:none}
+  .tile .tt{font-size:10.5px}
+  .editor{grid-template-columns:1fr}
+  .ed-prev{max-width:300px;width:100%;margin:0 auto}
+  .bf img{max-height:180px}
+  .point{grid-template-columns:28px 1fr}
+  .where{grid-column:2;text-align:left}
+  .perm{grid-template-columns:1fr}
+  .topbar{position:static}
+  .sec-title{flex-wrap:wrap}
+  .sec-title .sub{flex-basis:100%;margin-left:12px}
+  .bottombar .wrap{flex-wrap:nowrap;gap:8px;padding-block:10px}
+  .tally{font-size:12px;gap:8px}
+  .bottombar .reset{display:none}
+}
+
+/* 클립 구성: 왼쪽 목록(따라옴) + 오른쪽 편집 */
+.clip-ws{display:grid;grid-template-columns:272px minmax(0,1fr);gap:20px;align-items:start}
+.clip-list{position:sticky;top:calc(var(--tbh,72px) + 12px);max-height:calc(100vh - var(--tbh,72px) - 90px);overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 4px 2px 2px;margin:-2px -4px -2px -2px;scrollbar-width:thin}
+.clip-list .tile{display:grid;grid-template-columns:60px minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:10px;row-gap:2px;padding:7px 8px;border-radius:10px;transform:none;flex:none}
+.clip-list .tile:hover{transform:none;box-shadow:0 0 0 1px #cfc8ba}
+.clip-list .tile.sel{box-shadow:0 0 0 1px var(--brand),0 3px 10px rgba(255,176,32,.22)}
+.clip-list .tile .ph43{grid-row:1/3;grid-column:1;width:60px;align-self:start}
+.clip-list .tile .tn{grid-column:2;font-size:12px}
+.clip-list .tile .tb{grid-column:2;-webkit-line-clamp:2;font-size:12px;line-height:1.4}
+.clip-list .tile .ti{display:none}   /* 촬영 컷은 오른쪽 편집에서 — 목록은 짧게 해서 한 화면에 10개 안팎 */
+.clip-list .tile .ph43 .nop{font-size:10px}
+.clip-list .tile.drop-before{box-shadow:0 -3px 0 0 var(--brand)}
+.clip-list .tile.drop-after{box-shadow:0 3px 0 0 var(--brand)}
+.clip-list .tile.add{display:flex;min-height:44px;padding:8px}
+.clip-ws .clip-ed{margin-top:0;grid-template-columns:minmax(240px,.9fr) minmax(300px,1.1fr);gap:20px}
+@media (max-width:980px){
+  .clip-ws{grid-template-columns:1fr}
+  .clip-list{position:relative;top:auto;max-height:none;flex-direction:row;overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+  .clip-list .tile{width:200px}
+  .clip-list .tile.add{width:110px}
+  .clip-list .tile.drop-before{box-shadow:-3px 0 0 0 var(--brand)}
+  .clip-list .tile.drop-after{box-shadow:3px 0 0 0 var(--brand)}
+}
+@media (max-width:760px){
+  .clip-list .tile .tb{display:-webkit-box}
+  .clip-ws .clip-ed{grid-template-columns:1fr}
+}
+
+/* 담당자 화면(보기 전용) · 미리보기 */
+#viewer{display:none}
+body.viewer #viewer{display:block}
+body.viewer main,body.viewer .bottombar,body.viewer .mock-banner,body.viewer .ed-only{display:none!important}
+body.viewer .ig-voice,body.viewer .ig-hint{display:none}
+body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링크: 불러오기 전·실패 시 빈 머리 안 보이게 */
+.pv-banner{position:sticky;top:0;z-index:21;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:#2b2926;color:#f3efe7;font-size:13px;padding:8px 16px}
+.pv-banner[hidden]{display:none}
+.notice-list{margin:0;padding-left:20px;font-size:13.5px;line-height:1.65;color:var(--ink-2)}
+.notice-list li + li{margin-top:6px}
+.notice-list b{color:var(--ink)}
+.notice-list .red{color:#d23b2a}
+.vw-req{margin-top:12px}
+.ig-bgm{color:#e9e3d6;font-size:12px;text-align:center;width:min(calc(min(76vh,720px) * 9 / 16), 92vw);line-height:1.5}
+.pv-banner b{color:var(--brand)}
+.pv-banner .btn{color:var(--ink)}
+.vw-hero{margin-top:22px;padding:22px 24px}
+.vw-kicker{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.vw-hero h1{font-size:23px;line-height:1.3;margin:2px 0 12px;word-break:keep-all}
+.vw-meta{display:flex;flex-wrap:wrap;gap:8px 44px;margin-bottom:16px}
+.vw-meta .k{font-size:12px;color:var(--muted);margin-bottom:1px}
+.vw-meta .v{font-size:14px}
+.vw-acts{display:flex;gap:8px;flex-wrap:wrap}
+.vw-acts .btn{padding:9px 16px;font-size:14px}
+.vw-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
+.vw-note + .vw-note{margin-top:2px}
+.vw-brief{display:flex;flex-wrap:wrap;gap:10px}
+.vw-brief img{max-height:300px;max-width:100%;border:1px solid var(--line);border-radius:8px;cursor:zoom-in}
+.vw-files{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.vw-files a{text-decoration:none;color:var(--ink)}
+.vw-points{margin:12px 0 0;padding-left:22px}
+.vw-points li{margin:2px 0}
+.vw-feed{display:grid;grid-template-columns:220px 1fr;gap:22px;align-items:start}
+.vw-feedimg img{display:block;width:100%;border-radius:12px;cursor:zoom-in}
+.vw-feedimg .nop,.vw-ph .nop{display:grid;place-items:center;text-align:center;white-space:pre-line;background:#f3f0e9;color:var(--muted);font-size:12px;border-radius:10px;padding:14px;min-height:120px}
+.vw-feedimg .nop{aspect-ratio:9/16}
+.vw-cap .k,.vw-tx .k{font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 3px}
+.vw-cap .k:first-child,.vw-tx .k:first-child{margin-top:0}
+.vw-text{white-space:pre-line;word-break:keep-all}
+.vw-text.big{font-size:16px;font-weight:600;line-height:1.6}
+.vw-clips{display:flex;flex-direction:column;gap:0;padding:0}
+.vw-clip{padding:18px 20px;border-top:1px solid var(--line)}
+.vw-clip:first-child{border-top:0}
+.vw-ch{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.vw-ch b{font-size:15px}
+.vw-ch .sec{font-size:12px;color:var(--muted)}
+.vw-pts{font-size:12px;color:#8a5a00;background:var(--brand-soft);border-radius:99px;padding:1px 8px}
+.vw-cb{display:grid;grid-template-columns:minmax(260px,1fr) 1.1fr;gap:22px;align-items:start}
+.vw-ph{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.vw-ph figure{margin:0}
+.vw-ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;cursor:zoom-in;background:#f3f0e9}
+.vw-ph figcaption{font-size:11.5px;color:var(--muted);margin-top:3px}
+.vw-ph .nop{grid-column:1/-1}
+.vw-foot{margin:26px 0 10px;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.8}
+.vw-brand{font-weight:600;color:var(--ink-2)}
+.vw-msg{padding:80px 20px;text-align:center;color:var(--muted);white-space:pre-line;line-height:1.7}
+.sh-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.sh-link{flex:1;min-width:220px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.5px;background:#f6f3ed}
+.sh-row a.btn{text-decoration:none;color:var(--ink)}
+.sh-note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.sh-msg{font-size:13px;font-weight:600;color:#8a5a00;margin:10px 0 0}
+.sh-cut{color:#c0392b;border-color:#f0c4bc}
+@media (max-width:760px){
+  .vw-feed,.vw-cb{grid-template-columns:1fr}
+  .vw-feedimg{max-width:220px}
+  .vw-hero h1{font-size:20px}
+}
+
+/* 담당자 화면 — 클립 표 · 수정 요청 */
+.vw-table{padding:0;overflow:hidden}
+.vw-row{display:grid;grid-template-columns:46px 222px minmax(0,1.35fr) minmax(0,1.1fr) minmax(0,1.15fr);gap:14px;padding:12px 16px;border-top:1px solid var(--line);align-items:start}
+.vw-table.small .vw-row{grid-template-columns:46px 150px minmax(0,1.35fr) minmax(0,1.1fr) minmax(0,1.15fr)}
+.vw-fr{position:relative;margin:0;height:176px;aspect-ratio:9/16;border-radius:9px;overflow:hidden;background:#1d1b19;cursor:zoom-in;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.vw-ph2.many .vw-fr{height:124px}
+.vw-table.small .vw-fr{height:84px;border-radius:6px}
+.vw-fr .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(9px) brightness(.62);transform:scale(1.25)}
+.vw-fr .fg{position:relative;display:block;width:100%;height:100%;object-fit:contain}
+.vw-fr.wide .bg{display:none}
+.vw-fr.wide{background:#f3f0e9;height:auto;width:100%;max-width:100%}
+.vw-table.small .vw-fr.wide{height:auto}
+.vw-fr figcaption{position:absolute;left:4px;right:4px;bottom:4px;font-size:10px;line-height:1.3;color:#fff;background:rgba(210,59,42,.88);border-radius:4px;padding:1px 4px;max-height:2.7em;overflow:hidden}
+.vw-table.small .vw-fr figcaption{display:none}
+.vw-fr:hover{box-shadow:0 0 0 2px var(--brand)}
+.vw-size{margin-left:auto;display:inline-flex;background:#ece7dd;border-radius:8px;padding:2px}
+.vw-size button{border:0;background:transparent;font-size:12px;padding:4px 10px;border-radius:6px;color:var(--ink-2)}
+.vw-size button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.vw-table.nofix .vw-row{grid-template-columns:46px 222px minmax(0,1.5fr) minmax(0,1.2fr)}
+.vw-table.nofix.small .vw-row{grid-template-columns:46px 150px minmax(0,1.5fr) minmax(0,1.2fr)}
+.vw-table.nofix .vw-head > :last-child{display:none}
+.vw-row:first-child{border-top:0}
+.vw-head{background:#faf7f1;font-size:12px;color:var(--muted);font-weight:600;padding-block:8px}
+.vw-no b{display:block;font-size:17px;line-height:1.2}
+.vw-no small{font-size:11px;color:var(--muted);white-space:nowrap}
+.vw-ph2{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+
+.vw-ph2 .nop,.vw-shot .nop{font-size:12px;color:#b9b2a6}
+.vw-nar{font-size:14.5px;font-weight:600;line-height:1.55}
+.vw-shot .vw-text{font-size:13px;line-height:1.5}
+.vw-red{color:#d23b2a;margin-top:4px}
+.vw-edit{min-width:0}
+.vw-edit textarea,.vw-memo,.fb-name{width:100%;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:#fff}
+.vw-edit textarea{resize:vertical}
+.vw-edit textarea.chg{background:#fff6d8;border-color:#e9a800}
+.vw-edit textarea:focus,.vw-memo:focus,.fb-name:focus{outline:2px solid var(--brand);outline-offset:-1px}
+.vw-el{display:block;font-size:11px;color:var(--muted);margin:6px 0 2px;font-weight:600}
+.vw-el:first-child{margin-top:0}
+.vw-fix{padding:5px 11px;font-size:12.5px}
+.vw-undo{border:0;background:none;color:var(--muted);font-size:11.5px;text-decoration:underline;padding:4px 0}
+.vw-capwrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.fb-send{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.fb-name{flex:1;min-width:200px}
+.fb-bar{position:sticky;bottom:12px;z-index:5;margin:18px auto 6px;max-width:720px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:#2b2926;color:#f3efe7;border-radius:12px;padding:10px 16px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.fb-bar .btn{padding:6px 14px}
+.fbc{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px}
+.fbc.done{opacity:.6}
+.fbc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fbc-h span{font-size:12.5px;color:var(--muted)}
+.fbc-h .sp{flex:1}
+.fbc-s{border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+.fbc-t{font-weight:700;font-size:13px;margin-bottom:4px}
+.fbc-f{margin-top:6px}
+.fbc-l{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:3px}
+.fbc-l .btn{padding:2px 10px;font-size:12px}
+.fbc-memo{font-size:13px;background:#faf7f1;border-radius:8px;padding:6px 10px;margin-top:6px;white-space:pre-line}
+.fbc-warn{font-size:12px;color:#a3631a;margin:6px 0 0}
+.df{font-size:13.5px;line-height:1.6;white-space:pre-wrap;background:#fcfbf8;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+del,.lg del{background:#fde4e1;color:#a3271a}
+ins{background:#dff3e6;color:#1d5e40;text-decoration:none}
+ins.lg{padding:0 3px}
+#btnFb b{margin-left:2px}
+@media (max-width:900px){
+  .vw-row,.vw-table.nofix .vw-row,.vw-table.small .vw-row,.vw-table.nofix.small .vw-row{grid-template-columns:36px minmax(0,1fr)}
+  .vw-head{display:none}
+  .vw-row > :not(.vw-no){grid-column:2}
+  .vw-capwrap{grid-template-columns:1fr}
+}
+
+/* 담당자 화면 — 클립 카드 · 바로 고치기 */
+.vw-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:none;border:0;padding:0}
+.vc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;transition:border-color .15s,box-shadow .15s}
+.vc.chg{border-color:#e9a800;box-shadow:0 0 0 1px #e9a800}
+.vc-h{display:flex;align-items:baseline;gap:8px}
+.vc-h b{font-size:14.5px}
+.vc-h span{font-size:12px;color:var(--muted)}
+.vc-sec b,#vwTotal b{font-weight:700}
+.vc-sec b.up,#vwTotal b.up{color:#c0392b}
+.vc-sec b.down,#vwTotal b.down{color:#1d5e40}
+#vwTotal .over-n{color:#c0392b;font-size:12.5px}
+.vc-h .vc-chg{display:none;margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:99px;padding:1px 9px}
+.vc.chg .vc-chg{display:inline-block}
+.vc-b{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.vc-panel{width:200px;display:flex;flex-direction:column;gap:4px;border-radius:10px;overflow:hidden;min-height:60px;background:#f3f0e9}
+.vc-row{display:flex;gap:4px;position:relative}
+.vc-row.fill{justify-content:center;overflow:hidden;background:#1d1b19}
+.vc-row .vc-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(12px) brightness(.6);transform:scale(1.2)}
+.vc-row.fill .vc-ph{position:relative}
+.vc-ph{position:relative;margin:0;height:100%;flex:none;overflow:hidden;cursor:zoom-in;background:#ece8df}
+.vc-ph img{display:block;width:100%;height:100%;object-fit:cover}
+.vc-ph:hover::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 0 2px var(--brand)}
+.vc-ph figcaption{position:absolute;left:4px;right:4px;top:4px;font-size:10.5px;font-weight:700;line-height:1.3;color:#d23b2a;background:#ffff00;padding:0 3px;max-height:2.7em;overflow:hidden;width:fit-content}
+.vc .vw-ph2{width:196px;display:flex;flex-wrap:wrap;gap:6px}
+.vc .vw-fr{height:168px}
+.vc .vw-ph2.many .vw-fr{height:118px}
+.vc .vw-fr.wide{width:196px;height:auto}
+.vc .vw-ph2.multi .vw-fr.wide{width:auto;height:96px;max-width:196px}
+.vw-cards.small .vc .vw-ph2{width:120px}
+.vw-cards.small .vc .vw-fr{height:90px}
+.vw-cards.small .vc .vw-fr.wide{width:120px;height:auto}
+.vw-cards.small .vc .vw-ph2.multi .vw-fr.wide{width:auto;height:60px;max-width:120px}
+.vw-cards.small .vw-fr figcaption{display:none}
+.vw-nophoto{width:200px;height:120px;border-radius:9px;background:#f3f0e9;color:#b9b2a6;font-size:12px;display:grid;place-items:center}
+.vc-t{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fx-l{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:1px;min-height:18px}
+.fx-st{display:inline-flex;gap:8px;align-items:center;margin-left:auto}
+.fx-st em{font-style:normal;font-weight:700;color:#8a5a00;background:var(--brand-soft);border-radius:4px;padding:0 6px}
+.fx-hint{font-size:11px;font-weight:600;color:#b9a06a;transition:color .12s}
+.fx.ed:hover .fx-hint,.fx.ed:focus-within .fx-hint{color:#a0700a}
+.fx-chip{font-size:11px}
+.fx-undo{border:1px solid #e3dccd;background:#fff;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:600;color:var(--ink-2)}
+.fx-undo:hover{border-color:#c9a64a}
+.fx-cmp{margin-top:6px;background:#f6f3ed;border-radius:8px;padding:6px 9px}
+.fx-cmp[hidden]{display:none}
+.fx-cmp .k{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.fx-cmp .df{background:none;border:0;padding:0;font-size:12.5px;line-height:1.55;color:var(--ink-2)}
+.fx-a{border:0;background:none;padding:0;font-size:11px;color:var(--ink-2);text-decoration:underline;text-underline-offset:2px}
+.fx-t{display:block;width:calc(100% + 14px);margin:0 -7px;resize:none;overflow:hidden;font:inherit;font-size:13.5px;line-height:1.55;color:var(--ink);border:1px dashed transparent;border-radius:7px;padding:4px 7px;background:transparent;word-break:keep-all;transition:background .12s,border-color .12s}
+.fx.ed:not(.memo) .fx-t{border-color:#e3dccd}
+.fx-t:not([readonly]):hover{border-color:#c9a64a;background:#fffdf6;cursor:text}
+.fx-t:focus{outline:none;border:1px solid var(--brand);background:#fff}
+.fx-t[readonly]{cursor:default}
+.fx.chg:not(.memo) .fx-t{background:#fff6d8;border-color:#f0c040}
+.fx.nar .fx-t{font-size:15px;font-weight:600;line-height:1.6}
+.fx.memo .fx-t{width:100%;margin:0;border:1px solid var(--line);background:#fcfbf8;font-size:13px}
+.fx.memo .fx-t:focus{border-color:var(--brand);background:#fff}
+.fx.memo.chg .fx-t{background:#fff;border-color:#e9a800}
+.fx-org{font-size:12px;color:var(--muted);background:#f6f3ed;border-radius:6px;padding:4px 8px;margin-top:4px;white-space:pre-line}
+.fx-org s{color:#8b847a}
+.vc-note{font-size:12.5px;line-height:1.5;color:#d23b2a;white-space:pre-line}
+.vc-note .fx-l{color:var(--muted)}
+.vw-capcard{display:flex;flex-direction:column;gap:8px}
+.vw-cap2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fb-bar{min-height:48px}
+.fb-bar .fb-ic{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:99px;background:var(--brand);color:#2b1d00;font-weight:800;font-size:12.5px;flex:none}
+.fb-bar .fb-msg{flex:1;min-width:200px}
+.fb-bar.on{box-shadow:0 0 0 2px var(--brand),0 8px 24px rgba(0,0,0,.22)}
+.fb-bar.ok{background:#1d5e40}
+.fb-bar.ok .fb-ic{background:#e6f4ec;color:#1d5e40}
+.fb-bar.pv{background:#4a4743}
+.fb-bar .fb-name{width:190px;flex:none;color:var(--ink);font-size:13px;border:1px solid transparent;border-radius:7px;padding:6px 9px}
+.fb-bar .fb-name.need{border-color:#ff7a5c;box-shadow:0 0 0 2px rgba(255,122,92,.35)}
+.fb-bar{max-width:980px}
+.sent-dlg{max-width:440px;text-align:center}
+.sent-dlg .sent-ic{width:56px;height:56px;margin:4px auto 6px;border-radius:50%;background:#e6f4ec;color:#1d5e40;font-size:30px;font-weight:800;display:grid;place-items:center}
+.sent-dlg .desc{white-space:pre-line}
+.sent-dlg .foot{justify-content:center}
+@media (max-width:1040px){ .vw-cards{grid-template-columns:1fr} }
+@media (max-width:560px){
+  .vc{padding:12px}
+  .vc-panel{width:100%}
+  .vw-nophoto{width:100%;height:80px}
+  .fx-t,.fx.nar .fx-t,.fx.memo .fx-t,.fb-bar .fb-name{font-size:16px}   /* 아이폰은 16px 보다 작은 칸을 누르면 화면을 확대한다 */
+  .fx-t{width:100%;margin:0}
+  .fb-bar{left:0;right:0;margin:12px -4px 4px;border-radius:12px;padding:10px 12px;gap:8px}
+  .fb-bar .fb-msg{min-width:0;flex-basis:calc(100% - 40px);font-size:12.5px}
+  .fb-bar .fb-extra{display:none}
+  .fb-bar .fb-name{flex:1;width:auto;min-width:0}
+  body.typing .fb-bar{display:none}   /* 글을 쓰는 동안은 자판 위 공간을 띠가 가리지 않게 */
+  .lb-wrap{position:relative}
+  .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:54px;background:rgba(0,0,0,.45);z-index:2}
+  .lb-nav.prev{left:4px}
+  .lb-nav.next{right:4px}
+  .lightbox img{max-width:94vw;max-height:72vh}
+  .lb-cap{font-size:12.5px}
+  .vw-hero{padding:18px 16px}
+  .vw-hero h1{font-size:20px}
+  .vw-acts .btn{flex:1;justify-content:center;text-align:center}
+}
+@media (max-width:560px){ .vc-b{grid-template-columns:1fr} .vw-cap2{grid-template-columns:1fr} .fb-bar .fb-name{width:100%} }
+
+/* BGM 후보 */
+.bgm-list{display:flex;flex-direction:column;gap:8px}
+.bgm-i{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:#fff}
+.bgm-cv{width:48px;height:48px;border-radius:8px;overflow:hidden;background:#2b2926;color:#fff;display:grid;place-items:center;font-size:18px;flex:none}
+.bgm-cv img{width:100%;height:100%;object-fit:cover;display:block}
+.bgm-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.bgm-tx b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bgm-tx span{font-size:12px;color:var(--muted)}
+.bgm-ad{align-self:flex-start;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;margin-top:2px;border:0}
+.bgm-ad.yes{background:var(--ok-soft);color:#1d5e40}
+.bgm-ad.no{background:var(--warn-soft);color:#a3271a}
+.bgm-ad.unk{background:#efebe3;color:var(--ink-2)}
+button.bgm-ad{cursor:pointer}
+.bgm-go{text-decoration:none;color:var(--ink);flex:none}
+.bgm-pl{flex:none}
+.bgm-x{border:0;background:none;font-size:20px;color:var(--muted);padding:0 4px;flex:none}
+.bgm-empty{font-size:13px;color:var(--muted);padding:6px 2px}
+.bgm-snd{font-size:11.5px;color:#1d5e40;margin-top:2px}
+.ig-bgmrow{display:flex;align-items:center;gap:8px;width:min(calc(min(76vh,720px) * 9 / 16), 92vw);color:#f3efe7;font-size:12.5px}
+.ig-bgmrow[hidden]{display:none}
+.ig-bgmrow select{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:6px 8px;border-radius:8px;border:1px solid #5a534a;background:#2b2722;color:#f3eee6}
+.ig-bgmrow input[type=range]{width:90px;accent-color:var(--brand)}
+.bgm-acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.bgm-form{display:grid;grid-template-columns:1fr 1.6fr auto;gap:8px;margin-top:8px}
+.bgm-form input,.bgm-sf input,.bgm-sf select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:13px}
+.bgm-sf{display:flex;gap:8px;margin-top:8px}
+.bgm-sf input{flex:1}
+#bgmRes{max-height:52vh;overflow:auto;margin-top:6px}
+@media (max-width:560px){ .bgm-i{flex-wrap:wrap} .bgm-go{width:100%;text-align:center} .bgm-form{grid-template-columns:1fr} }
+
+/* 인쇄 = PDF 받기 */
+#printArea{display:none}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body{background:#fff;padding:0}
+  body > *:not(#printArea){display:none!important}
+  #printArea{display:block}
+  .pa-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--brand);padding-bottom:6px;margin-bottom:10px}
+  .pa-head h1{font-size:18px;margin:0}
+  .pa-head .m{font-size:11px;color:#555}
+  .pa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .pa-card{break-inside:avoid;font-size:10px}
+  .pa-card .n{font-weight:700;font-size:11px;margin-bottom:3px}
+  .pa-card .cv{box-shadow:none}
+  .pa-card p{margin:4px 0 0;white-space:pre-line}
+  .pa-card .k{color:#777}
+  .pa-sec{break-inside:avoid;margin-bottom:10px;font-size:11px}
+  .pa-sec h2{font-size:12px;margin:0 0 4px}
+  .pa-sec p{margin:0;white-space:pre-line}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+
+/* ───── 릴스 콘티 전용 ───── */
+.status-sel{border:0;font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:3px 8px}
+.status-sel.draft{background:#efebe3;color:var(--ink-2)}
+.status-sel.done{background:var(--ok-soft);color:#1d5e40}
+/* 인스타로 보기 (릴스 화면) */
+.ig-modal{background:rgba(10,10,10,.84)}
+.ig-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;max-height:96vh}
+.ig-phone{position:relative;height:min(76vh,720px);aspect-ratio:9/16;max-width:92vw;background:#000;border-radius:22px;overflow:hidden;cursor:pointer;user-select:none;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.ig-stage,.ig-shot{position:absolute;inset:0}
+.ig-shot{opacity:0;transition:opacity .45s}
+.ig-shot.on{opacity:1}
+.ig-shot img{width:100%;height:100%;object-fit:cover;animation:igzoom 7s ease-out forwards}
+.ig-shot.none{display:grid;place-items:center;color:#bbb;font-size:14px;padding:28px;text-align:center;background:#262524;line-height:1.5}
+@keyframes igzoom{from{transform:scale(1)}to{transform:scale(1.12)}}
+.ig-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0,transparent 16%,transparent 58%,rgba(0,0,0,.62) 100%);pointer-events:none}
+.ig-bars{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:3px}
+.ig-bars i{flex:1;height:3px;background:rgba(255,255,255,.35);border-radius:2px;overflow:hidden}
+.ig-bars b{display:block;height:100%;width:0;background:#fff}
+.ig-top{position:absolute;left:14px;right:14px;top:22px;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:16px}
+.ig-top span{font-size:11.5px;background:rgba(0,0,0,.4);padding:2px 9px;border-radius:99px}
+.ig-shotnote{position:absolute;left:12px;right:12px;top:52px;color:#fff;font-size:11.5px;line-height:1.4;background:rgba(0,0,0,.46);border-radius:9px;padding:6px 9px;pointer-events:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;word-break:keep-all}
+.ig-shotnote[hidden]{display:none}
+.ig-shotnote b{display:inline-block;font-size:10.5px;font-weight:700;color:#2b1d00;background:var(--brand);border-radius:4px;padding:0 5px;margin-right:5px;vertical-align:1px}
+.ig-sub{position:absolute;left:6%;right:15%;top:57%;text-align:center;color:#fff;font-weight:800;font-size:clamp(15px,2.6vh,22px);line-height:1.38;text-shadow:0 0 4px #000,0 2px 8px rgba(0,0,0,.9);word-break:keep-all;white-space:pre-line;pointer-events:none}
+.ig-sub.long{font-size:clamp(13.5px,2.25vh,19px)}
+.ig-side{position:absolute;right:10px;bottom:96px;display:flex;flex-direction:column;gap:15px;align-items:center;color:#fff;font-size:22px;pointer-events:none}
+.ig-side small{display:block;font-size:10px;text-align:center;margin-top:1px}
+.ig-bottom{position:absolute;left:12px;right:58px;bottom:14px;color:#fff;font-size:12.5px;pointer-events:none}
+.ig-user{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.ig-user img{width:28px;height:28px;border-radius:50%;background:#fff}
+.ig-follow{border:1px solid rgba(255,255,255,.85);border-radius:6px;padding:0 7px;font-size:11.5px}
+.ig-bottom .ig-cap{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0;font-size:12.5px}
+.ig-audio{margin-top:4px;font-size:11.5px;opacity:.85}
+.ig-ctrl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:min(calc(min(76vh,720px) * 9 / 16), 92vw)}
+.ig-ctrl .btn{height:38px;padding:0 4px;font-size:13px;display:flex;align-items:center;justify-content:center;white-space:nowrap;border-radius:10px}
+.ig-close{position:fixed;top:14px;right:16px;z-index:2;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1}
+.ig-close:hover{background:rgba(255,255,255,.26)}
+body:has(#mInsta:not([hidden])) .fb-bar{visibility:hidden}
+.ig-ctrl .btn.on{background:var(--brand);border-color:var(--brand);color:#2b1d00}
+.ig-voice{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;color:#cfc8ba;font-size:12px}
+.ig-voice select{font:inherit;font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #5a534a;background:#2b2722;color:#f3eee6}
+.ig-voice .btn{background:var(--brand);border-color:var(--brand);color:#2b1d00;font-weight:700}   /* 줄 글자색(옅은 회색)을 물려받아 꺼진 버튼처럼 보이던 것 */
+.ig-voice .btn:hover{background:#ffc04d}
+.ig-voice select:disabled,.ig-voice .btn:disabled{opacity:.45;cursor:default}
+.ig-voice #igVoiceMsg{min-width:0;max-width:340px}
+.ig-hint{color:#cfc8ba;font-size:12px;text-align:center;max-width:520px}
+.seg a{display:inline-block;padding:6px 12px;border-radius:7px;font-size:13px;color:var(--ink-2);text-decoration:none}
+.seg a.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip.bad,.est.bad{color:var(--warn);font-weight:600}
+.info-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 18px;align-items:end}
+.info-form .wide{grid-column:span 2}
+.chk{display:flex;align-items:center;gap:6px;font-size:13.5px;padding-bottom:9px}
+.cal-note{grid-column:1/-1;background:var(--brand-soft);border-radius:10px;padding:10px 14px;font-size:13px;color:#6b4a00}
+.cal-note b{color:#5a3d00}
+.cal-note span{display:block;font-size:12px;color:#8a6a2a;margin-top:2px}
+.field.from-cal input{background:#f6f3ed;color:var(--ink-2);cursor:not-allowed}
+.field.from-cal label::after{content:" · 달력";color:#b07a00;font-weight:600}
+.feed-grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start}
+.cap-cols{display:grid;grid-template-columns:1.4fr 1fr;gap:6px 22px}
+.cap-cols > .field:first-child{grid-row:span 2}
+@media (max-width:760px){.cap-cols{grid-template-columns:1fr}.cap-cols > .field:first-child{grid-row:auto}}
+.phone9{position:relative;min-height:240px;width:100%;border-radius:16px;overflow:hidden;background:#2b2926;display:grid;place-items:center;color:#cfc8ba;font-size:12.5px;text-align:center;cursor:pointer;white-space:pre-line;padding:12px;outline:none}
+.phone9.on,.phone9:focus{box-shadow:0 0 0 3px var(--brand)}
+.phone9 img{display:block;width:100%;height:auto;border-radius:10px}
+.phone9.has{display:block;padding:0;background:#f3f0e9;min-height:0}
+.phone9 .x,.photo .x{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:15px;line-height:24px;padding:0;z-index:2}
+.feed-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.tile .ph43{position:relative;aspect-ratio:4/3;border-radius:6px;overflow:hidden;background:#f3f0e9}
+.tile .ph43 img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .ph43 .cnt{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.62);color:#fff;font-size:10.5px;border-radius:4px;padding:0 5px}
+.tile .ph43 .nop{display:grid;place-items:center;height:100%;color:#b9b2a6;font-size:11px}
+.tile .sec{margin-left:6px;font-size:11px;font-weight:500;color:var(--muted)}
+.tile .sec.bad{color:var(--warn)}
+.clip-ed{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,1.15fr);gap:24px;margin-top:16px;align-items:start}
+.clip-ed .lbl{font-size:12px;color:var(--muted);margin:0 0 6px}
+.clip-ed .lbl b{color:var(--ink-2)}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}
+.photo{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;cursor:zoom-in}
+.photo input{width:100%;border:0;border-top:1px solid var(--line);padding:6px 8px;font-size:12px;background:#fff}
+.photo input:focus{outline:2px solid var(--brand);outline-offset:-2px}
+.photo .ord{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;border-radius:4px;padding:0 6px}
+.photo .mvp{position:absolute;left:6px;bottom:38px;display:flex;gap:3px}
+.photo .mvp button{border:0;background:rgba(0,0,0,.55);color:#fff;border-radius:4px;font-size:11px;padding:1px 6px}
+.photo.add{display:grid;place-items:center;border:2px dashed #d6cfc1;background:#fcfbf8;color:var(--muted);font-size:12.5px;text-align:center;min-height:128px;cursor:pointer;padding:10px;outline:none}
+.photo.add.on,.photo.add:focus{border-color:var(--brand);background:var(--brand-soft);color:#8a5a00}
+.est{font-size:12px;color:var(--muted);margin-top:4px}
+.subprev{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:6px}
+.subprev .k{font-size:11.5px;color:var(--muted);font-weight:600}
+.subprev .ch{white-space:pre-line;text-align:center;font-size:12px;line-height:1.35;background:#2b2926;color:#fff;border-radius:6px;padding:4px 8px;font-weight:600}
+.subprev .ch.long{background:#4a4038}
+.subprev .hint{font-size:11px;color:#b9b2a6}
+.ed-body .field textarea{resize:none;overflow:hidden;min-height:44px}
+.savebadge{font-size:12px;color:var(--muted)}
+.filemenu{display:flex;flex-direction:column;gap:10px}
+.filemenu .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filemenu .row span{font-size:12.5px;color:var(--muted)}
+@media (max-width:760px){
+  .feed-grid{grid-template-columns:1fr}
+  .phone9{max-width:200px;margin:0 auto}
+  .clip-ed{grid-template-columns:1fr}
+  .info-form .wide{grid-column:auto}
+  .tile .tb{display:-webkit-box;-webkit-line-clamp:2}
+  .tile .sec{display:none}
+  .tile .tn{white-space:nowrap;overflow:hidden}
+}
+@media print{
+  .pr-clip{display:grid;grid-template-columns:62mm 1fr;gap:6mm;break-inside:avoid;border-top:1px solid #ddd;padding:4mm 0;font-size:10.5px}
+  .pr-ph{display:grid;grid-template-columns:1fr 1fr;gap:2mm;align-content:start}
+  .pr-ph img{width:100%;aspect-ratio:4/3;object-fit:cover}
+  .pr-clip h3{font-size:12px;margin:0 0 3px}
+  .pr-clip p{margin:0 0 4px;white-space:pre-line}
+  .pr-clip .k{color:#777;font-weight:700}
+  .pr-feed{float:left;width:70mm;margin:0 5mm 3mm 0;border-radius:2mm}
+  .pr-thumb{color:#d23b2a;margin-bottom:2mm!important}
+}
+
+/* ───── 카드뉴스 콘티 전용 ───── */
+#cardGrid .tile .thumb .cv{height:118px}
+.ig-wrap .phone{max-height:calc(96vh - 112px)}
+.ig-stagec{position:relative;flex:none}
+.ig-nav{position:absolute;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#222;font-size:20px;line-height:28px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.ig-nav.prev{left:8px}
+.ig-nav.next{right:8px}
+.ig-nav[hidden]{display:none}
+.ig-count{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;border-radius:99px;padding:1px 9px;pointer-events:none}
+.ig-slide .kind-tag.ref{display:inline-block;left:10px;top:10px;bottom:auto}
+.ig-cardnote{width:min(390px,92vw);color:#e9e3d6;font-size:12.5px;line-height:1.5;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 12px;max-height:88px;overflow:auto;white-space:pre-line;word-break:keep-all}
+.ig-cardnote b{color:var(--brand)}
+.vc-card{width:200px;flex:none;cursor:zoom-in;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.14);align-self:start}
+.vc-card .cv{border-radius:0}
+.vc-card .kind-tag{display:none}
+.vc-card:hover{box-shadow:0 0 0 2px var(--brand)}
+.vc-h .vc-kind{font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;background:#efebe3;color:var(--ink-2)}
+.vc-h .vc-kind.design{background:var(--ok-soft);color:#1d5e40}
+@media (max-width:760px){
+  #cardGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #cardGrid .tile .tb,#cardGrid .tile .ti{display:none}
+  #cardGrid .tile .thumb .cv{height:auto}
+}
+@media (max-width:560px){ .vc-card{width:min(100%,280px);margin:0 auto} }
+</style>
+</head>
+<body data-view="noing">
+
+<div class="mock-banner"><b>카드뉴스 콘티</b> · 이 PC 브라우저에 자동 저장됩니다. 다른 PC로 옮기거나 보관할 땐 <b>[저장·불러오기]</b>에서 저장 파일을 받으세요.</div>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <img src="img/logo.png" alt="">
+      <div style="min-width:0">
+        <div class="t1">카드뉴스 콘티 <select class="status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select></div>
+        <div class="t2" id="tTitle">새 카드뉴스 콘티</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="tb-acts ed-only">
+      <button class="btn" onclick="openInsta()">▶ 인스타로 보기</button>
+      <button class="btn" onclick="enterViewer(true)" title="담당자가 링크를 열면 보는 화면">미리보기</button>
+      <div class="menu-wrap">
+        <button class="btn" id="btnFile" onclick="toggleFileMenu(event)" aria-haspopup="true" aria-expanded="false">파일 ▾</button>
+        <div class="menu" id="fileMenu" hidden>
+          <button onclick="closeFileMenu();downloadPptx($('#btnFile'))">PPT 받기</button>
+          <hr>
+          <button onclick="closeFileMenu();openM(mFile)">저장·불러오기…</button>
+        </div>
+      </div>
+      <button class="btn" id="btnFb" onclick="openFb()" hidden>💬 수정 요청 <b id="fbN"></b></button>
+      <button class="btn brand" id="btnShare" onclick="openShare()" hidden>🔗 담당자 링크</button>
+    </div>
+  </div>
+</header>
+<div class="pv-banner" id="pvBanner" hidden><span><b>미리보기</b> · 담당자가 링크를 열면 이 화면을 봅니다 — 담당자는 글을 눌러 바로 고친 뒤 [수정 요청 보내기]로 보내거나 PPT를 받을 수 있습니다. 원본 콘티는 [💬 수정 요청]에서 반영해야 바뀝니다</span><button class="btn" onclick="exitViewer()">편집으로 돌아가기</button></div>
+
+<main class="wrap">
+
+  <section>
+    <h2 class="sec-title">기본 정보</h2>
+    <div class="panel info-form">
+      <div class="cal-note" id="calNote" hidden></div>
+      <div class="field wide"><label>서비스명 (제품명)</label><input data-info="title" placeholder="예: 움버거앤윙스 버거 치킨불고기"></div>
+      <div class="field"><label>발행 채널</label><input data-info="channel" list="channels"></div>
+      <div class="field"><label>발행 날짜</label><input type="date" data-info="date"></div>
+      <div class="field"><label>발행 시각</label><input type="time" data-info="time" step="300"></div>
+      <div class="field"><label>버전</label><input data-info="version" placeholder="v1"></div>
+    </div>
+    <datalist id="channels"><option value="인스타그램 one_home_life"></option><option value="인스타그램 one_home_guide"></option><option value="인스타그램 one_home_mag"></option></datalist>
+  </section>
+
+  <section id="briefSection">
+    <h2 class="sec-title">필수 소구포인트 <span class="sub">고객사가 보낸 브리프</span></h2>
+    <div class="panel">
+      <div class="brief-files" id="briefFiles"></div>
+      <div class="drop" id="briefDrop" tabindex="0" role="button" aria-label="소구포인트 캡처나 파일 넣기">
+        캡처를 <b>붙여넣기(Ctrl+V)</b> 하거나 파일을 <b>끌어다 놓으세요</b> · 눌러서 파일 선택
+        <small>이미지는 화면·PPT에 그대로 들어가고, PDF·문서 파일은 원본으로 첨부됩니다</small>
+      </div>
+      <div class="brief-list" id="briefList">
+        <div class="hint"><b>요청 내용 메모 (선택)</b> — 캡처만으로 부족할 때 고객사가 원한 내용을 글로 적어 두세요. 담당자 화면·PPT에 그대로 들어갑니다</div>
+        <textarea id="briefText" rows="3" placeholder="예) 180g 치킨 패티의 크기와 두께를 꼭 보여 주세요"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-title">멘션 텍스트 <span class="sub">PPT 표지 장에 함께 들어갑니다</span></h2>
+    <div class="panel">
+      <div class="cap-cols">
+        <div class="field">
+          <label>멘션 텍스트</label>
+          <textarea rows="8" data-capf="mention"></textarea>
+        </div>
+        <div class="field">
+          <label>해시태그</label>
+          <input data-capf="tags" placeholder="#브랜드 #제품명">
+          <div class="counter" id="tagCounter"></div>
+        </div>
+        <div class="field">
+          <label>계정 태그</label>
+          <input data-capf="account" placeholder="예: @umburger_official">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-title">카드 구성 <span class="sub">장을 누르면 아래에서 고칩니다 · 끌어서 순서 변경 · 그림 파일을 장 위에 놓으면 그 장의 그림으로</span></h2>
+    <div class="panel">
+      <div class="frame-ctl" id="frameCtl"></div>
+      <div class="grid2" id="cardGrid"></div>
+      <div class="editor" id="cardEditor"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec-title">카드뉴스 제작 안내 <span class="sub">담당자 화면에 함께 들어갑니다</span></h2>
+    <div class="panel" id="noticeBox"></div>
+  </section>
+
+</main>
+<div id="viewer"></div>
+
+<div class="bottombar">
+  <div class="wrap">
+    <div class="tally" id="tally"></div>
+    <div class="spacer"></div>
+    <span class="savebadge" id="saveBadge"></span>
+  </div>
+</div>
+
+<!-- 저장·불러오기 -->
+<div class="modal" id="mFile" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog">
+    <h3>저장·불러오기</h3>
+    <p class="desc" id="fileDesc">작업 내용은 이 PC 브라우저에 자동으로 저장됩니다. 다른 PC로 옮기거나 콘티별로 보관하려면 저장 파일(.json)을 받아 두세요. Dropbox에 두면 어느 PC에서든 열 수 있습니다.</p>
+    <div class="filemenu">
+      <div class="row"><button class="btn primary" onclick="exportJson()">저장 파일 받기</button><span>그림까지 모두 들어 있는 파일 하나로 받습니다</span></div>
+      <div class="row"><button class="btn" onclick="$('#jsonPick').value='';$('#jsonPick').click()">저장 파일 열기</button><span>받아 둔 저장 파일로 이어서 작업합니다 (지금 내용은 바뀝니다)</span></div>
+      <div class="row" id="delRow" hidden><button class="btn" style="color:#c0392b;border-color:#f0c4bc" onclick="deleteThisConti()">이 콘티 삭제</button><span>서버에서 글·그림·담당자 링크·받은 수정 요청을 모두 지웁니다 (되돌릴 수 없음)</span></div>
+      <div class="row"><button class="btn" onclick="startNew()">새 콘티 시작</button><span>지금 내용을 비우고 처음부터 (먼저 저장 파일을 받아 두세요)</span></div>
+    </div>
+    <div class="foot"><button class="btn" onclick="closeM(mFile)">닫기</button></div>
+  </div>
+</div>
+
+<!-- 담당자 링크 -->
+<div class="modal" id="mShare" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog" style="max-width:620px">
+    <h3>담당자에게 보낼 링크</h3>
+    <p class="desc">링크를 받은 사람은 로그인 없이 이 콘티를 봅니다. 글을 눌러 바로 고친 뒤 <b>[수정 요청 보내기]</b>로 보내거나, PPT를 받아 고쳐 보낼 수 있습니다. 보낸 내용은 위쪽 <b>[💬 수정 요청]</b>에서 원본과 비교해 반영합니다(반영하기 전엔 원본 콘티가 바뀌지 않습니다). 콘티를 고친 뒤 [지금 내용으로 갱신]을 누르면 같은 링크에서 바뀐 내용이 보입니다.</p>
+    <div id="shareBody"></div>
+    <div class="foot"><button class="btn" onclick="closeM(mShare);enterViewer(true)">👁 담당자 화면 미리보기</button><button class="btn" onclick="closeM(mShare)">닫기</button></div>
+  </div>
+</div>
+
+<!-- 담당자: 수정 요청을 보냈을 때 -->
+<div class="modal" id="mSent" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog sent-dlg">
+    <div class="sent-ic">✓</div>
+    <h3>수정 요청을 노잉에 전달했습니다</h3>
+    <p class="desc" id="sentDesc"></p>
+    <div class="foot"><button class="btn brand" onclick="closeM(mSent)">확인</button></div>
+  </div>
+</div>
+
+<!-- 담당자 수정 요청 -->
+<div class="modal" id="mFb" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog" style="max-width:820px">
+    <h3>담당자 수정 요청</h3>
+    <p class="desc">담당자가 링크에서 고쳐 보낸 내용입니다. <del class="lg">지운 글</del> <ins class="lg">더한 글</ins> — [반영]을 누르면 콘티에 바로 들어갑니다.</p>
+    <div id="fbBody"></div>
+    <div class="foot"><button class="btn" onclick="loadFeedback().then(renderFb)">↻ 새로 불러오기</button><button class="btn" onclick="closeM(mFb)">닫기</button></div>
+  </div>
+</div>
+
+<!-- 인스타로 보기 (캐러셀) -->
+<div class="modal ig-modal" id="mInsta" hidden onclick="if(event.target===this)closeInsta()">
+  <button class="ig-close" onclick="closeInsta()" aria-label="닫기" title="닫기 (Esc)">×</button>
+  <div class="ig-wrap">
+    <div class="phone">
+      <div class="ig-head"><img src="img/logo.png" alt=""><b id="igName">one_home_life</b></div>
+      <div class="ig-stagec">
+        <div class="ig-track" id="igTrack"></div>
+        <button class="ig-nav prev" onclick="igGo(-1)" aria-label="이전 장" title="이전 장 (←)">‹</button>
+        <button class="ig-nav next" onclick="igGo(1)" aria-label="다음 장" title="다음 장 (→)">›</button>
+        <span class="ig-count" id="igCount"></span>
+      </div>
+      <div class="ig-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><path d="M20 12a8 8 0 1 1-3.3-6.5L20 4l-.9 3.6A8 8 0 0 1 20 12z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></svg>
+        <div class="ig-dots" id="igDots"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.8"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+      </div>
+      <div class="ig-cap" id="igCap"></div>
+    </div>
+    <div class="ig-cardnote" id="igNote"></div>
+  </div>
+</div>
+
+<!-- 로그인 (달력 사이트에서 열었는데 로그인 전일 때) -->
+<div class="modal" id="mLogin" hidden>
+  <form class="dialog" style="max-width:380px" onsubmit="doLogin(event)">
+    <h3>로그인</h3>
+    <p class="desc">달력과 같은 계정으로 로그인하면 콘티가 서버에 저장되고 [콘텐츠 기획] 탭에 모입니다.</p>
+    <div class="field"><label>이메일</label><input id="lgEmail" type="email" autocomplete="username" required></div>
+    <div class="field"><label>비밀번호</label><input id="lgPw" type="password" autocomplete="current-password" required></div>
+    <p class="desc" id="lgMsg" style="margin-top:10px"></p>
+    <div class="foot"><button class="btn primary">로그인</button></div>
+  </form>
+</div>
+
+<div class="modal lightbox" id="mImg" hidden onclick="closeM(this)">
+  <div class="lb-wrap">
+    <button class="lb-nav prev" id="lbPrev" hidden aria-label="이전 장" onclick="event.stopPropagation();galStep(-1)">‹</button>
+    <img id="mImgSrc" alt="">
+    <button class="lb-nav next" id="lbNext" hidden aria-label="다음 장" onclick="event.stopPropagation();galStep(1)">›</button>
+  </div>
+  <div class="lb-cap" id="mImgCap" hidden></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="briefPick" accept="image/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.hwp,.hwpx,.txt" multiple hidden>
+<input type="file" id="cardPick" accept="image/*" hidden>
+<input type="file" id="framePick" accept="image/*" hidden>
+<input type="file" id="jsonPick" accept=".json,application/json" hidden>
+
+<script>window.FBX_READY = new Promise(r => { window.__fbxDone = r; });</script>
+<script type="module">
+const cfg = {
+    apiKey: "AIzaSyDkPN6xRkO0r9Idc84MV9QVRBY4zIdoNv4",
+    authDomain: "noing-calendar.firebaseapp.com",
+    projectId: "noing-calendar",
+    storageBucket: "noing-calendar.firebasestorage.app",
+    messagingSenderId: "511910681269",
+    appId: "1:511910681269:web:cd0efba8cb5bfa67f93cfc"
+  };
+window.__BUCKET = cfg && cfg.storageBucket; window.__PROJECT = cfg && cfg.projectId;
+if (!cfg || /^#s=/.test(location.hash)) window.__fbxDone(null);   // 담당자 링크는 로그인·서버 없이 본다
+else {
+  try {
+    const V = 'https://www.gstatic.com/firebasejs/10.12.5/';
+    const { initializeApp } = await import(V + 'firebase-app.js');
+    const A = await import(V + 'firebase-auth.js');
+    const F = await import(V + 'firebase-firestore.js');
+    const app = initializeApp(cfg);
+    const auth = A.getAuth(app);
+    try { await A.setPersistence(auth, A.browserLocalPersistence); } catch (e) {}
+    const ST = await import(V + 'firebase-storage.js');
+    const fbx = { auth, db: F.getFirestore(app), F, ST, storage: ST.getStorage(app), user: null, signIn: (e, p) => A.signInWithEmailAndPassword(auth, e, p) };
+    let first = true;
+    A.onAuthStateChanged(auth, u => { fbx.user = u; if (first) { first = false; window.__fbxDone(fbx); } });
+  } catch (e) { console.error('Firebase 준비 실패', e); window.__fbxDone(null); }
+}
+</script>
+<script src="img/data.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════
+//  카드뉴스 콘티 — 실제 작업용. 달력 사이트에서 열면 서버(contis)에, 파일로 열면 이 PC 브라우저(IndexedDB)에 자동 저장
+//  구성은 기존 카드뉴스 콘티(예: 텐퍼센트커피 커스텀 레시피 v1)와 같다:
+//  기본 정보 / 소구포인트 / 멘션 / 카드마다 [그림(시안 또는 속지 틀 + 참고 사진) · 제목 · 내용 · 이미지 내용]
+//  저장·담당자 링크·수정 요청·PPT 글꼴 넣기는 릴스 콘티(reels.html)와 같은 부품
+// ════════════════════════════════════════════════════════════
+const $ = s => document.querySelector(s);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const CIRC = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫'];
+const uid = () => Math.random().toString(36).slice(2, 9);
+const pad = n => String(n).padStart(2, '0');
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
+
+// ───────── 달력 연결 ─────────
+// 달력에서 [📋 콘티 만들기]로 열면 주소에 ?cid=콘텐츠id 가 붙는다. 콘텐츠 기획 탭에서 열면 ?id=콘티id.
+// 발행 채널·날짜·시각은 달력 값을 따르고, 서비스명은 비었거나 달력 값일 때만 채운다(직접 고치면 유지).
+const QS = new URLSearchParams(location.search);
+let CID = QS.get('cid') || ((QS.get('id') || '').startsWith('c-') ? QS.get('id').slice(2) : null);
+const chMap = { life: 'one_home_life', guide: 'one_home_guide', mag: 'one_home_mag' };
+function infoFromContent(c) {   // 달력 콘텐츠 → 콘티 기본 정보 (달력의 openConti 와 같은 규칙)
+  const company = (c.company || '').trim(), title = (c.title || '').trim();
+  return { company, title, service: title && company && !title.includes(company) ? `${company} ${title}` : (title || company),
+    channel: '인스타그램 ' + (chMap[c.channel] || 'one_home_life'), date: c.date || '', time: c.time || '', owner: c.owner || '', due: c.due_storyboard || '', at: Date.now() };
+}
+function readHandoff() {
+  if (!CID) return null;
+  try { return JSON.parse(localStorage.getItem('noing-conti-handoff:' + CID) || 'null'); } catch (e) { return null; }
+}
+function applyCalendar(h = readHandoff()) {
+  if (!h) return;
+  S.cal = { cid: CID, company: h.company || '', title: h.title || '', owner: h.owner || '', due: h.due || '', at: h.at || Date.now() };
+  if (!(S.info.title || '').trim() || S.info.titleFromCal) { S.info.title = h.service || ''; S.info.titleFromCal = true; }
+  ['channel', 'date', 'time'].forEach(k => { if (h[k]) S.info[k] = h[k]; });
+}
+async function calendarInfo() {   // 서버에서 달력 콘텐츠를 직접 읽는다(없으면 넘겨받은 정보)
+  if (!CID) return null;
+  if (FBX) {
+    try { const s = await FBX.F.getDoc(FBX.F.doc(FBX.db, 'contents', String(CID))); if (s.exists()) return infoFromContent(s.data()); }
+    catch (e) { console.warn('달력 콘텐츠 읽기 실패', e); }
+  }
+  return readHandoff();
+}
+
+
+// 카드: 표지(cover) 1장 + 속지. kind = 'design'(포토샵으로 만든 시안 그림 그대로) | 'ref'(속지 틀 위에 대략적인 참고 사진)
+//   들어갈 글은 카드 위에 얹지 않고 카드 밖 '제목·내용·이미지 내용'으로 적는다(기존 콘티처럼). 표지는 맨 앞 고정
+const newCard = (kind = 'ref') => ({ id: 'n' + uid(), kind, img: null, imgId: null, sub: '', detail: '', desc: '' });
+function blank() {
+  return {
+    kind: 'cardnews', v: 1, status: 'draft',
+    info: { title: '', channel: '인스타그램 one_home_life', date: '', time: '18:00', version: 'v1' },
+    brief: [], briefFiles: [],
+    caption: { mention: '#광고 ', tags: '', account: '' },
+    frame: null, frameId: null,
+    cards: [{ ...newCard('design'), id: 'cover', cover: true }, newCard('design'), newCard('ref')],
+  };
+}
+function normalize(d) {
+  const b = blank();
+  const s = { ...b, ...d, kind: 'cardnews', info: { ...b.info, ...(d.info || {}) }, caption: { ...b.caption, ...(d.caption || {}) }, status: d.status || 'draft' };
+  if (!Array.isArray(s.cards) || !s.cards.length) s.cards = b.cards;
+  if (!s.cards[0].cover) s.cards.unshift(b.cards[0]);
+  s.cards.forEach((c, i) => {
+    ['sub', 'detail', 'desc'].forEach(k => { c[k] = c[k] || ''; });
+    c.cover = i === 0;
+    if (c.cover) c.kind = 'design'; else if (c.kind !== 'design') c.kind = 'ref';
+    if (c.img && !c.imgId) c.imgId = 'i' + uid();
+    delete c.points;   // 시안 때의 소구포인트 연결(10.21 뺌)
+  });
+  if (s.frame && !s.frameId) s.frameId = 'r' + uid();
+  return s;
+}
+let S = blank(), SEL = 'cover';
+const cardName = (c, i = S.cards.indexOf(c)) => c.cover ? '표지' : `속지 (${i + 1})`;
+const isRef = c => !c.cover && c.kind === 'ref';
+const FIELD_LABEL = { sub: '제목', detail: '내용', desc: '이미지 내용' };
+const FIELD_HINT = { sub: '이 장에 들어갈 제목', detail: '이 장에 들어갈 글', desc: '어떤 사진·장면이 들어갈지' };
+const COVER_LABEL = { sub: '표지 제목', detail: '훅 문구', desc: '이미지 설명' };
+const labelOf = c => c.cover ? COVER_LABEL : FIELD_LABEL;
+const TXT = ['sub', 'detail', 'desc'];
+
+// ───────── 저장 ─────────
+// 달력 사이트에서 열면(Firebase 로그인 상태) 서버 저장: contis/{콘티id} 에 글, contis/{id}/media/{그림id} 에 그림 한 장씩
+//   (문서 하나가 1MB 를 넘을 수 없어 그림을 나눠 둔다. 콘텐츠 기획 탭은 contis 문서만 읽는다)
+// 내 PC 에서 파일로 열면 이 브라우저(IndexedDB)에 저장 — 릴스 콘티와 같은 저장소, 열쇠 앞에 card:
+let FBX = null, CONTI_ID = null;
+const UPLOADED = new Set();   // 서버에 올라가 있는 그림 id
+const DB = { name: 'noing-conti', store: 'reels', key: 'card:' + (CID ? 'cid:' + CID : 'current') };
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB.name, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(DB.store);
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function dbGet() {
+  const d = await idb();
+  return new Promise((res, rej) => { const q = d.transaction(DB.store).objectStore(DB.store).get(DB.key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+}
+async function dbPut(v) {
+  const d = await idb();
+  return new Promise((res, rej) => { const t = d.transaction(DB.store, 'readwrite'); t.objectStore(DB.store).put(v, DB.key); t.oncomplete = res; t.onerror = () => rej(t.error); });
+}
+// 그림이 들어 있는 곳들: 카드 그림 · 속지 틀 · 소구포인트 자료. 그림을 바꾸면 id 도 새로(서버에 새로 올리고 예전 것은 지운다)
+function mediaList(st) {
+  const out = [];
+  st.cards.forEach(c => c.img && c.imgId && out.push({ mid: c.imgId, url: c.img }));
+  if (st.frame && st.frameId) out.push({ mid: st.frameId, url: st.frame });
+  st.briefFiles.forEach(f => f.url && out.push({ mid: f.id, url: f.url }));
+  return out;
+}
+function withoutMedia(st) {
+  const c = JSON.parse(JSON.stringify(st));
+  c.cards.forEach(k => delete k.img);
+  delete c.frame;
+  c.briefFiles.forEach(f => delete f.url);
+  return c;
+}
+async function remoteLoad(id) {
+  const F = FBX.F, snap = await F.getDoc(F.doc(FBX.db, 'contis', id));
+  if (!snap.exists()) return null;
+  const meta = snap.data();
+  if (meta.type && meta.type !== 'cardnews') return { other: meta.type, meta };   // 릴스 콘티를 이 주소로 열었을 때
+  const st = JSON.parse(meta.data || '{}'), need = [];
+  (st.cards || []).forEach(c => c.imgId && need.push([c.imgId, u => { c.img = u; }]));
+  if (st.frameId) need.push([st.frameId, u => { st.frame = u; }]);
+  (st.briefFiles || []).forEach(f => need.push([f.id, u => { f.url = u; }]));
+  await Promise.all(need.map(async ([mid, set]) => {
+    const m = await F.getDoc(F.doc(FBX.db, 'contis', id, 'media', mid));
+    if (m.exists()) { set(m.data().data); UPLOADED.add(mid); }
+  }));
+  return { st, meta };
+}
+let thumbCache = { key: null, url: null };
+async function makeThumb() {   // 콘텐츠 기획 탭 목록용 작은 그림(4:5): 표지 → 그림이 있는 첫 장
+  const c = S.cards.find(k => k.img); if (!c) return null;
+  const key = c.imgId + (isRef(c) ? S.frameId : '');
+  if (thumbCache.key === key) return thumbCache.url;
+  thumbCache = { key, url: await renderCardImage(c, 216, 0.72) };
+  return thumbCache.url;
+}
+async function remoteSave() {
+  const F = FBX.F, id = CONTI_ID, list = mediaList(S);
+  for (const m of list) if (!UPLOADED.has(m.mid)) { await F.setDoc(F.doc(FBX.db, 'contis', id, 'media', m.mid), { data: m.url, at: Date.now() }); UPLOADED.add(m.mid); }
+  for (const mid of [...UPLOADED]) if (!list.some(m => m.mid === mid)) { await F.deleteDoc(F.doc(FBX.db, 'contis', id, 'media', mid)); UPLOADED.delete(mid); }
+  await F.setDoc(F.doc(FBX.db, 'contis', id), {
+    id, type: 'cardnews', status: S.status || 'draft', cid: CID || '',
+    title: S.info.title || '', company: S.cal?.company || '', channel: S.info.channel || '', date: S.info.date || '', time: S.info.time || '',
+    owner: S.cal?.owner || '', cardCount: S.cards.length,
+    thumb: await makeThumb().catch(() => null),
+    updatedAt: Date.now(), updatedBy: FBX.user?.email || '',
+    data: JSON.stringify(withoutMedia(S)),
+  });
+}
+let saveTimer, saving = false, saveAgain = false;
+function save() {
+  if (typeof deleted !== 'undefined' && deleted) return;   // 삭제 중·삭제 후에는 다시 저장하지 않는다
+  if (typeof VIEW !== 'undefined' && VIEW === 'share') return;   // 담당자 화면은 저장하지 않는다
+  clearTimeout(saveTimer);
+  $('#saveBadge').textContent = '저장 중…';
+  saveTimer = setTimeout(doSave, FBX ? 1200 : 400);
+}
+async function doSave() {
+  if (saving) { saveAgain = true; return; }
+  saving = true;
+  try {
+    if (FBX && CONTI_ID) await remoteSave(); else await dbPut(S);
+    const d = new Date();
+    $('#saveBadge').textContent = `${FBX ? '서버에 저장됨' : '자동 저장됨'} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch (e) {
+    console.error(e);
+    $('#saveBadge').textContent = FBX ? `서버 저장 실패 — ${/permission/i.test(e.message) ? '권한이 없습니다(보안 규칙)' : e.message}. [저장·불러오기]로 파일을 받아 두세요` : '자동 저장 안 됨 — [저장·불러오기]에서 저장 파일을 받아 두세요';
+  } finally {
+    saving = false;
+    if (saveAgain) { saveAgain = false; doSave(); }
+  }
+}
+// 서버 문서 하나는 1MB 까지 → 그림은 약 900KB 안쪽으로 줄여 둔다
+async function fitStore(url) {
+  if (!url || url.length < 900000 || !/^data:image\//.test(url)) return url;
+  const im = await loadImg(url);
+  for (const [max, q] of [[1600, 0.8], [1280, 0.78], [1024, 0.75], [800, 0.72]]) {
+    const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+    const out = c.toDataURL('image/jpeg', q);
+    if (out.length < 900000) return out;
+  }
+  return url;
+}
+
+// 사진은 data URL 로 바꿔 둔다(저장·PPT 용). 큰 사진은 긴 변 1600px 로 줄인다
+function fileToDataURL(file, max = 1600) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onerror = () => rej(fr.error);
+    fr.onload = () => {
+      if (!/^image\//.test(file.type)) return res(fr.result);
+      const im = new Image();
+      im.onerror = () => res(fr.result);
+      im.onload = () => {
+        const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+        const png = /png/.test(file.type) && im.naturalWidth * im.naturalHeight * k * k <= 2.6e6;
+        if (k === 1 && file.size < 1.8e6 && (png || /jpe?g/.test(file.type))) return res(fr.result);
+        const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+        const g = c.getContext('2d'); if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); }
+        g.drawImage(im, 0, 0, c.width, c.height);
+        res(c.toDataURL(png ? 'image/png' : 'image/jpeg', 0.86));
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+const imagesOf = files => [...(files || [])].filter(f => /^image\//.test(f.type));
+
+// ───────── 기본 정보 ─────────
+const CAL_LOCK = ['channel', 'date', 'time'];   // 달력 값을 따르는 칸
+function renderInfo() {
+  document.querySelectorAll('[data-info]').forEach(i => {
+    const k = i.dataset.info;
+    if (i.type === 'checkbox') i.checked = !!S.info[k]; else i.value = S.info[k] ?? '';
+    const lock = !!S.cal && CAL_LOCK.includes(k);
+    i.readOnly = lock; i.closest('.field')?.classList.toggle('from-cal', lock);
+    i.title = lock ? '달력에서 가져온 값입니다. 바꾸려면 달력에서 콘텐츠를 수정한 뒤 [콘티 만들기]로 다시 여세요' : '';
+  });
+  const note = $('#calNote');
+  note.hidden = !S.cal;
+  if (S.cal) {
+    note.textContent = '';
+    note.append(el('b', null, '📅 달력과 연결된 콘티'));
+    const bits = [S.cal.company, S.cal.title].filter(Boolean).join(' · ');
+    note.append(` — ${bits || '콘텐츠'}${S.cal.owner ? ' · 담당 ' + S.cal.owner : ''}${S.cal.due ? ' · 콘티 마감 ' + S.cal.due : ''}`);
+    note.append(el('span', null, '발행 채널·날짜·시각은 달력 값을 씁니다. 바꾸려면 달력에서 수정한 뒤 [콘티 만들기]로 다시 여세요.'));
+  }
+  renderHead();
+}
+document.querySelectorAll('[data-info]').forEach(i => ['input', 'change'].forEach(t => i.addEventListener(t, () => {
+  if (i.readOnly) return;
+  S.info[i.dataset.info] = i.type === 'checkbox' ? i.checked : i.value;
+  if (i.dataset.info === 'title') S.info.titleFromCal = false;   // 직접 고친 서비스명은 달력 값으로 덮지 않는다
+  renderHead(); save();
+})));
+$('#statusSel').addEventListener('change', e => { S.status = e.target.value; renderHead(); save(); toast(S.status === 'done' ? '완성으로 표시했습니다' : '작성 중으로 표시했습니다'); });
+function renderHead() {
+  $('#tTitle').textContent = S.info.title || '새 카드뉴스 콘티';
+  document.title = '카드뉴스 콘티 · ' + (S.info.title || '새 콘티');
+  const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'status-sel ed-only ' + ss.value;
+  const tl = $('#tally'); tl.textContent = '';
+  const a = el('span', null, '카드 '); a.append(el('b', null, S.cards.length), `장 (표지 1 + 속지 ${S.cards.length - 1})`); tl.append(a);
+  const no = S.cards.filter(c => !c.img).length;
+  if (no) { const b = el('span', 'est bad', '그림 없는 장 '); b.append(el('b', null, no)); tl.append(b); }
+}
+
+// ───────── 소구포인트 (캡처·파일 + 선택 목록) ─────────
+function renderBriefFiles() {
+  const wrap = $('#briefFiles'); wrap.textContent = '';
+  S.briefFiles.forEach(f => {
+    const d = el('div', 'bf' + (f.image ? '' : ' file'));
+    if (f.image) {
+      const im = el('img'); im.src = f.url; im.alt = f.name; im.title = '크게 보기';
+      im.onclick = () => { $('#mImgSrc').src = f.url; openM(mImg); };
+      d.append(im);
+    } else {
+      d.append(el('span', 'ext', (f.name.split('.').pop() || 'FILE').toUpperCase()));
+      const a = el('a', null, f.name); a.href = f.url; a.download = f.name; a.title = '원본 내려받기'; d.append(a);
+    }
+    const x = el('button', 'x', '×'); x.title = '빼기'; x.setAttribute('aria-label', f.name + ' 빼기');
+    x.onclick = e => { e.stopPropagation(); S.briefFiles = S.briefFiles.filter(y => y !== f); renderBriefFiles(); save(); };
+    d.append(x);
+    wrap.append(d);
+  });
+}
+async function addBriefFiles(files) {
+  const list = [...files]; if (!list.length) return;
+  for (const file of list) {
+    const image = /^image\//.test(file.type);
+    const name = file.name && file.name !== 'image.png' ? file.name : `캡처_${new Date().toTimeString().slice(0, 8).replace(/:/g, '')}.png`;
+    if (!image && file.size > 900000) { toast(`${name} 은(는) 900KB 가 넘어 첨부할 수 없습니다. 캡처로 넣어 주세요`); continue; }
+    S.briefFiles.push({ id: 'b' + uid(), name, type: file.type, url: await fitStore(await fileToDataURL(file, 2000)), image });
+  }
+  renderBriefFiles(); save();
+  toast(list.length > 1 ? `소구포인트 자료 ${list.length}개를 넣었습니다` : (/^image\//.test(list[0].type) ? '캡처를 넣었습니다' : '파일을 첨부했습니다'));
+}
+(() => {
+  const drop = $('#briefDrop');
+  drop.onclick = () => { $('#briefPick').value = ''; $('#briefPick').click(); };
+  drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); drop.click(); } };
+  $('#briefPick').addEventListener('change', e => addBriefFiles(e.target.files));
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('on'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('on'); }));
+  drop.addEventListener('drop', e => addBriefFiles(e.dataTransfer.files));
+  const ta = $('#briefText');
+  ta.addEventListener('input', () => {
+    S.brief = ta.value.split('\n').map(x => x.trim()).filter(Boolean);
+    save();
+  });
+})();
+
+// ───────── 멘션 ─────────
+function tagCount() { return (S.caption.mention + ' ' + S.caption.tags).match(/#[^\s#]+/g)?.length || 0; }
+function renderCaption(setValues) {
+  if (setValues) document.querySelectorAll('[data-capf]').forEach(inp => inp.value = S.caption[inp.dataset.capf] || '');
+  const tc = tagCount(), ct = $('#tagCounter');
+  ct.textContent = `#광고 포함 ${tc}개 / 최대 5개`; ct.classList.toggle('bad', tc > 5);
+}
+document.querySelectorAll('[data-capf]').forEach(inp => inp.addEventListener('input', () => {
+  S.caption[inp.dataset.capf] = inp.value; renderCaption(false); save();
+}));
+
+// ───────── 카드 구성: 모든 장을 2줄 안에 한눈에(장마다 들어갈 글까지) + 아래에서 고르고 고치기 ─────────
+// 카드 그림: 시안 = 포토샵으로 만든 그림 그대로 / 참고 이미지 = 속지 틀 위 사진 자리(left10% top8% w80% h60%)에 대략적인 사진
+function buildVisual(c) {
+  const v = el('div', 'cv');
+  const ref = isRef(c);
+  if (ref && S.frame) { v.classList.add('has-frame'); const f = el('img', 'frame'); f.src = S.frame; f.alt = ''; v.append(f); }
+  if (!c.img) v.append(el('div', 'ph', '그림 없음'));
+  else { const i = el('img', ref && S.frame ? 'slot' : 'full'); i.src = c.img; i.alt = ''; v.append(i); }
+  v.append(el('span', 'kind-tag ' + (ref ? 'ref' : 'design'), ref ? '참고 이미지' : '시안'));
+  return v;
+}
+function renderCards() {
+  if (!S.cards.some(c => c.id === SEL)) SEL = S.cards[0].id;
+  const grid = $('#cardGrid'); grid.textContent = '';
+  grid.style.setProperty('--cols', Math.ceil((S.cards.length + 1) / 2));   // 몇 장이든 2줄 안에(+ 장 추가 칸 포함)
+  S.cards.forEach((c, i) => grid.append(buildTile(c, i)));
+  const a = el('button', 'tile add', '+ 장 추가'); a.type = 'button'; a.onclick = addCard; grid.append(a);
+  renderFrameCtl(); renderEditor(); renderHead();
+}
+function selectCard(id) {
+  SEL = id;
+  document.querySelectorAll('#cardGrid .tile').forEach(t => t.classList.toggle('sel', t.dataset.id === id));
+  renderEditor();
+}
+function fillTileText(t, c) {
+  const one = (node, text, empty) => { node.textContent = text || empty; node.classList.toggle('none', !text); };
+  one(t.querySelector('.tt'), c.sub.replace(/\n/g, ' '), c.cover ? '(표지 제목)' : '(제목 없음)');
+  one(t.querySelector('.tb'), c.detail, '(내용 없음)');
+  one(t.querySelector('.ti'), c.desc ? '이미지 · ' + c.desc.replace(/\n/g, ' ') : '', '이미지 · (설명 없음)');
+  t.title = `${cardName(c)}\n${c.sub}\n${c.detail}\n이미지: ${c.desc}`;
+}
+const dropAfter = (t, e) => { const r = t.getBoundingClientRect(); return e.clientX > r.left + r.width / 2; };
+function clearDrop() { document.querySelectorAll('.drop-before,.drop-after').forEach(x => x.classList.remove('drop-before', 'drop-after')); }
+function buildTile(c, i) {
+  const t = el('button', 'tile' + (c.id === SEL ? ' sel' : '')); t.type = 'button'; t.dataset.id = c.id;
+  t.append(el('div', 'tn', c.cover ? '표지' : `${i + 1}`));
+  const th = el('div', 'thumb'); th.append(buildVisual(c)); t.append(th);
+  t.append(el('div', 'tt'), el('div', 'tb'), el('div', 'ti'));
+  fillTileText(t, c);
+  t.onclick = () => selectCard(c.id);
+  if (!c.cover) {
+    t.draggable = true;
+    t.addEventListener('dragstart', e => { t.classList.add('dragging'); e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; });
+    t.addEventListener('dragend', () => { t.classList.remove('dragging'); clearDrop(); });
+  }
+  t.addEventListener('dragover', e => {
+    e.preventDefault(); clearDrop();
+    if (!c.cover && !e.dataTransfer.types.includes('Files')) t.classList.add(dropAfter(t, e) ? 'drop-after' : 'drop-before');
+  });
+  t.addEventListener('drop', e => {
+    e.preventDefault(); clearDrop();
+    const f = imagesOf(e.dataTransfer.files)[0];
+    if (f) { setCardImage(c, f); return; }            // 그림 파일을 장 위에 놓으면 그 장의 그림으로
+    const from = S.cards.findIndex(x => x.id === e.dataTransfer.getData('text/plain'));
+    if (from < 1 || c.cover) return;
+    let to = S.cards.indexOf(c) + (dropAfter(t, e) ? 1 : 0);
+    if (from < to) to--;
+    moveCard(from, Math.max(1, to));
+  });
+  return t;
+}
+function renderFrameCtl() {
+  const box = $('#frameCtl'); box.textContent = '';
+  box.append(el('b', null, '속지 틀'));
+  if (S.frame) { const i = el('img'); i.src = S.frame; i.alt = '속지 틀'; box.append(i); } else box.append(el('span', 'none'));
+  const b1 = el('button', 'btn', S.frame ? '틀 바꾸기' : '틀 넣기'); b1.onclick = () => { $('#framePick').value = ''; $('#framePick').click(); };
+  box.append(b1);
+  if (S.frame) { const b2 = el('button', 'btn', '틀 빼기'); b2.onclick = () => { S.frame = null; S.frameId = null; renderCards(); save(); }; box.append(b2); }
+  box.append(el('span', 'hint', '글자 자리를 비워 둔 속지 디자인입니다. 넣어 두면 \'참고 이미지\' 장은 이 틀 위에 사진을 올려 보여 줍니다.'));
+}
+const PH = {
+  sub: ['예) 버거 치킨불고기 이거 못참습니다', '예) 통다리살 치킨 패티'],
+  detail: ['예) @@이런 신메뉴 오랜만이야', '예) 닭다리살 육즙 제대로 터지고, 식감 하나로 바로 정착 가능!'],
+  desc: ['예) 매장 앞에서 제품을 두 손으로 든 컷', '예) 버거를 반으로 갈라 패티 단면을 보여주는 컷 (클로즈업)'],
+};
+function renderEditor() {
+  const box = $('#cardEditor'); box.textContent = '';
+  const idx = S.cards.findIndex(c => c.id === SEL), c = S.cards[idx];
+  if (!c) return;
+  box.dataset.id = c.id;
+  const L = labelOf(c);
+
+  // 왼쪽: 그림
+  const left = el('div', 'ed-prev');
+  const vis = buildVisual(c); left.append(vis);
+  vis.addEventListener('dragover', e => { e.preventDefault(); vis.classList.add('dropping'); });
+  vis.addEventListener('dragleave', () => vis.classList.remove('dropping'));
+  vis.addEventListener('drop', e => { e.preventDefault(); vis.classList.remove('dropping'); const f = imagesOf(e.dataTransfer.files)[0]; if (f) setCardImage(c, f); });
+  const tools = el('div', 'ed-tools');
+  const r1 = el('div', 'row');
+  const bImg = el('button', 'btn', c.img ? '그림 바꾸기' : '그림 넣기'); bImg.onclick = () => pickImage(c); r1.append(bImg);
+  if (c.img) { const bx = el('button', 'btn', '빼기'); bx.onclick = () => { c.img = null; c.imgId = null; renderCards(); save(); }; r1.append(bx); }
+  if (!c.cover) {
+    const seg = el('span', 'seg');
+    [['design', '시안'], ['ref', '참고 이미지']].forEach(([k, label]) => {
+      const b = el('button', c.kind === k ? 'on' : '', label); b.type = 'button';
+      b.title = k === 'design' ? '포토샵으로 만든 시안 그림' : '속지 틀 위에 대략적인 사진만 올린 장';
+      b.onclick = () => { c.kind = k; renderCards(); save(); };
+      seg.append(b);
+    });
+    r1.append(seg);
+  }
+  tools.append(r1, el('div', null, isRef(c) ? (S.frame ? '참고 사진은 속지 틀의 사진 자리에 올라갑니다 · 끌어다 놓기 · Ctrl+V' : '참고 사진 · 위에서 속지 틀을 넣으면 틀 위에 올라갑니다') : '시안 그림 · 끌어다 놓기 · Ctrl+V'));
+  left.append(tools);
+
+  // 오른쪽: 글
+  const right = el('div', 'ed-body');
+  const head = el('div', 'ed-head');
+  head.append(el('span', 'num', c.cover ? '표지' : `속지 (${idx + 1})`));
+  if (c.cover) head.append(el('span', 'badge fixed', '맨 앞 고정'));
+  const nav = el('span', 'nav');
+  const pv = el('button', 'btn', '‹ 이전 장'); pv.disabled = idx === 0; pv.onclick = () => selectCard(S.cards[idx - 1].id);
+  const nx = el('button', 'btn', '다음 장 ›'); nx.disabled = idx === S.cards.length - 1; nx.onclick = () => selectCard(S.cards[idx + 1].id);
+  nav.append(pv, nx); head.append(nav);
+  right.append(head);
+  TXT.forEach(f => {
+    const fd = el('div', 'field');
+    const lb = el('label'); lb.append(el('b', null, L[f]), c.cover ? '' : ` — ${FIELD_HINT[f]}`); fd.append(lb);
+    const ta = el('textarea'); ta.rows = f === 'detail' ? 3 : f === 'desc' ? 2 : 1; ta.value = c[f]; ta.classList.add('grow');
+    ta.placeholder = PH[f][c.cover ? 0 : 1];
+    ta.addEventListener('input', () => {
+      c[f] = ta.value; grow(ta);
+      const t = document.querySelector(`#cardGrid .tile[data-id="${c.id}"]`); if (t) fillTileText(t, c);
+      save();
+    });
+    fd.append(ta); right.append(fd);
+  });
+  if (!c.cover) {
+    const act = el('div', 'card-actions');
+    const del = el('button', 'btn', '이 장 삭제'); del.onclick = () => deleteCard(c);
+    const mv = el('span', 'mv');
+    const l = el('button', 'btn', '◀ 앞으로'); l.disabled = idx <= 1; l.onclick = () => moveCard(idx, idx - 1);
+    const r = el('button', 'btn', '뒤로 ▶'); r.disabled = idx >= S.cards.length - 1; r.onclick = () => moveCard(idx, idx + 1);
+    mv.append(l, r); act.append(del, mv);
+    right.append(act);
+  }
+  box.append(left, right);
+  requestAnimationFrame(() => box.querySelectorAll('textarea.grow').forEach(grow));
+}
+function grow(t) { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
+function addCard() {
+  const c = newCard('ref'); S.cards.push(c); SEL = c.id; renderCards(); save();
+  $('#cardEditor textarea')?.focus();
+  toast(`속지 (${S.cards.length})을 추가했습니다`);
+}
+function deleteCard(c) {
+  if (c.cover) return;
+  if ((c.sub || c.detail || c.desc || c.img) && !confirm(`${cardName(c)}을 삭제할까요?`)) return;
+  const i = S.cards.indexOf(c);
+  S.cards.splice(i, 1); SEL = S.cards[Math.min(i, S.cards.length - 1)].id;
+  renderCards(); save(); toast('장을 삭제했습니다');
+}
+function moveCard(from, to) {
+  if (to < 1 || to >= S.cards.length || from === to) return;
+  const [c] = S.cards.splice(from, 1); S.cards.splice(to, 0, c);
+  SEL = c.id; renderCards(); save(); toast(`${to + 1}번째 장으로 옮겼습니다`);
+}
+async function setCardImage(c, file) {
+  if (!c || !file) return;
+  c.img = await fitStore(await fileToDataURL(file)); c.imgId = 'i' + uid();
+  SEL = c.id; renderCards(); save(); toast(`${cardName(c)} 그림을 넣었습니다`);
+}
+async function setFrame(file) {
+  if (!file) return;
+  S.frame = await fitStore(await fileToDataURL(file)); S.frameId = 'r' + uid();
+  renderCards(); save(); toast('속지 틀을 넣었습니다');
+}
+let pickFor = null;
+function pickImage(c) { pickFor = c; $('#cardPick').value = ''; $('#cardPick').click(); }
+$('#cardPick').addEventListener('change', e => setCardImage(pickFor, e.target.files[0]));
+$('#framePick').addEventListener('change', e => setFrame(e.target.files[0]));
+
+// ───────── 붙여넣기: 마지막으로 누른 곳으로 (고른 장 / 속지 틀 / 소구포인트) ─────────
+let pasteTarget = 'card';
+['pointerdown', 'focusin'].forEach(t => document.addEventListener(t, e => {
+  const x = e.target.closest?.('#cardEditor, #cardGrid, #frameCtl, #briefSection');
+  if (!x) return;
+  pasteTarget = x.id === 'briefSection' ? 'brief' : x.id === 'frameCtl' ? 'frame' : 'card';
+}, true));
+document.addEventListener('paste', e => {
+  if (VIEW) return;
+  const files = imagesOf(e.clipboardData?.files);
+  if (!files.length) return;
+  e.preventDefault();
+  if (pasteTarget === 'brief') addBriefFiles(files);
+  else if (pasteTarget === 'frame') setFrame(files[0]);
+  else setCardImage(S.cards.find(c => c.id === SEL), files[0]);
+});
+
+// ───────── 날짜·파일 이름 ─────────
+function dateKo(withTime) {
+  if (!S.info.date) return '(발행일 미정)';
+  const [y, m, d] = S.info.date.split('-').map(Number);
+  const w = WD[new Date(y, m - 1, d).getDay()];
+  let s = `${y}년 ${pad(m)}월 ${pad(d)}일 (${w})`;
+  if (withTime && S.info.time) { const [hh, mm] = S.info.time.split(':'); s += ` ${+hh}시${+mm ? ' ' + +mm + '분' : ''}`; }
+  return s;
+}
+function fileBase() {
+  const d = new Date();
+  return `(${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}) [콘티] ${(S.info.title || '카드뉴스').replace(/[\\/:*?"<>|]/g, ' ')} (카드뉴스)_${S.info.version || 'v1'}`;
+}
+function contiFileName() { return fileBase() + '.pptx'; }
+
+// ───────── 저장 파일 ─────────
+function exportJson() {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(S)], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = fileBase() + '.conti.json'; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast('저장 파일을 받았습니다');
+}
+$('#jsonPick').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d || !Array.isArray(d.cards) || !d.info) throw new Error('카드뉴스 콘티 저장 파일이 아닙니다');
+    S = normalize(d);
+    delete S.cal; applyCalendar(await calendarInfo());   // 달력에서 연 콘티면 달력 정보를 다시 입힌다
+    SEL = S.cards[0].id; renderAll(); save(); closeM(mFile); toast('저장 파일을 열었습니다');
+  } catch (err) { alert('열지 못했습니다: ' + err.message); }
+});
+function startNew() {
+  if (!confirm('지금 내용을 비우고 새 콘티를 시작할까요? (저장 파일을 받아 두지 않았다면 지금 내용은 사라집니다)')) return;
+  if (FBX && !CID) { location.href = location.pathname; return; }   // 서버 모드: 새 콘티는 새 주소로
+  S = blank(); calendarInfo().then(h => { applyCalendar(h); SEL = S.cards[0].id; renderAll(); save(); }); closeM(mFile); toast('새 콘티를 시작합니다');
+}
+
+// ───────── PPT 받기 ─────────
+// 글꼴: 제목 = 나눔스퀘어 네오 Bold, 본문 = 나눔스퀘어라운드 Regular. 둘 다 '편집 가능 포함'(fsType 8) 글꼴.
+//   PPT 안에 글꼴을 넣어 글꼴 없는 PC 에서도 같은 모양으로 보이게 한다.
+//   PowerPoint 는 자기 압축(MTX) EOT 만 실제로 쓴다 — 직접 만든 비압축 EOT 는 무시됨(기울인 시험 글꼴로 확인).
+//   그래서 PowerPoint 로 한 번 만든 '글꼴 전체' EOT(fonts/fonts.js)를 매번 그대로 끼워 넣는다. 이후 PowerPoint 불필요.
+//   G마켓 산스 같은 '인쇄 전용'(fsType 4) 글꼴은 넣으면 글꼴 없는 PC 에서 파일 전체 편집·저장이 막힌다. 쓰지 말 것.
+const PPTX_SRC = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+const JSZIP_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+const FONTS_SRC = 'fonts/fonts.js';
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('불러오기 실패: ' + src)); document.head.append(s); });
+}
+function loadImg(src) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('사진을 읽지 못했습니다')); i.src = src; });
+}
+function drawCoverFit(ctx, img, x, y, w, h) {
+  const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+  const sw = w / s, sh = h / s;
+  ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+}
+function drawContain(ctx, img, x, y, w, h) {
+  const s = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+  const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+// 제목·장 번호·라벨 = 나눔스퀘어 네오 Bold, 본문 = 나눔스퀘어라운드 Regular.
+// Bold 는 글꼴 자체가 굵은 것이므로 bold 속성을 따로 켜지 않는다 (켜면 PowerPoint 가 한 번 더 두껍게 만든다).
+const PPT = {
+  head: 'NanumSquare Neo Bold', body: 'NanumSquareRound Regular',
+  ink: '1F1E1D', muted: '7A756D', band: 'FFF1C9', brand: 'FFB020', blue: '2F6FDE',
+  footer: 'Confidential © 2026 ㈜노잉커뮤니케이션즈. All rights reserved',
+};
+const HEAD = { fontFace: PPT.head, lang: 'ko-KR' };
+const BODY = { fontFace: PPT.body, lang: 'ko-KR' };
+function addFooter(s) {
+  s.addText(PPT.footer, { ...BODY, x: 6.3, y: 7.1, w: 6.85, h: 0.3, align: 'right', fontSize: 9, color: 'A39D92', margin: 0 });
+}
+function pptFrame(pptx, title, sectionTitle) {
+  const s = pptx.addSlide(); s.background = { color: 'FFFFFF' };
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.5, fill: { color: PPT.band }, line: { color: PPT.band } });
+  s.addText(title, { ...BODY, x: 0, y: 0, w: 13.333, h: 0.5, align: 'center', valign: 'middle', fontSize: 14, color: PPT.ink });
+  if (sectionTitle) {
+    s.addShape(pptx.ShapeType.rect, { x: 0.45, y: 0.78, w: 0.08, h: 0.36, fill: { color: PPT.brand }, line: { color: PPT.brand } });
+    s.addText(sectionTitle, { ...HEAD, x: 0.62, y: 0.72, w: 9, h: 0.48, fontSize: 19, color: PPT.ink, margin: 0, valign: 'middle' });
+  }
+  addFooter(s);
+  return s;
+}
+const raw = d => d.replace(/^data:/, '');
+function hashRuns(text, size) {
+  const runs = [];
+  text.split('\n').forEach((line, li, arr) => {
+    const parts = line.split(/(#[^\s#]+|@[\w.]+)/).filter(p => p !== '');
+    if (!parts.length) parts.push(' ');
+    parts.forEach((p, pi) => runs.push({ text: p, options: { color: /^[#@]/.test(p) ? PPT.blue : PPT.ink, fontSize: size, breakLine: pi === parts.length - 1 && li < arr.length - 1 } }));
+  });
+  return runs;
+}
+
+
+// 메모(노트) 화면을 통째로 뺀다. 남겨 두면 고객사가 PowerPoint 로 다시 저장할 때 메모용 화면을 기본 설정으로
+// 다시 만들면서 맑은 고딕 전체(6MB×2)를 파일에 넣는다 (2.3MB → 14.8MB, 실측). 콘티는 메모를 쓰지 않는다.
+async function stripNotes(zip) {
+  const isNotes = n => /^ppt\/(notesSlides|notesMasters)\//.test(n);
+  Object.keys(zip.files).filter(isNotes).forEach(n => zip.remove(n));
+  const pres = await zip.file('ppt/presentation.xml').async('string');
+  zip.file('ppt/presentation.xml', pres.replace(/<p:notesMasterIdLst>[\s\S]*?<\/p:notesMasterIdLst>/, ''));
+  const ct = await zip.file('[Content_Types].xml').async('string');
+  zip.file('[Content_Types].xml', ct.replace(/<Override PartName="\/ppt\/(notesSlides|notesMasters)\/[^"]+"[^>]*\/>/g, ''));
+  for (const n of Object.keys(zip.files).filter(n => n.endsWith('.rels'))) {
+    const r = await zip.file(n).async('string');
+    const r2 = r.replace(/<Relationship [^>]*Target="[^"]*(notesSlide|notesMaster)[^"]*"[^>]*\/>/g, '');
+    if (r2 !== r) zip.file(n, r2);
+  }
+}
+// PptxGenJS 결과(zip)에 글꼴을 넣는다 — 등록 정보(panose·슬롯)는 PowerPoint 가 쓴 그대로
+async function embedFonts(buf) {
+  if (!window.JSZip) await loadScript(JSZIP_SRC);
+  if (!window.NOING_FONTS) await loadScript(FONTS_SRC);
+  const faces = [PPT.head, PPT.body].map(f => [f, NOING_FONTS[f]]);
+  const zip = await JSZip.loadAsync(buf);
+  await stripNotes(zip);
+  let pres = await zip.file('ppt/presentation.xml').async('string');
+  if (!/<p:notesSz\b[^>]*\/>/.test(pres)) throw new Error('PPT 구조가 예상과 달라 글꼴을 넣지 못했습니다');
+  const items = faces.map(([f, d], i) => `<p:embeddedFont><p:font typeface="${f}" ${d.attrs}/><p:${d.slot} r:id="rIdNF${i + 1}"/></p:embeddedFont>`).join('');
+  pres = pres.replace(/(<p:notesSz\b[^>]*\/>)/, `$1<p:embeddedFontLst>${items}</p:embeddedFontLst>`);
+  // 글꼴 전체를 넣는다(고객사가 고쳐 저장할 때 새 글자도 이 글꼴로) — PowerPoint '모든 문자 포함' 과 같음
+  pres = pres.replace(/\s?saveSubsetFonts="1"/, '').replace('<p:presentation ', '<p:presentation embedTrueTypeFonts="1" ');
+  zip.file('ppt/presentation.xml', pres);
+  // 테마의 한글 기본 글꼴(ea·Hang)이 '맑은 고딕'으로 남아 있으면 고객사가 PowerPoint 로 다시 저장할 때
+  // 맑은 고딕 전체(6MB×2)가 따라 들어간다 → 테마도 나눔 글꼴로 맞춘다
+  for (const name of Object.keys(zip.files).filter(n => /^ppt\/theme\/theme\d+\.xml$/.test(n))) {
+    let th = await zip.file(name).async('string');
+    for (const [blk, face] of [['majorFont', PPT.head], ['minorFont', PPT.body]]) {
+      // 블록 안에서만 바꾼다 (major/minor 각각). 정규식 리터럴 대신 문자열 조작 — 템플릿 문자열의 \s 가 s 로 바뀌는 함정 회피
+      const a = th.indexOf(`<a:${blk}>`), b = th.indexOf(`</a:${blk}>`, a);
+      if (a < 0 || b < 0) continue;
+      const part = th.slice(a, b)
+        .replace(/<a:ea typeface="[^"]*"/, `<a:ea typeface="${face}"`)
+        .replace(/<a:font script="Hang" typeface="[^"]*"/, `<a:font script="Hang" typeface="${face}"`);
+      th = th.slice(0, a) + part + th.slice(b);
+    }
+    zip.file(name, th);
+  }
+  let rels = await zip.file('ppt/_rels/presentation.xml.rels').async('string');
+  rels = rels.replace('</Relationships>', faces.map((_, i) =>
+    `<Relationship Id="rIdNF${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font${i + 1}.fntdata"/>`).join('') + '</Relationships>');
+  zip.file('ppt/_rels/presentation.xml.rels', rels);
+  let ct = await zip.file('[Content_Types].xml').async('string');
+  if (!/Extension="fntdata"/.test(ct)) ct = ct.replace('<Default ', '<Default Extension="fntdata" ContentType="application/x-fontdata"/><Default ');
+  zip.file('[Content_Types].xml', ct);
+  faces.forEach(([, d], i) => zip.file(`ppt/fonts/font${i + 1}.fntdata`, d.b64, { base64: true, createFolders: false }));
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+}
+async function buildPptxBytes() {
+  const pptx = await buildPptx();
+  return embedFonts(await pptx.write({ outputType: 'arraybuffer' }));
+}
+
+async function downloadPptx(btn) {
+  if (btn) btn.disabled = true;
+  toast('PPT를 만드는 중입니다…');
+  try {
+    const bytes = await buildPptxBytes();
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
+    const a = document.createElement('a'); a.href = url; a.download = contiFileName(); document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast('PPT를 내려받았습니다');
+  } catch (e) { console.error(e); toast('PPT를 만들지 못했습니다: ' + e.message); }
+  finally { if (btn) btn.disabled = false; }
+}
+
+
+
+// 그림을 정해진 비율로 잘라 넣기 (PPT 칸에 맞춤)
+async function coverImage(url, W, H) {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d'); g.fillStyle = '#ece8df'; g.fillRect(0, 0, W, H);
+  if (url) drawCoverFit(g, await loadImg(url), 0, 0, W, H);
+  else { g.fillStyle = '#7a756d'; g.font = `600 ${Math.round(W / 14)}px "Pretendard Variable","Malgun Gothic",sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('사진 없음', W / 2, H / 2); }
+  return raw(cv.toDataURL('image/jpeg', 0.86));
+}
+async function containBox(url, w, h) {
+  const im = await loadImg(url);
+  const k = Math.min(w / im.naturalWidth, h / im.naturalHeight);
+  return { w: im.naturalWidth * k, h: im.naturalHeight * k };
+}
+
+const RC = { band: 'FFE699', accent: 'FFC000', panel: 'FFD966', panelLine: '41719C', red: 'FF0000', hl: 'FFFF00' };
+function reelsFrame(pptx, title, opt = {}) {
+  const s = pptx.addSlide(); s.background = { color: 'FFFFFF' };
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.49, fill: { color: RC.band }, line: { color: RC.band } });
+  if (opt.bandText) s.addText(opt.bandText, { ...BODY, x: 4.67, y: 0.06, w: 4.0, h: 0.35, align: 'center', fontSize: 15, color: PPT.ink, margin: 0 });
+  if (opt.bandNote) s.addText(opt.bandNote, { ...BODY, x: 7.6, y: 0.04, w: 5.55, h: 0.4, align: 'right', fontSize: 14, color: RC.red, margin: 0 });
+  const ty = opt.titleY ?? 0.6;
+  s.addShape(pptx.ShapeType.rect, { x: 0.47, y: ty + 0.02, w: 0.1, h: 0.37, fill: { color: RC.accent }, line: { color: RC.accent } });
+  s.addText(title, { ...HEAD, x: 0.62, y: ty, w: 11.9, h: 0.4, fontSize: 18, color: PPT.ink, margin: 0, valign: 'middle' });
+  addFooter(s);
+  return s;
+}
+// 기존 콘티 표기: 2026년 07월23일 15시
+function dateOld() {
+  if (!S.info.date) return '(발행일 미정)';
+  const [y, m, d] = S.info.date.split('-');
+  let t = `${y}년 ${m}월${d}일`;
+  if (S.info.time) { const [hh, mm] = S.info.time.split(':'); t += ` ${+hh}시${+mm ? ' ' + +mm + '분' : ''}`; }
+  return t;
+}
+// 카드 한 장을 4:5 그림으로 (화면의 buildVisual 과 같은 배치. 시안/참고 표시는 넣지 않는다)
+async function renderCardImage(c, W = 720, q = 0.88) {
+  const H = Math.round(W * 1.25);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#ece8df'; ctx.fillRect(0, 0, W, H);
+  const ref = isRef(c) && S.frame;
+  const slot = ref ? [W * 0.10, H * 0.08, W * 0.80, H * 0.60] : [W * 0.06, H * 0.06, W * 0.88, H * 0.88];
+  if (ref) drawCoverFit(ctx, await loadImg(S.frame), 0, 0, W, H);
+  if (c.img) {
+    const im = await loadImg(c.img);
+    if (ref) drawContain(ctx, im, ...slot); else drawCoverFit(ctx, im, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(...slot);
+    ctx.setLineDash([W / 72, W / 90]); ctx.lineWidth = Math.max(1, W / 240); ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.strokeRect(...slot);
+    ctx.fillStyle = '#7a756d'; ctx.font = `600 ${Math.round(W / 21)}px "Pretendard Variable","Malgun Gothic",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('그림 자리', slot[0] + slot[2] / 2, slot[1] + slot[3] / 2);
+  }
+  return cv.toDataURL('image/jpeg', q);
+}
+// 멘션: #태그·@계정은 기존 콘티처럼 하늘색
+function mentionRuns(text, size) {
+  const runs = [];
+  text.split('\n').forEach((line, li, arr) => {
+    const parts = line.split(/(#[^\s#]+|@[\w.]+)/).filter(p => p !== '');
+    if (!parts.length) parts.push(' ');
+    parts.forEach((p, pi) => runs.push({ text: p, options: { color: /^[#@]/.test(p) ? '00B0F0' : '000000', fontSize: size, breakLine: pi === parts.length - 1 && li < arr.length - 1 } }));
+  });
+  return runs;
+}
+
+// 기존 카드뉴스 콘티(예: 텐퍼센트커피 커스텀 레시피 v1, 칠성사이다 RICH v2)와 같은 모양·위치·글자 크기
+//  1 회사 표지 / 2 제작(서비스명·채널·일정 + 콘텐츠 방식 + 소구포인트) / 3 표지 디자인(인스타 게시물 모양) + 멘션
+//  4~ 속지 3장씩(그림 + 콘텐츠 내용·이미지 내용) / 마지막 감사합니다
+//  (기존 콘티는 속지 장의 Confidential 줄이 위 띠에 붙어 있었다 — 템플릿 실수라 다른 장처럼 아래에 둔다)
+async function buildPptx() {
+  if (!window.PptxGenJS) await loadScript(PPTX_SRC);
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+  pptx.theme = { headFontFace: PPT.head, bodyFontFace: PPT.body };
+  const NAME = S.info.title || '(서비스명)', cover = S.cards[0], inner = S.cards.slice(1);
+  pptx.title = `[콘티] ${NAME} (카드뉴스)`; pptx.company = '노잉커뮤니케이션즈';
+  const pics = {};   // 카드 그림은 한 번만 그린다
+  for (const c of S.cards) pics[c.id] = raw(await renderCardImage(c, 900));
+  let s;
+
+  // 1. 회사 표지
+  s = pptx.addSlide(); s.background = { color: 'FFFFFF' };
+  s.addImage({ data: raw(IMG.reelsCover), x: 3.17, y: 1.31, w: 7.0, h: 4.45 });
+  addFooter(s);
+
+  // 2. 카드뉴스 광고 콘텐츠 제작(1)
+  s = reelsFrame(pptx, '카드뉴스 광고 콘텐츠 제작(1)', { bandText: '자취생으로 살아남기 콘텐츠 제작 콘티', titleY: 0.85 });
+  const line = (y, label, value, vs) => s.addText([{ text: label, options: { ...HEAD, fontSize: 16 } }, { text: value, options: vs === 16 ? { ...HEAD, fontSize: 16 } : { fontSize: vs } }],
+    { ...BODY, x: 1.18, y, w: 10.54, h: 0.4, color: PPT.ink, margin: 0, valign: 'middle' });
+  line(1.46, '서비스명 (제품명):  ', NAME, 16);
+  line(1.81, '발행채널 : ', S.info.channel, 12);
+  line(2.16, '발행일정 : ', dateOld(), 12);
+  s.addShape(pptx.ShapeType.rect, { x: 0.47, y: 2.73, w: 0.1, h: 0.37, fill: { color: RC.accent }, line: { color: RC.accent } });
+  s.addText('콘텐츠 구성 (영상 / 사진)', { ...HEAD, x: 0.62, y: 2.71, w: 11.9, h: 0.4, fontSize: 18, color: PPT.ink, margin: 0, valign: 'middle' });
+  s.addText([
+    { text: '콘텐츠 방식 : ', options: { ...HEAD, fontSize: 16 } },
+    { text: `바이럴 콘텐츠 제작 방식으로, ‘자취생으로 살아남기’ 톤앤매너에 맞춘 형태의 콘텐츠를 제작합니다. 카드뉴스(사진) 콘텐츠의 경우 표지 1장과 속지 ${inner.length}장을 기존 ‘자취생으로 살아남기’가 만들어왔던 콘텐츠 레퍼런스를 참고로 제작하게 됩니다.`, options: { fontSize: 14 } },
+  ], { ...BODY, x: 1.18, y: 3.18, w: 10.89, h: 1.2, color: PPT.ink, margin: 0, valign: 'top', lineSpacingMultiple: 1.3 });
+  s.addText('콘텐츠 소구포인트 :', { ...HEAD, x: 1.18, y: 4.45, w: 2.3, h: 0.4, fontSize: 16, color: PPT.ink, margin: 0 });
+  {
+    const shots = S.briefFiles.filter(f => f.image), others = S.briefFiles.filter(f => !f.image);
+    const ax = 3.49, ay = 4.45, aw = 9.3, ah = others.length ? 2.3 : 2.55, gap = 0.2;
+    if (shots.length) {
+      const sw = (aw - gap * (shots.length - 1)) / shots.length;
+      let x = ax;
+      for (const f of shots) { const b = await containBox(f.url, sw, ah); s.addImage({ data: raw(f.url), x, y: ay, w: b.w, h: b.h }); x += b.w + gap; }
+    } else if (S.brief.length) {
+      s.addText(S.brief.map((t, i, a) => ({ text: t, options: { breakLine: i < a.length - 1 } })), { ...BODY, x: ax, y: ay + 0.05, w: aw, h: ah, fontSize: 12, color: PPT.ink, valign: 'top', margin: 0, fit: 'shrink' });
+    }
+    if (others.length) s.addText('첨부 원본: ' + others.map(f => f.name).join(', '), { ...BODY, x: ax, y: 6.8, w: aw, h: 0.28, fontSize: 10, color: PPT.muted, margin: 0 });
+  }
+
+  // 3. 표지 디자인 + 멘션 (카드뉴스 광고 콘텐츠 콘티(1))
+  s = reelsFrame(pptx, '카드뉴스 광고 콘텐츠 콘티(1)', { bandNote: '표지와 속지 디자인의 레퍼런스 입니다. (디자인 확인)' });
+  const account = (/one_home_\w+/.exec(S.info.channel || '') || ['one_home_life'])[0];
+  s.addText(account === 'one_home_life' ? '<라이프 표지 디자인>' : '<표지 디자인>', { ...HEAD, x: 1.27, y: 1.12, w: 2.8, h: 0.43, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
+  // 인스타그램 게시물 모양: 머리(프로필·계정) + 표지 4:5
+  s.addShape(pptx.ShapeType.rect, { x: 0.89, y: 1.58, w: 3.78, h: 5.26, fill: { color: 'FFFFFF' }, line: { color: 'DBDBDB', width: 0.75 } });
+  s.addImage({ data: raw(IMG.logo), x: 1.0, y: 1.66, w: 0.3, h: 0.3 });
+  s.addText(account, { ...BODY, x: 1.38, y: 1.62, w: 2.6, h: 0.38, fontSize: 11, color: '262626', margin: 0, valign: 'middle' });
+  s.addText('⋮', { ...BODY, x: 4.3, y: 1.62, w: 0.3, h: 0.38, fontSize: 14, color: '262626', margin: 0, align: 'center', valign: 'middle' });
+  s.addImage({ data: pics[cover.id], x: 0.89, y: 2.04, w: 3.78, h: 4.725 });
+  s.addText('<멘션 텍스트>', { ...HEAD, x: 5.41, y: 1.14, w: 2.0, h: 0.44, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
+  const ment = [S.caption.mention.trim(), S.caption.account.trim(), S.caption.tags.trim()].filter(Boolean).join('\n');
+  const coverTx = TXT.filter(k => cover[k].trim());
+  s.addText([...(ment ? mentionRuns(ment, 10.5) : [{ text: '(멘션 텍스트)', options: { color: PPT.muted, fontSize: 10.5 } }]),
+    { text: '', options: { breakLine: true } }, { text: ' ', options: { breakLine: true } },   // 기존 콘티처럼 한 줄 띄우고 빨간 안내
+    { text: '⭐#광고 포함 태그 최대 5개 검토 / 계정 태그 여부', options: { color: RC.red, fontSize: 10.5, breakLine: false } }],
+  { ...BODY, x: 6.08, y: 1.63, w: 6.1, h: coverTx.length ? 3.0 : 5.0, valign: 'top', margin: 0, lineSpacingMultiple: 1.2, fit: 'shrink' });
+  if (coverTx.length) {
+    s.addText('<표지 문구>', { ...HEAD, x: 5.41, y: 4.85, w: 2.0, h: 0.44, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
+    s.addText(coverTx.flatMap((k, i, a) => [{ text: COVER_LABEL[k] + '  ', options: { ...HEAD } }, { text: cover[k].replace(/\n/g, ' / '), options: { breakLine: i < a.length - 1 } }]),
+      { ...BODY, x: 6.08, y: 5.32, w: 6.1, h: 1.55, fontSize: 11, color: PPT.ink, valign: 'top', margin: 0, lineSpacingMultiple: 1.2, fit: 'shrink' });
+  }
+
+  // 4~. 속지 3장씩 (카드뉴스 광고 콘텐츠 콘티(2)~)
+  const XS = [0.47, 4.6, 8.73];
+  for (let p = 0, page = 2; p < inner.length; p += 3, page++) {
+    s = reelsFrame(pptx, `카드뉴스 광고 콘텐츠 콘티(${page})`);
+    inner.slice(p, p + 3).forEach((c, j) => {
+      const n = S.cards.indexOf(c) + 1, X = XS[j], tx = X - 0.15;
+      s.addText(`속지(${n})`, { ...HEAD, x: X, y: 1.08, w: 2.0, h: 0.42, fontSize: 14, color: PPT.ink, margin: 0, valign: 'middle' });
+      s.addImage({ data: pics[c.id], x: X, y: 1.5, w: 2.8, h: 3.5 });
+      s.addText('콘텐츠 내용', { ...HEAD, x: tx, y: 5.08, w: 2.0, h: 0.36, fontSize: 14, color: PPT.ink, margin: 0 });
+      const body = [c.sub.trim(), c.detail.trim()].filter(Boolean).join('\n');
+      s.addText(body || '(작성 전)', { ...BODY, x: tx, y: 5.44, w: 4.0, h: 0.84, fontSize: 11, color: body ? PPT.ink : PPT.muted, valign: 'top', margin: 0, lineSpacingMultiple: 1.1, fit: 'shrink' });
+      s.addText('이미지 내용', { ...HEAD, x: tx, y: 6.3, w: 2.0, h: 0.34, fontSize: 14, color: PPT.ink, margin: 0 });
+      s.addText(c.desc.trim() || '(작성 전)', { ...BODY, x: tx, y: 6.64, w: 3.95, h: 0.42, fontSize: 11, color: c.desc.trim() ? PPT.ink : PPT.muted, valign: 'top', margin: 0, lineSpacingMultiple: 1.05, fit: 'shrink' });
+    });
+  }
+
+  // 마지막: 감사합니다
+  s = pptx.addSlide(); s.background = { color: 'FFFFFF' };
+  s.addText('감사합니다.', { ...HEAD, x: 0, y: 3.35, w: 13.333, h: 0.8, align: 'center', fontSize: 24, color: PPT.ink, margin: 0 });
+  addFooter(s);
+  return pptx;
+}
+
+// ───────── 인스타로 보기 — 캐러셀(옆으로 넘기기) ─────────
+// 장마다 그림을 넘겨 보고, 아래에 그 장에 들어갈 글(제목·내용)을 보여 준다(참고 이미지 장은 그림에 글이 없으므로)
+let IGK = 0;
+const igAccount = () => (/one_home_\w+/.exec(S.info.channel || '') || ['one_home_life'])[0];
+function openInsta() {
+  const tr = $('#igTrack'); tr.textContent = '';
+  S.cards.forEach(c => { const s = el('div', 'ig-slide'); s.append(buildVisual(c)); tr.append(s); });
+  const dots = $('#igDots'); dots.textContent = '';
+  S.cards.forEach(() => dots.append(el('i')));
+  tr.onscroll = () => igMark(Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)));
+  $('#igName').textContent = igAccount();
+  const cap = $('#igCap'); cap.textContent = '';
+  cap.append(el('b', null, igAccount() + ' '));
+  const full = S.caption.mention.trim() + '\n\n' + [S.caption.tags.trim(), S.caption.account.trim()].filter(Boolean).join(' ');
+  full.split(/(#[^\s#]+|@[\w.]+)/).forEach(part => cap.append(/^[#@]/.test(part) ? el('span', 'hash', part) : document.createTextNode(part)));
+  openM(mInsta); tr.scrollLeft = 0; igMark(0);
+}
+function igMark(k) {
+  k = Math.max(0, Math.min(S.cards.length - 1, k));
+  if (k === IGK && $('#igCount').textContent) return;
+  IGK = k;
+  [...$('#igDots').children].forEach((d, i) => d.classList.toggle('on', i === k));
+  $('#igCount').textContent = `${k + 1}/${S.cards.length}`;
+  $('.ig-nav.prev').hidden = k === 0; $('.ig-nav.next').hidden = k === S.cards.length - 1;
+  const c = S.cards[k], n = $('#igNote'); n.textContent = '';
+  n.append(el('b', null, cardName(c, k) + (isRef(c) ? ' · 참고 이미지' : ' · 시안')));
+  const t = [c.sub.replace(/\n/g, ' ').trim(), c.detail.trim()].filter(Boolean).join('\n');
+  n.append(document.createTextNode(t ? '\n' + t : '\n(글 없음)'));
+}
+function igGo(d) {
+  const tr = $('#igTrack'), k = Math.max(0, Math.min(S.cards.length - 1, IGK + d));
+  igMark(k); tr.scrollTo({ left: k * tr.clientWidth, behavior: 'smooth' });
+}
+function closeInsta() { closeM(mInsta); $('#igCount').textContent = ''; }
+document.addEventListener('keydown', e => {
+  if ($('#mInsta').hidden) return;
+  if (e.key === 'ArrowRight') igGo(1); else if (e.key === 'ArrowLeft') igGo(-1);
+});
+
+// ───────── 카드뉴스 제작 안내 ─────────
+// 기존 카드뉴스 콘티 PPT 의 안내('표지와 속지 디자인의 레퍼런스 입니다', '#광고 포함 태그 최대 5개 검토 / 계정 태그 여부')를 글로 풀어 둔다
+// 굵게 = 'b', 빨간 글씨 = 'r'
+const CARD_NOTICE = [
+  [['표지와 속지 그림은', 'b'], [' 디자인 레퍼런스입니다. '], ['\'참고 이미지\'로 표시된 장', 'r'], ['은 속지 틀 위에 대략적인 사진만 올린 것으로, 제작 단계에서 실제 사진으로 바뀝니다.']],
+  [['해시태그는', 'b'], [' '], ['#광고를 포함해 최대 5개', 'r'], ['까지 넣습니다. 브랜드 계정 태그가 필요하시면 말씀해 주세요.']],
+];
+function noticeList() {
+  const ol = el('ol', 'notice-list');
+  CARD_NOTICE.forEach(seg => {
+    const li = el('li');
+    seg.forEach(([t, k]) => li.append(k ? el(k === 'b' ? 'b' : 'span', k === 'r' ? 'red' : null, t) : document.createTextNode(t)));
+    ol.append(li);
+  });
+  return ol;
+}
+function renderNotice() { const b = $('#noticeBox'); if (b) { b.textContent = ''; b.append(noticeList()); } }
+
+// ───────── 담당자 화면 (보기 + 수정 요청) ─────────
+// 릴스 콘티와 같은 구조. 링크 = noing-conti.web.app/card.html#v=번호.열쇠
+//   Firestore shares/{번호} = { key, url, contiId, title, at, updatedAt } — 누구나 '그 한 장'만 읽을 수 있다
+//   url = 콘티 내용을 담은 Storage 스크립트(window.__CONTI_SHARE=…) — <script> 로 읽는다
+// 담당자는 장마다 글을 눌러 바로 고치거나 메모를 남기고 [수정 요청 보내기] → Firestore feedback/{id}
+//   (규칙: 링크의 열쇠가 맞을 때만 쓸 수 있다. 칸 이름은 릴스와 같아 장별 수정도 clips 에 담는다)
+const SHARE2 = /^#v=([\w-]+)\.([\w-]+)$/.exec(location.hash);
+let VIEW = null;   // null = 편집 · 'preview' = 내 미리보기 · 'share' = 담당자
+let SH = null;     // 담당자 화면에서 연 링크 정보 { sid, key, contiId, at }
+function enterViewer(preview) {
+  VIEW = preview ? 'preview' : 'share';
+  document.body.classList.add('viewer'); document.body.classList.toggle('pv', !!preview);
+  $('#pvBanner').hidden = !preview;
+  if (preview) FB = null;
+  renderViewer(); window.scrollTo(0, 0);
+}
+function exitViewer() { VIEW = null; document.body.classList.remove('viewer', 'pv'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
+function vwSec(title) { const s = el('section'); s.append(el('h2', 'sec-title', title)); const p = el('div', 'panel'); s.append(p); return [s, p]; }
+function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { GAL = null; $('#mImgSrc').src = url; $('#mImgCap').hidden = true; $('#lbPrev').hidden = $('#lbNext').hidden = true; openM(mImg); }; return im; }
+let GAL = null;   // 크게 보기 중인 장 번호(0 = 표지)
+function openGallery(k) { GAL = k; $('#mImgSrc').src = ''; galShow(); openM(mImg); }
+function galStep(d) { if (GAL == null) return; const n = S.cards.length; GAL = (GAL + d + n) % n; galShow(); }
+async function galShow() {
+  const k = GAL, c = S.cards[k];
+  const cap = $('#mImgCap'); cap.textContent = '';
+  cap.append(el('b', null, `${cardName(c, k)} · ${isRef(c) ? '참고 이미지' : '시안'} (${k + 1}/${S.cards.length})`));
+  if (c.sub.trim()) cap.append(el('span', null, c.sub.replace(/\n/g, ' ')));
+  if (c.desc.trim()) cap.append(el('span', null, '이미지: ' + c.desc.replace(/\n/g, ' ')));
+  cap.hidden = false;
+  $('#lbPrev').hidden = $('#lbNext').hidden = S.cards.length < 2;
+  const url = c.img && !(isRef(c) && S.frame) ? c.img : await renderCardImage(c, 1080);   // 틀 위 사진은 합쳐서 보여 준다
+  if (GAL === k) $('#mImgSrc').src = url;
+}
+document.addEventListener('keydown', e => {
+  if (GAL == null || $('#mImg').hidden) return;
+  if (e.key === 'ArrowRight') galStep(1); else if (e.key === 'ArrowLeft') galStep(-1);
+});
+
+// 담당자 수정 요청 초안 — 이 브라우저에 남겨 두고(다시 열어도 이어서), 보낼 때 서버로
+let FB = null;   // { id, name, cards: {장id: {sub, detail, desc, memo}}, caption: {mention, tags, account} | null, memo, sentAt, sentHash }
+const fbKey = () => 'noing-fb:' + (SH?.sid || 'preview');
+function fbLoad() {
+  if (VIEW === 'share') { try { FB = JSON.parse(localStorage.getItem(fbKey()) || 'null'); } catch (e) { FB = null; } }
+  if (!FB) FB = { id: 'f' + Date.now().toString(36) + uid() + uid(), name: '', cards: {}, caption: null, memo: '' };
+  if (!FB.cards) FB.cards = {};
+}
+function fbSave() { if (VIEW !== 'share') return; try { localStorage.setItem(fbKey(), JSON.stringify(FB)); } catch (e) {} }
+const same = (a, b) => (a || '').trim() === (b || '').trim();
+const cardChanged = (c, d) => d && (TXT.some(k => !same(d[k], c[k])) || (d.memo || '').trim());
+const capChanged = d => d && (!same(d.mention, S.caption.mention) || !same(d.tags, S.caption.tags) || !same(d.account, S.caption.account));
+function fbPayload() {
+  return {
+    clips: S.cards.map((c, i) => ({ c, i, d: FB.cards[c.id] })).filter(x => cardChanged(x.c, x.d))
+      .map(({ c, i, d }) => ({ id: c.id, no: i + 1, cover: !!c.cover, sub: d.sub, detail: d.detail, desc: d.desc, memo: d.memo || '', base: { sub: c.sub, detail: c.detail, desc: c.desc } })),
+    caption: capChanged(FB.caption) ? { ...FB.caption, base: { mention: S.caption.mention, tags: S.caption.tags, account: S.caption.account } } : null,
+    memo: (FB.memo || '').trim(),
+  };
+}
+const fbCount = p => p.clips.length + (p.caption ? 1 : 0) + (p.memo ? 1 : 0);
+
+function renderViewer() {
+  fbLoad();
+  const v = $('#viewer'); v.textContent = '';
+  const w = el('div', 'wrap'); v.append(w);
+  // 머리: 무엇을, 언제, 어디에
+  const hero = el('section', 'panel vw-hero');
+  hero.append(el('div', 'vw-kicker', [S.cal?.company, '카드뉴스 콘티', S.info.version || 'v1'].filter(Boolean).join(' · ')));
+  hero.append(el('h1', null, S.info.title || '(서비스명)'));
+  const meta = el('div', 'info-grid vw-meta');
+  [['발행 채널', S.info.channel], ['발행 일시', dateKo(true)], ['구성', `카드뉴스 ${S.cards.length}장 (표지 1 + 속지 ${S.cards.length - 1})`]]
+    .forEach(([k, x]) => { const d = el('div'); d.append(el('div', 'k', k), el('div', 'v', x || '-')); meta.append(d); });
+  hero.append(meta);
+  const acts = el('div', 'vw-acts');
+  const b1 = el('button', 'btn brand', '▶ 인스타 화면으로 보기'); b1.onclick = openInsta;
+  const b2 = el('button', 'btn', 'PPT 받기'); b2.onclick = () => downloadPptx(b2);
+  acts.append(b1, b2); hero.append(acts);
+  if (canFix()) hero.append(el('p', 'vw-note', '*고칠 내용은 아래 글을 눌러 바로 고친 뒤 [수정 요청 보내기]로 보내 주시거나, PPT를 받아 고쳐 보내 주셔도 됩니다.'));
+  w.append(hero);
+  const [ns, np] = vwSec('카드뉴스 제작 안내'); np.append(noticeList()); w.append(ns);
+
+  // 소구포인트
+  if (S.briefFiles.length || S.brief.length) {
+    const [s, p] = vwSec('필수 소구포인트');
+    const imgs = S.briefFiles.filter(f => f.image && f.url), files = S.briefFiles.filter(f => !f.image && f.url);
+    if (imgs.length) { const g = el('div', 'vw-brief'); imgs.forEach(f => { const im = el('img'); im.src = f.url; im.alt = f.name || ''; g.append(zoomable(im, f.url)); }); p.append(g); }
+    if (files.length) { const l = el('div', 'vw-files'); files.forEach(f => { const a = el('a', 'btn', '📎 ' + f.name); a.href = f.url; a.download = f.name; l.append(a); }); p.append(l); }
+    if (S.brief.length) p.append(el('div', 'vw-text vw-req', S.brief.join('\n')));
+    w.append(s);
+  }
+
+  // 카드 — 두 줄(그림 왼쪽 · 글 오른쪽). 글은 그 자리에서 바로 고칠 수 있다
+  const [cs, cp] = vwSec('카드 구성');
+  cp.classList.add('vw-cards');
+  cs.querySelector('.sec-title').append(el('span', 'sub', canFix() ? '그림을 누르면 크게 · 글을 누르면 바로 고칠 수 있어요' : '그림을 누르면 크게 볼 수 있어요'));
+  S.cards.forEach((c, i) => cp.append(vwCard(c, i)));
+  w.append(cs);
+
+  // 멘션
+  const [fs, fp] = vwSec('멘션 텍스트');
+  fp.classList.add('vw-capcard');
+  const capCur = k => FB.caption ? FB.caption[k] : S.caption[k];
+  const capSet = (k, v) => { FB.caption = FB.caption || { mention: S.caption.mention, tags: S.caption.tags, account: S.caption.account }; FB.caption[k] = v; if (!capChanged(FB.caption)) FB.caption = null; };
+  fp.append(fixField('멘션 텍스트', S.caption.mention, capCur('mention'), v => capSet('mention', v), { cls: 'cap' }));
+  const row2 = el('div', 'vw-cap2');
+  row2.append(fixField('해시태그', S.caption.tags, capCur('tags'), v => capSet('tags', v)), fixField('계정 태그', S.caption.account, capCur('account'), v => capSet('account', v)));
+  fp.append(row2);
+  w.append(fs);
+
+  // 추가 요청(한 장에 묶이지 않는 요청)
+  if (canFix()) {
+    const [ms, mp] = vwSec('추가 요청');
+    mp.append(fixField('콘티 전체에 대한 요청', '', FB.memo || '', v => { FB.memo = v; }, { memo: true, ph: '예) 제품 이름이 앞쪽 장에 한 번 더 나오면 좋겠어요 / 속지를 한 장 줄여 주세요' }));
+    w.append(ms);
+  }
+
+  const ft = el('footer', 'vw-foot');
+  ft.append(el('div', 'vw-brand', '노잉커뮤니케이션즈 · 자취생으로 살아남기'));
+  w.append(ft);
+  if (canFix()) { const bar = el('div', 'fb-bar'); bar.id = 'fbBar'; w.append(bar); fbBar(); }
+}
+// 수정 요청은 지금 링크(#v=)로 연 담당자 화면에서만 보낼 수 있다. 미리보기에선 고쳐 볼 수만 있다
+const canFix = () => VIEW === 'preview' || (VIEW === 'share' && !!SH);
+const fbCard = c => FB.cards[c.id] || (FB.cards[c.id] = { sub: c.sub, detail: c.detail, desc: c.desc, memo: '' });
+const fbTidy = c => { const d = FB.cards[c.id]; if (d && !cardChanged(c, d)) delete FB.cards[c.id]; };
+function vwCard(c, i) {
+  const card = el('article', 'vc'); card.dataset.id = c.id;
+  const head = el('div', 'vc-h');
+  head.append(el('b', null, cardName(c, i)), el('span', 'vc-kind ' + (isRef(c) ? 'ref' : 'design'), isRef(c) ? '참고 이미지' : '시안'), el('i', 'vc-chg', '고친 곳 있음'));
+  const pic = el('div', 'vc-card'); pic.title = '크게 보기'; pic.append(buildVisual(c)); pic.onclick = () => openGallery(i);
+  const tx = el('div', 'vc-t');
+  const d = FB.cards[c.id], L = labelOf(c);
+  TXT.forEach(k => tx.append(fixField(L[k], c[k], d ? d[k] : c[k], v => { fbCard(c)[k] = v; fbTidy(c); }, { cls: k === 'sub' ? 'nar' : '', ph: '(없음)' })));
+  if (canFix()) tx.append(fixField('요청 메모', '', d ? d.memo : '', v => { fbCard(c).memo = v; fbTidy(c); }, { memo: true, cls: 'memo', ph: '이 장에 바라는 점이 있으면 적어 주세요' }));
+  const body = el('div', 'vc-b'); body.append(pic, tx);
+  card.append(head, body);
+  return card;
+}
+// 바로 고칠 수 있는 글 칸 — 점선 테두리 + '✎ 눌러서 고치기'로 고칠 수 있다는 걸 보여 주고, 누르면 그 자리에서 고친다
+//   고치기 시작하면 아래에 '원래 글과 비교'(지운 글 빨간 줄 · 더한 글 초록)가 계속 따라 나온다. [↺ 원래대로]로 되돌린다
+function fixField(label, orig, cur, onval, o = {}) {
+  const edit = canFix();
+  const wrap = el('div', 'fx' + (o.cls ? ' ' + o.cls : '') + (o.memo ? ' memo' : '') + (edit ? ' ed' : ''));
+  const lab = el('div', 'fx-l'); lab.append(el('span', null, label));
+  const st = el('span', 'fx-st'); lab.append(st);
+  const ta = el('textarea', 'fx-t'); ta.rows = 1; ta.value = cur ?? orig ?? ''; ta.placeholder = o.ph || ''; ta.spellcheck = false;
+  if (!edit) { ta.readOnly = true; ta.tabIndex = -1; }
+  else if (!o.memo) ta.title = '눌러서 고칠 수 있어요';
+  const cmp = el('div', 'fx-cmp'); cmp.hidden = true;
+  const mark = () => {
+    const ch = o.memo ? !!ta.value.trim() : !same(ta.value, orig);
+    wrap.classList.toggle('chg', ch);
+    if (!edit) return;
+    if (wrap._ch !== ch) {   // 상태가 바뀔 때만 다시 그린다(누르는 중인 버튼이 사라지지 않게)
+    wrap._ch = ch; st.textContent = '';
+    if (o.memo) { if (!ch) st.append(el('span', 'fx-hint', '선택')); }
+    else if (ch) {
+      const b = el('button', 'fx-undo', '↺ 원래대로'); b.type = 'button';
+      b.onclick = () => { ta.value = orig || ''; onval(ta.value); grow(ta); mark(); fbSave(); fbBar(); };
+      st.append(el('em', 'fx-chip', '✎ 고친 글'), b);
+    } else st.append(el('span', 'fx-hint', '✎ 눌러서 고치기'));
+    }
+    // 비교: 고쳤거나 고치는 중(누른 상태)이면 원래 글을 보여 준다
+    const show = !o.memo && (ch || document.activeElement === ta);
+    cmp.hidden = !show; cmp.textContent = '';
+    if (show) { cmp.append(el('span', 'k', ch ? '원래 글과 비교' : '원래 글'), ch ? diffEl(orig || '', ta.value) : el('div', 'df', orig || '(비어 있음)')); }
+    const card = wrap.closest('.vc'); if (card) card.classList.toggle('chg', !!card.querySelector('.fx.chg'));
+  };
+  ta.oninput = () => { onval(ta.value); grow(ta); mark(); fbSave(); fbBar(); };
+  ta.onfocus = ta.onblur = () => mark();
+  wrap.append(lab, ta, cmp);
+  requestAnimationFrame(() => { grow(ta); mark(); });
+  return wrap;
+}
+document.addEventListener('focusin', e => { if (e.target.matches?.('.fx-t:not([readonly])')) document.body.classList.add('typing'); });
+document.addEventListener('focusout', e => { if (e.target.matches?.('.fx-t')) setTimeout(() => { if (!document.activeElement?.matches?.('.fx-t:not([readonly])')) document.body.classList.remove('typing'); }, 50); });
+// 아래 고정 띠: 지금 상태(고친 곳 · 보냈는지 · 노잉이 확인했는지)와 보내기
+function fbBar() {
+  const bar = $('#fbBar'); if (!bar || !FB) return;
+  const p = fbPayload(), n = fbCount(p), h = hashOf(JSON.stringify(p));
+  bar.textContent = ''; bar.className = 'fb-bar';
+  const msg = (ic, t, extra) => { const m = el('span', 'fb-msg', t); if (extra) m.append(el('span', 'fb-extra', extra)); bar.append(el('span', 'fb-ic', ic), m); };
+  if (VIEW === 'preview') {
+    bar.classList.add('pv');
+    msg('👁', n ? `미리보기 · 고친 곳 ${n}곳 — 담당자는 여기서 [수정 요청 보내기]를 누르면 노잉에 전달됩니다` : '미리보기 · 담당자는 글을 눌러 바로 고치고 [수정 요청 보내기]로 보냅니다');
+    return;
+  }
+  if (FB.sentAt && FB.sentHash === h) {
+    bar.classList.add('ok');
+    msg('✓', FB.seen ? `노잉이 수정 요청을 확인했습니다 · ${fmtWhen(FB.sentAt)}에 보냄` : `${fmtWhen(FB.sentAt)} 노잉에 전달했습니다 · 확인되면 여기에 표시됩니다`);
+    return;
+  }
+  if (!n) { msg('✎', '글을 눌러 바로 고칠 수 있어요.', ' 고친 뒤 [수정 요청 보내기]를 눌러야 노잉에 전달됩니다'); return; }
+  bar.classList.add('on');
+  msg(String(n), `${FB.sentAt ? '보낸 뒤 더 고친 곳' : '고친 곳'} ${n}곳 · 아직 보내지 않았어요`, ' (이 브라우저에만 임시 저장)');
+  const nm = el('input', 'fb-name'); nm.id = 'fbName'; nm.placeholder = '보내는 분 (이름·회사)'; nm.value = FB.name || '';
+  nm.oninput = () => { FB.name = nm.value; fbSave(); };
+  const go = el('button', 'btn brand', FB.sentAt ? '다시 보내기' : '수정 요청 보내기'); go.onclick = () => sendFeedback(go);
+  bar.append(nm, go);
+}
+async function sendFeedback(btn) {
+  if (VIEW !== 'share' || !SH) { toast('미리보기에서는 보내지지 않습니다 — 담당자 화면에서만 보낼 수 있습니다'); return; }
+  const p = fbPayload();
+  if (!fbCount(p)) { toast('고친 곳이 없습니다'); return; }
+  if (!(FB.name || '').trim()) { const nm = $('#fbName'); nm?.focus(); nm?.classList.add('need'); toast('보내는 분 이름(또는 회사명)을 적어 주세요'); return; }
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '보내는 중…';
+  try {
+    await fsSet('feedback/' + FB.id, { sid: SH.sid, key: SH.key, contiId: SH.contiId, name: FB.name.trim().slice(0, 60), clips: p.clips, caption: p.caption, memo: p.memo, at: Date.now(), base: SH.at || 0 });
+    FB.sentAt = Date.now(); FB.sentHash = hashOf(JSON.stringify(p)); FB.seen = false; fbSave(); fbBar();
+    $('#sentDesc').textContent = `고친 곳 ${fbCount(p)}곳 · 보낸 분 ${FB.name.trim()} · ${fmtWhen(FB.sentAt)}\n노잉 담당자에게 바로 알림이 갑니다. 더 고칠 것이 생기면 다시 고쳐서 [다시 보내기]를 누르시면 됩니다.`;
+    openM(mSent);
+  } catch (e) {
+    console.error(e); alert('보내지 못했습니다. 잠시 뒤 다시 눌러 주시거나, PPT를 받아 고쳐 보내 주세요.\n(' + e.message + ')');
+    btn.disabled = false; btn.textContent = t;
+  }
+}
+// 보낸 요청을 노잉이 확인(처리 완료)했는지 — 다시 열 때 한 번 본다
+async function fbCheckSeen() {
+  if (VIEW !== 'share' || !SH || !FB?.sentAt) return;
+  try { const d = await fsGet('feedback/' + FB.id); FB.seen = !!d.done; fbSave(); fbBar(); } catch (e) {}
+}
+
+// Firestore REST (담당자 화면은 Firebase 프로그램 없이 주소로만 읽고 쓴다)
+const FS_BASE = () => `https://firestore.googleapis.com/v1/projects/${window.__PROJECT}/databases/(default)/documents`;
+function fsVal(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'string') return { stringValue: v };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(fsVal) } };
+  return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fsVal(x)])) } };
+}
+function fsPlain(f) {
+  if ('stringValue' in f) return f.stringValue;
+  if ('integerValue' in f) return +f.integerValue;
+  if ('doubleValue' in f) return f.doubleValue;
+  if ('booleanValue' in f) return f.booleanValue;
+  if ('timestampValue' in f) return Date.parse(f.timestampValue);
+  if ('arrayValue' in f) return (f.arrayValue.values || []).map(fsPlain);
+  if ('mapValue' in f) return Object.fromEntries(Object.entries(f.mapValue.fields || {}).map(([k, x]) => [k, fsPlain(x)]));
+  return null;
+}
+async function fsGet(path) {
+  const r = await fetch(`${FS_BASE()}/${path}`);
+  if (!r.ok) throw new Error('읽기 ' + r.status);
+  return fsPlain({ mapValue: { fields: (await r.json()).fields || {} } });
+}
+async function fsSet(path, obj) {   // 없으면 만들고 있으면 통째로 바꾼다
+  const r = await fetch(`${FS_BASE()}/${path}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fsVal(obj).mapValue.fields }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error?.message || ('쓰기 ' + r.status));
+}
+
+async function openShared() {
+  VIEW = 'share'; document.body.classList.add('viewer');
+  const v = $('#viewer'); v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 불러오는 중…'));
+  try {
+    if (!SHARE2) throw new Error('링크 아님');
+    const d = await fsGet('shares/' + SHARE2[1]);
+    if (!d.url || d.key !== SHARE2[2]) throw new Error('열쇠 다름');
+    SH = { sid: SHARE2[1], key: d.key, contiId: d.contiId, at: d.updatedAt || d.at || 0 };
+    await loadScript(d.url);
+    const x = window.__CONTI_SHARE;
+    if (!x || !x.conti) throw new Error('내용 없음');
+    if (x.conti.kind !== 'cardnews') { location.replace('./' + location.hash); return; }   // 릴스 콘티 링크면 릴스 담당자 화면으로
+    S = normalize(x.conti); SEL = S.cards[0].id;
+    renderHead(); renderViewer(); document.body.classList.add('loaded'); fbCheckSeen();
+    document.title = `[콘티] ${S.info.title || '카드뉴스'} (카드뉴스)`;
+  } catch (e) {
+    console.warn(e);
+    v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 보내 드린 링크를 다시 눌러 주세요.'));
+  }
+}
+
+// ───────── 담당자 링크 만들기 (서버 모드) ─────────
+function shareSnapshot() {
+  const c = JSON.parse(JSON.stringify(S));
+  delete c.share; delete c.status; delete c.info.titleFromCal;
+  if (c.cal) c.cal = { company: c.cal.company || '' };   // 달력 콘텐츠 번호·담당자 등은 넣지 않는다
+  return c;
+}
+function hashOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + s.length.toString(36); }
+// 담당자 화면은 달력과 떨어진 별도 주소(Firebase Hosting 사이트 noing-conti 의 card.html). _deploy.sh 가 같이 올린다
+const VIEW_SITE = 'https://noing-conti.web.app/card.html';   // 릴스 담당자 화면(/)과 같은 사이트의 카드뉴스용 쪽
+const shareLink = sh => sh.key ? `${VIEW_SITE}#v=${sh.sid}.${sh.key}` : `${VIEW_SITE}#s=${sh.sid}.${sh.token}`;
+const fmtWhen = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+function openShare() { renderShare(); openM(mShare); }
+function renderShare(msg) {
+  const b = $('#shareBody'); b.textContent = '';
+  const sh = S.share;
+  if (!sh) {
+    const r = el('div', 'sh-row');
+    const mk = el('button', 'btn brand', '링크 만들기'); mk.onclick = () => publishShare(mk);
+    r.append(mk, el('span', 'sh-note', '지금 내용 그대로 담당자 화면을 만듭니다'));
+    b.append(r);
+  } else {
+    const r = el('div', 'sh-row');
+    const inp = el('input', 'sh-link'); inp.readOnly = true; inp.value = shareLink(sh); inp.onclick = () => inp.select();
+    const cp = el('button', 'btn brand', '복사'); cp.onclick = async () => { try { await navigator.clipboard.writeText(inp.value); } catch (e) { inp.select(); document.execCommand('copy'); } toast('링크를 복사했습니다'); };
+    const op = el('a', 'btn', '열어 보기'); op.href = inp.value; op.target = '_blank'; op.rel = 'noopener';
+    r.append(inp, cp, op); b.append(r);
+    const changed = hashOf(JSON.stringify(shareSnapshot())) !== sh.hash;
+    const when = sh.updatedAt && sh.updatedAt !== sh.at ? `${fmtWhen(sh.at)}에 만든 링크 · ${fmtWhen(sh.updatedAt)}에 갱신` : `${fmtWhen(sh.at)}에 만든 링크`;
+    b.append(el('p', 'sh-note', when + (sh.by ? ' · ' + sh.by.split('@')[0] : '') + (changed ? ' · 링크를 만든 뒤 콘티를 고쳤습니다. 담당자에게는 아직 예전 내용이 보입니다.' : ' · 지금 내용과 같습니다.')));
+    const r2 = el('div', 'sh-row');
+    const up = el('button', 'btn' + (changed ? ' primary' : ''), sh.key ? '지금 내용으로 갱신' : '새 방식 링크 만들기'); up.onclick = () => publishShare(up);
+    const cut = el('button', 'btn sh-cut', '링크 닫기'); cut.onclick = () => closeShare(cut);
+    r2.append(up, cut); b.append(r2);
+    b.append(el('p', 'sh-note', sh.key ? '갱신해도 링크 주소는 그대로입니다. 담당자는 같은 링크로 바뀐 내용을 봅니다.'
+      : '예전 방식 링크라 담당자가 수정 요청을 보낼 수 없습니다. [새 방식 링크 만들기]를 누르면 새 링크가 생기고 이 링크는 닫힙니다.'));
+  }
+  if (msg) b.append(el('p', 'sh-msg', msg));
+}
+async function publishShare(btn) {
+  if (!FBX?.storage) return;
+  const old = S.share, fresh = !old?.key;   // 예전 방식(토큰) 링크면 새로 만든다
+  btn.disabled = true; btn.textContent = '올리는 중…';
+  try {
+    const snap = shareSnapshot(), now = Date.now();
+    const sid = fresh ? 's' + now.toString(36) + uid() + uid() : old.sid;
+    const key = fresh ? uid() + uid() + uid() + uid() : old.key;
+    const file = `conti-share/${sid}-${now.toString(36)}.js`;
+    const ref = FBX.ST.ref(FBX.storage, file);
+    await FBX.ST.uploadString(ref, 'window.__CONTI_SHARE = ' + JSON.stringify({ v: 2, at: now, conti: snap }) + ';\n', 'raw',
+      { contentType: 'application/javascript; charset=utf-8', cacheControl: 'no-cache' });
+    const url = await FBX.ST.getDownloadURL(ref);
+    const at = fresh ? now : old.at;
+    await FBX.F.setDoc(FBX.F.doc(FBX.db, 'shares', sid), { key, url, contiId: CONTI_ID, title: S.info.title || '', at, updatedAt: now, by: FBX.user?.email || '' });
+    // 지난 내용 파일 정리
+    const gone = old ? (old.key ? old.file : `conti-share/${old.sid}.js`) : null;
+    if (gone && gone !== file) FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, gone)).catch(() => {});
+    S.share = { sid, key, file, at, updatedAt: now, by: FBX.user?.email || '', hash: hashOf(JSON.stringify(snap)) };
+    save();
+    renderShare(fresh ? (old ? '새 링크를 만들었습니다. 예전 링크는 닫혔으니 새 링크를 보내 주세요.' : '링크를 만들었습니다. [복사]해서 담당자에게 보내 주세요.')
+      : '담당자 화면을 지금 내용으로 바꿨습니다. 링크는 그대로입니다.');
+  } catch (e) {
+    console.error(e); renderShare('링크를 만들지 못했습니다 — ' + (/permission/i.test(e.message) ? '권한이 없습니다(보안 규칙)' : e.message));
+  }
+}
+async function closeShare(btn) {
+  if (!S.share || !confirm('이 링크를 닫을까요? 담당자가 더 이상 열 수 없습니다.')) return;
+  btn.disabled = true;
+  const sh = S.share;
+  try {
+    if (sh.key) await FBX.F.deleteDoc(FBX.F.doc(FBX.db, 'shares', sh.sid));
+    await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, sh.key ? sh.file : `conti-share/${sh.sid}.js`)).catch(e => { if (!/not-found/.test(e.code || '')) throw e; });
+  } catch (e) { renderShare('닫지 못했습니다 — ' + e.message); return; }
+  S.share = null; save(); renderShare('링크를 닫았습니다.');
+}
+
+// ───────── 담당자 수정 요청 보기 (편집 화면) ─────────
+let FBLIST = [];
+async function loadFeedback() {
+  if (!FBX || !CONTI_ID) return;
+  try {
+    const F = FBX.F, q = await F.getDocs(F.query(F.collection(FBX.db, 'feedback'), F.where('contiId', '==', CONTI_ID)));
+    FBLIST = q.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0));
+  } catch (e) { console.warn('수정 요청 읽기 실패', e); FBLIST = []; }
+  const n = FBLIST.filter(f => !f.done).length, b = $('#btnFb');
+  b.hidden = !FBLIST.length; $('#fbN').textContent = n ? String(n) : '';
+  b.classList.toggle('brand', n > 0);
+}
+// 낱말 단위 비교: 지운 곳은 빨간 줄, 더한 곳은 초록
+// 글자 단위 비교(바뀐 구간 안에서만 쓴다)
+function charLcs(a, b) {
+  const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  return L;
+}
+function charSim(a, b) { if (a.length * b.length > 250000) return 0; return 2 * charLcs(a, b)[0][0] / (a.length + b.length); }
+function charDiff(a, b, out) {
+  const L = charLcs(a, b), n = a.length, m = b.length;
+  let i = 0, j = 0, cur = null, buf = '';
+  const put = (t, ch) => { if (t !== cur) { if (buf) out.append(cur ? el(cur, null, buf) : buf); cur = t; buf = ''; } buf += ch; };
+  while (i < n || j < m) {
+    if (i < n && j < m && a[i] === b[j]) { put(null, a[i]); i++; j++; }
+    else if (i < n && (j >= m || L[i + 1][j] >= L[i][j + 1])) { put('del', a[i]); i++; }
+    else { put('ins', b[j]); j++; }
+  }
+  if (buf) out.append(cur ? el(cur, null, buf) : buf);
+}
+function diffEl(a, b) {
+  const A = (a || '').split(/(\s+)/), B = (b || '').split(/(\s+)/), n = A.length, m = B.length;
+  const L = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = el('div', 'df');
+  let i = 0, j = 0, dels = [], inss = [];
+  // 바뀐 구간은 '지운 글 전부 → 더한 글 전부'로 묶어 보여 준다(낱말이 섞여 읽기 어려워지지 않게)
+  const flush = () => {
+    const d = dels.join('').trim(), s2 = inss.join('').trim();
+    if ((d || s2) && /^\s/.test((dels.length ? dels : inss).join(''))) out.append(' ');
+    if (d && s2 && charSim(d, s2) >= 0.5) charDiff(d, s2, out);   // 거의 같은 글 = 글자만 조금 바뀜 → 바뀐 글자만
+    else {
+      if (d) out.append(el('del', null, d));
+      if (d && s2) out.append(' ');
+      if (s2) out.append(el('ins', null, s2));
+    }
+    if ((d || s2) && /\s$/.test((inss.length ? inss : dels).join(''))) out.append(' ');
+    dels = []; inss = [];
+  };
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) {
+      // 바뀐 낱말 사이의 띄어쓰기는 같은 구간으로 이어 붙인다('화제성 제대로 찍은' → '화제가 된' 이 한 덩어리)
+      if (/^[ \t]+$/.test(A[i]) && (dels.length || inss.length)) { dels.push(A[i]); inss.push(B[j]); i++; j++; continue; }
+      flush(); out.append(A[i]); i++; j++;
+    }
+    else if (i < n && (j >= m || L[i + 1][j] >= L[i][j + 1])) { dels.push(A[i]); i++; }
+    else { inss.push(B[j]); j++; }
+  }
+  flush();
+  return out;
+}
+function openFb() { renderFb(); openM(mFb); }
+function renderFb() {
+  const box = $('#fbBody'); box.textContent = '';
+  if (!FBLIST.length) { box.append(el('p', 'sh-note', '아직 받은 수정 요청이 없습니다.')); return; }
+  FBLIST.forEach(f => {
+    const card = el('div', 'fbc' + (f.done ? ' done' : ''));
+    const h = el('div', 'fbc-h');
+    h.append(el('b', null, f.name || '(이름 없음)'), el('span', null, fmtWhen(f.at || 0) + (f.done ? ' · 처리함' : ' · 새 요청')));
+    const sp = el('span', 'sp'); h.append(sp);
+    const all = el('button', 'btn', '모두 반영'); all.onclick = () => { applyAll(f); renderFb(); };
+    const dn = el('button', 'btn', f.done ? '다시 새 요청으로' : '처리 완료'); dn.onclick = () => markFb(f, !f.done);
+    h.append(all, dn); card.append(h);
+    if (f.base && S.share?.updatedAt && f.base !== S.share.updatedAt) card.append(el('p', 'fbc-warn', '이 요청은 지금 담당자 화면보다 예전 내용을 보고 보낸 것입니다. 비교는 담당자가 본 글 기준입니다.'));
+    (f.clips || []).forEach(x => {
+      const c = S.cards.find(k => k.id === x.id), now = c ? S.cards.indexOf(c) + 1 : 0;
+      const sec = el('div', 'fbc-s');
+      sec.append(el('div', 'fbc-t', (x.cover ? '표지' : `속지 (${x.no})`) + (c ? (now !== x.no ? ` (지금 ${now}번째 장)` : '') : ' — 지금 콘티에 없는 장')));
+      const L = x.cover ? COVER_LABEL : FIELD_LABEL;
+      TXT.forEach(k => {
+        if (same(x[k], x.base?.[k])) return;
+        sec.append(fbField(L[k], x.base?.[k], x[k], c ? c[k] : null, () => { c[k] = x[k]; afterApply(); }));
+      });
+      if ((x.memo || '').trim()) sec.append(el('div', 'fbc-memo', '메모: ' + x.memo.trim()));
+      card.append(sec);
+    });
+    if (f.caption) {
+      const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', '멘션'));
+      [['mention', '멘션 텍스트'], ['tags', '해시태그'], ['account', '계정 태그']].forEach(([k, lab]) => {
+        if (same(f.caption[k], f.caption.base?.[k])) return;
+        sec.append(fbField(lab, f.caption.base?.[k], f.caption[k], S.caption[k], () => { S.caption[k] = f.caption[k]; afterApply(); }));
+      });
+      card.append(sec);
+    }
+    if ((f.memo || '').trim()) { const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', '추가 요청'), el('div', 'fbc-memo', f.memo.trim())); card.append(sec); }
+    box.append(card);
+  });
+}
+function fbField(label, base, next, cur, apply) {
+  const d = el('div', 'fbc-f');
+  const top = el('div', 'fbc-l'); top.append(el('span', null, label));
+  const now = cur != null && same(cur, next);
+  const b = el('button', 'btn', now ? '반영됨' : '반영'); b.disabled = now || cur == null;
+  b.onclick = () => { apply(); b.textContent = '반영됨'; b.disabled = true; };
+  top.append(b); d.append(top, diffEl(base, next));
+  if (cur != null && !now && !same(cur, base)) d.append(el('div', 'fbc-warn', '※ 담당자가 본 뒤 이 칸을 고쳤습니다. 반영하면 지금 글이 담당자 글로 바뀝니다.'));
+  return d;
+}
+function applyAll(f) {
+  (f.clips || []).forEach(x => { const c = S.cards.find(k => k.id === x.id); if (!c) return; TXT.forEach(k => { if (!same(x[k], x.base?.[k])) c[k] = x[k]; }); });
+  if (f.caption) ['mention', 'tags', 'account'].forEach(k => { if (!same(f.caption[k], f.caption.base?.[k])) S.caption[k] = f.caption[k]; });
+  afterApply(); toast('담당자 수정 내용을 반영했습니다');
+}
+function afterApply() { renderAll(); save(); }
+async function markFb(f, done) {
+  try { await FBX.F.updateDoc(FBX.F.doc(FBX.db, 'feedback', f.id), { done }); f.done = done; }
+  catch (e) { toast('표시하지 못했습니다 — ' + e.message); return; }
+  renderFb(); const n = FBLIST.filter(x => !x.done).length; $('#fbN').textContent = n ? String(n) : ''; $('#btnFb').classList.toggle('brand', n > 0);
+}
+
+// ───────── 위 막대 [파일 ▾] 메뉴 ─────────
+function toggleFileMenu(e) {
+  e.stopPropagation();
+  const m = $('#fileMenu'), open = m.hidden;
+  m.hidden = !open; $('#btnFile').setAttribute('aria-expanded', String(open));
+}
+function closeFileMenu() { $('#fileMenu').hidden = true; $('#btnFile').setAttribute('aria-expanded', 'false'); }
+document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeFileMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileMenu(); });
+
+// ───────── 공통 ─────────
+function openM(m) { m.hidden = false; }
+function closeM(m) { m.hidden = true; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => m.hidden = true); });
+let tt; function toast(t) { const x = $('#toast'); x.textContent = t; x.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => x.classList.remove('show'), 1800); }
+
+function renderAll() {
+  renderInfo(); renderNotice(); $('#briefText').value = S.brief.join('\n'); renderBriefFiles(); renderCaption(true); renderCards();
+}
+(async () => {
+  FBX = await (window.FBX_READY || Promise.resolve(null));
+  if (window.VIEW_ONLY) { await openShared(); return; }
+  if (FBX && !FBX.user) { openM(mLogin); setTimeout(() => $('#lgEmail').focus(), 50); return; }
+  if (FBX) {
+    $('.mock-banner').innerHTML = '<b>카드뉴스 콘티</b> · 서버에 자동 저장됩니다(달력과 같은 계정). 팀원도 달력의 <b>[콘텐츠 기획]</b> 탭에서 볼 수 있습니다.';
+    $('#fileDesc').textContent = '작업 내용은 서버에 자동 저장되고, 달력의 [콘텐츠 기획] 탭에 모입니다. 보관용 파일이 필요하면 저장 파일(.json)을 받아 두세요.';
+    $('#delRow').hidden = false;
+    $('#btnShare').hidden = false;
+    CONTI_ID = QS.get('id') || (CID ? 'c-' + CID : null);
+    let isNew = false;
+    if (!CONTI_ID) { CONTI_ID = 'p-' + Date.now().toString(36) + uid().slice(0, 3); history.replaceState(null, '', location.pathname + '?id=' + CONTI_ID); isNew = true; }
+    $('#saveBadge').textContent = '서버에서 불러오는 중…';
+    try {
+      const r = isNew ? null : await remoteLoad(CONTI_ID);
+      if (r?.other) { location.replace('reels.html' + location.search); return; }   // 릴스 콘티 → 릴스 화면
+      if (r) {
+        S = normalize(r.st);
+        const t = new Date(r.meta.updatedAt || Date.now());
+        $('#saveBadge').textContent = `서버에서 불러옴 · 마지막 저장 ${t.getMonth() + 1}.${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}${r.meta.updatedBy ? ' · ' + r.meta.updatedBy.split('@')[0] : ''}`;
+      } else $('#saveBadge').textContent = '새 콘티 — 입력하면 서버에 저장됩니다';
+    } catch (e) { console.error(e); $('#saveBadge').textContent = '서버에서 불러오지 못했습니다 — ' + (/permission/i.test(e.message) ? '권한이 없습니다(보안 규칙)' : e.message); }
+  } else {
+    try { const d = await dbGet(); if (d && Array.isArray(d.cards) && d.cards.length) { S = normalize(d); $('#saveBadge').textContent = '이어서 작업 중 (자동 저장됨)'; } }
+    catch (e) { console.warn('자동 저장 불러오기 실패', e); $('#saveBadge').textContent = '이 환경에선 자동 저장이 안 됩니다 — 저장 파일을 받아 두세요'; }
+  }
+  SEL = S.cards[0].id;
+  if (CID) { applyCalendar(await calendarInfo()); if (!S.cal) $('#saveBadge').textContent = '달력 정보를 찾지 못했습니다 — 달력에서 [콘티 만들기]로 다시 열어 주세요'; }
+  renderAll();
+  if (CID && S.cal) save();
+  if (FBX && CONTI_ID) loadFeedback();
+})();
+// 이 콘티 삭제 (서버 모드) — 글 문서와 사진을 모두 지우고 달력의 콘텐츠 기획 탭으로 돌아간다
+let deleted = false;
+async function deleteThisConti() {
+  if (!FBX || !CONTI_ID) return;
+  if (!confirm(`'${S.info.title || '제목 없음'}' 콘티를 삭제할까요?\n사진·담당자 링크·받은 수정 요청까지 모두 지워지고 되돌릴 수 없습니다.`)) return;
+  clearTimeout(saveTimer); deleted = true;
+  const F = FBX.F;
+  try {
+    const ms = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'media'));
+    for (const d of ms.docs) await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'media', d.id));
+    if (S.share?.sid) {
+      if (S.share.key) await F.deleteDoc(F.doc(FBX.db, 'shares', S.share.sid)).catch(() => {});
+      await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, S.share.key ? S.share.file : `conti-share/${S.share.sid}.js`)).catch(() => {});
+    }
+    const fq = await F.getDocs(F.query(F.collection(FBX.db, 'feedback'), F.where('contiId', '==', CONTI_ID))).catch(() => null);
+    if (fq) for (const d of fq.docs) await F.deleteDoc(d.ref).catch(() => {});
+    await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID));
+    alert('콘티를 삭제했습니다. 달력의 콘텐츠 기획 탭으로 이동합니다.');
+    location.href = '../';
+  } catch (e) { deleted = false; alert('삭제하지 못했습니다 — ' + e.message); }
+}
+async function doLogin(e) {
+  e.preventDefault();
+  $('#lgMsg').textContent = '로그인 중…';
+  try { await FBX.signIn($('#lgEmail').value.trim(), $('#lgPw').value); location.reload(); }
+  catch (err) { $('#lgMsg').textContent = '로그인하지 못했습니다 — 이메일·비밀번호를 확인해 주세요'; }
+}
+</script>
+</body>
+</html>

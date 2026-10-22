@@ -1102,6 +1102,7 @@ async function remoteLoad(id) {
   const F = FBX.F, snap = await F.getDoc(F.doc(FBX.db, 'contis', id));
   if (!snap.exists()) return null;
   const meta = snap.data(), st = JSON.parse(meta.data || '{}');
+  if (meta.type === 'cardnews') return { other: meta.type, meta };   // 카드뉴스 콘티를 이 주소로 열었을 때
   const need = [];
   (st.clips || []).forEach(c => (c.photos || []).forEach(p => need.push([p.id, u => { p.url = u; }])));
   if (st.take?.id) need.push([st.take.id, u => { st.take.url = u; }]);
@@ -2502,6 +2503,7 @@ async function openShared() {
     } else throw new Error('링크 아님');
     const d = window.__CONTI_SHARE;
     if (!d || !d.conti) throw new Error('내용 없음');
+    if (d.conti.kind === 'cardnews') { location.replace('card.html' + location.hash); return; }   // 카드뉴스 콘티 링크면 카드뉴스 담당자 화면으로
     S = normalize(d.conti); SEL = S.clips[0].id;
     renderHead(); renderViewer(); document.body.classList.add('loaded'); fbCheckSeen();
     document.title = `[콘티] ${S.info.title || '릴스'} (릴스)`;
@@ -2924,6 +2926,7 @@ function renderAll() {
     $('#saveBadge').textContent = '서버에서 불러오는 중…';
     try {
       const r = isNew ? null : await remoteLoad(CONTI_ID);
+      if (r?.other) { location.replace('cardnews.html' + location.search); return; }   // 카드뉴스 콘티 → 카드뉴스 화면
       if (r) {
         S = normalize(r.st);
         const t = new Date(r.meta.updatedAt || Date.now());
