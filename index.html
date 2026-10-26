@@ -2921,7 +2921,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.38.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.39.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3428,12 +3428,41 @@ async function withSubmitGuard(btnId, fn) {
   }
 }
 
+// 콘텐츠를 고치면 그 콘텐츠로 만든 콘티(contis/c-{id})의 기본 정보도 바로 맞춘다
+//   콘티 화면이 열릴 때 하는 것(conti/*.html 의 applyCalendar)과 같은 규칙:
+//   발행 채널·날짜·시각·담당·콘티 마감은 달력 값으로, 서비스명은 비었거나 달력 값일 때만(콘티에서 직접 고친 이름은 유지)
+//   콘티가 없거나 바뀐 게 없으면 아무것도 쓰지 않는다
+async function syncContiFromContent(c) {
+  const FB = await fbReady(); if (!FB.user || !c || !c.id) return;
+  const ref = FB.doc(FB.db, 'contis', 'c-' + c.id), snap = await FB.getDoc(ref);
+  if (!snap.exists()) return;
+  const meta = snap.data(), st = JSON.parse(meta.data || '{}'), before = JSON.stringify(st);
+  const chMap = { life: 'one_home_life', guide: 'one_home_guide', mag: 'one_home_mag' };
+  const company = (c.company || '').trim(), title = (c.title || '').trim();
+  const service = title && company && !title.includes(company) ? `${company} ${title}` : (title || company);
+  st.info = st.info || {};
+  if (!(st.info.title || '').trim() || st.info.titleFromCal) { st.info.title = service; st.info.titleFromCal = true; }
+  st.info.channel = '인스타그램 ' + (chMap[c.channel] || 'one_home_life');
+  if (c.date) st.info.date = c.date;
+  if (c.time) st.info.time = c.time;
+  const cal = { cid: String(c.id), company, title, owner: c.owner || '', due: c.due_storyboard || '' };
+  const calChanged = !st.cal || Object.keys(cal).some(k => (st.cal[k] || '') !== cal[k]);
+  if (calChanged) st.cal = { ...(st.cal || {}), ...cal, at: Date.now() };
+  if (JSON.stringify(st) === before) return;
+  const upd = { title: st.info.title || '', company, channel: st.info.channel, date: st.info.date || '', time: st.info.time || '', owner: cal.owner,
+    data: JSON.stringify(st), updatedAt: Date.now(), updatedBy: FB.user.email || '' };
+  await FB.setDoc(ref, upd, { merge: true });
+  const p = plans.find(x => x.id === 'c-' + c.id);
+  if (p) { Object.assign(p, upd); delete p.data; if (currentView === 'plans') renderPlans(); }
+}
+
 async function pushToSheet(action, item) {
   if (USE_FB) {
     setStatus('저장 중...', 'busy');
     try {
       const r = action === 'delete' ? await fbRemove('contents', item.id) : await fbSave('contents', item);
       setStatus(r.ok ? '저장됨' : '저장 실패', r.ok ? 'ok' : 'err');
+      if (r.ok && action !== 'delete') syncContiFromContent(item).catch(e => console.warn('콘티 정보 맞추기 실패', e));
       return r;
     } catch (e) { console.error('firestore save', e); setStatus('저장 실패', 'err'); return { ok: false, reason: String(e) }; }
   }
