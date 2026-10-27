@@ -628,6 +628,7 @@ button.bgm-ad{cursor:pointer}
 .ig-close{position:fixed;top:14px;right:16px;z-index:2;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1}
 .ig-close:hover{background:rgba(255,255,255,.26)}
 body:has(#mInsta:not([hidden])) .fb-bar{visibility:hidden}
+body.igonly #viewer,body.igonly .ig-close{display:none}
 .ig-ctrl .btn.on{background:var(--brand);border-color:var(--brand);color:#2b1d00}
 .ig-voice{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;color:#cfc8ba;font-size:12px}
 .ig-voice select{font:inherit;font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #5a534a;background:#2b2722;color:#f3eee6}
@@ -1620,8 +1621,8 @@ async function embedFonts(buf) {
   faces.forEach(([, d], i) => zip.file(`ppt/fonts/font${i + 1}.fntdata`, d.b64, { base64: true, createFolders: false }));
   return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
-async function buildPptxBytes() {
-  const pptx = await buildPptx();
+async function buildPptxBytes(ig) {
+  const pptx = await buildPptx(ig);
   return embedFonts(await pptx.write({ outputType: 'arraybuffer' }));
 }
 
@@ -1629,7 +1630,10 @@ async function downloadPptx(btn) {
   if (btn) btn.disabled = true;
   toast('PPT를 만드는 중입니다…');
   try {
-    const bytes = await buildPptxBytes();
+    let ig = null;
+    try { ig = await ensureIgLink(); } catch (e) { console.warn('미리보기 링크', e); toast('미리보기 링크 없이 PPT를 만듭니다'); }
+    if (ig && $('#mShare') && !$('#mShare').hidden) renderShare();
+    const bytes = await buildPptxBytes(ig);
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
     const a = document.createElement('a'); a.href = url; a.download = contiFileName(); document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
@@ -1715,7 +1719,7 @@ function mentionRuns(text, size) {
 //  1 회사 표지 / 2 제작(서비스명·채널·일정 + 콘텐츠 방식 + 소구포인트) / 3 표지 디자인(인스타 게시물 모양) + 멘션
 //  4~ 속지 3장씩(그림 + 콘텐츠 내용·이미지 내용) / 마지막 감사합니다
 //  (기존 콘티는 속지 장의 Confidential 줄이 위 띠에 붙어 있었다 — 템플릿 실수라 다른 장처럼 아래에 둔다)
-async function buildPptx() {
+async function buildPptx(ig) {
   if (!window.PptxGenJS) await loadScript(PPTX_SRC);
   const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
   pptx.theme = { headFontFace: PPT.head, bodyFontFace: PPT.body };
@@ -1744,17 +1748,31 @@ async function buildPptx() {
     { text: `바이럴 콘텐츠 제작 방식으로, ‘자취생으로 살아남기’ 톤앤매너에 맞춘 형태의 콘텐츠를 제작합니다. 카드뉴스(사진) 콘텐츠의 경우 표지 1장과 속지 ${inner.length}장을 기존 ‘자취생으로 살아남기’가 만들어왔던 콘텐츠 레퍼런스를 참고로 제작하게 됩니다.`, options: { fontSize: 14 } },
   ], { ...BODY, x: 1.18, y: 3.18, w: 10.89, h: 1.2, color: PPT.ink, margin: 0, valign: 'top', lineSpacingMultiple: 1.3 });
   s.addText('콘텐츠 소구포인트 :', { ...HEAD, x: 1.18, y: 4.45, w: 2.3, h: 0.4, fontSize: 16, color: PPT.ink, margin: 0 });
+  // 소구포인트: 메모 글은 여기, 브리프 캡처는 다음 장에 크게 (이 칸에 같이 넣으면 캡처 글씨가 읽히지 않는다)
+  const shots = S.briefFiles.filter(f => f.image), others = S.briefFiles.filter(f => !f.image);
   {
-    const shots = S.briefFiles.filter(f => f.image), others = S.briefFiles.filter(f => !f.image);
-    const ax = 3.49, ay = 4.45, aw = 9.3, ah = others.length ? 2.3 : 2.55, gap = 0.2;
-    if (shots.length) {
-      const sw = (aw - gap * (shots.length - 1)) / shots.length;
-      let x = ax;
-      for (const f of shots) { const b = await containBox(f.url, sw, ah); s.addImage({ data: raw(f.url), x, y: ay, w: b.w, h: b.h }); x += b.w + gap; }
-    } else if (S.brief.length) {
-      s.addText(S.brief.map((t, i, a) => ({ text: t, options: { breakLine: i < a.length - 1 } })), { ...BODY, x: ax, y: ay + 0.05, w: aw, h: ah, fontSize: 12, color: PPT.ink, valign: 'top', margin: 0, fit: 'shrink' });
-    }
+    const ax = 3.49, ay = 4.45, aw = 9.3;
+    const lines = [...S.brief];
+    if (shots.length) lines.push(`고객사 가이드 캡처 ${shots.length}장은 다음 장에 담았습니다.`);
+    if (lines.length) s.addText(lines.map((t, i, a) => ({ text: t, options: { breakLine: i < a.length - 1, color: i >= S.brief.length ? PPT.muted : PPT.ink } })),
+      { ...BODY, x: ax, y: ay + 0.04, w: aw, h: 2.2, fontSize: 13, valign: 'top', margin: 0, lineSpacingMultiple: 1.35, paraSpaceAfter: 4 });
     if (others.length) s.addText('첨부 원본: ' + others.map(f => f.name).join(', '), { ...BODY, x: ax, y: 6.8, w: aw, h: 0.28, fontSize: 10, color: PPT.muted, margin: 0 });
+  }
+  // 가로로 긴 캡처(가이드 페이지 등)는 한 장에 하나씩 꽉 차게, 세로 캡처는 두 개까지 나란히
+  if (shots.length) {
+    const ax = 0.6, ay = 1.2, aw = 12.13, ah = 5.75, gap = 0.25;
+    const groups = [];
+    for (const f of shots) {
+      const im = await loadImg(f.url), wide = im.naturalWidth / im.naturalHeight > 1.2, last = groups[groups.length - 1];
+      if (!wide && last && !last.wide && last.items.length < 2) last.items.push(f); else groups.push({ wide, items: [f] });
+    }
+    for (const [gi, g] of groups.entries()) {
+      s = reelsFrame(pptx, `카드뉴스 광고 콘텐츠 제작(${gi + 2}) · 고객사 가이드`, { bandText: '자취생으로 살아남기 콘텐츠 제작 콘티' });
+      const sw = (aw - gap * (g.items.length - 1)) / g.items.length;
+      const boxes = []; for (const f of g.items) boxes.push(await containBox(f.url, sw, ah));
+      let x = ax + (aw - boxes.reduce((a, b) => a + b.w, 0) - gap * (g.items.length - 1)) / 2;
+      g.items.forEach((f, i) => { const b = boxes[i]; s.addImage({ data: raw(f.url), x, y: ay + (ah - b.h) / 2, w: b.w, h: b.h }); x += b.w + gap; });
+    }
   }
 
   // 3. 표지 디자인 + 멘션 (카드뉴스 광고 콘텐츠 콘티(1))
@@ -1767,37 +1785,56 @@ async function buildPptx() {
   s.addText(account, { ...BODY, x: 1.38, y: 1.62, w: 2.6, h: 0.38, fontSize: 11, color: '262626', margin: 0, valign: 'middle' });
   s.addText('⋮', { ...BODY, x: 4.3, y: 1.62, w: 0.3, h: 0.38, fontSize: 14, color: '262626', margin: 0, align: 'center', valign: 'middle' });
   s.addImage({ data: pics[cover.id], x: 0.89, y: 2.04, w: 3.78, h: 4.725 });
+  // 인스타 화면처럼 넘겨 보는 웹 미리보기 링크 (PPT 를 받을 때 지금 내용으로 맞춰 둔다)
+  if (ig) s.addText([{ text: '▶ 인스타그램 화면으로 미리보기', options: { hyperlink: { url: ig, tooltip: '누르면 인스타그램처럼 넘겨 볼 수 있는 화면이 열립니다' } } }],
+    { ...HEAD, x: 0.89, y: 6.92, w: 3.78, h: 0.34, align: 'center', fontSize: 12, margin: 0, valign: 'middle' });
   s.addText('<멘션 텍스트>', { ...HEAD, x: 5.41, y: 1.14, w: 2.0, h: 0.44, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
   const ment = [S.caption.mention.trim(), S.caption.account.trim(), S.caption.tags.trim()].filter(Boolean).join('\n');
   const coverTx = TXT.filter(k => cover[k].trim());
-  s.addText([...(ment ? mentionRuns(ment, 10.5) : [{ text: '(멘션 텍스트)', options: { color: PPT.muted, fontSize: 10.5 } }]),
-    { text: '', options: { breakLine: true } }, { text: ' ', options: { breakLine: true } },   // 기존 콘티처럼 한 줄 띄우고 빨간 안내
-    { text: '⭐#광고 포함 태그 최대 5개 검토 / 계정 태그 여부', options: { color: RC.red, fontSize: 10.5, breakLine: false } }],
-  { ...BODY, x: 6.08, y: 1.63, w: 6.1, h: coverTx.length ? 3.0 : 5.0, valign: 'top', margin: 0, lineSpacingMultiple: 1.2, fit: 'shrink' });
+  // 멘션 길이에 따라 글자 크기·빨간 안내·<표지 문구> 자리를 정한다 (고정 높이에 넣으면 긴 멘션이 아래 칸과 겹친다)
+  const MW = 6.6, coverStr = coverTx.map(k => COVER_LABEL[k] + '  ' + cover[k].replace(/\n/g, ' / ')).join('\n');
+  let mfs = 11, ml, cl;
+  const roomM = coverTx.length ? 6.95 - 1.63 - 0.35 - 0.55 : 6.95 - 1.63 - 0.35;
+  for (; mfs > 8.5; mfs -= 0.5) {
+    ml = estLines(ment || '(멘션 텍스트)', MW, mfs) * mfs * 1.25 * 1.17 / 72;
+    cl = coverTx.length ? estLines(coverStr, MW, mfs) * mfs * 1.25 * 1.17 / 72 : 0;
+    if (ml + cl <= roomM) break;
+  }
+  s.addText(ment ? mentionRuns(ment, mfs) : [{ text: '(멘션 텍스트)', options: { color: PPT.muted, fontSize: mfs } }],
+    { ...BODY, x: 6.08, y: 1.63, w: MW, h: ml + 0.05, valign: 'top', margin: 0, lineSpacingMultiple: 1.25 });
+  let my = 1.63 + ml + 0.12;
+  s.addText('⭐ #광고 포함 태그 최대 5개 검토 / 계정 태그 여부', { ...BODY, x: 6.08, y: my, w: MW, h: 0.3, fontSize: mfs, color: RC.red, margin: 0, valign: 'middle' });
   if (coverTx.length) {
-    s.addText('<표지 문구>', { ...HEAD, x: 5.41, y: 4.85, w: 2.0, h: 0.44, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
+    my += 0.5;
+    s.addText('<표지 문구>', { ...HEAD, x: 5.41, y: my, w: 2.0, h: 0.4, align: 'center', fontSize: 14, color: RC.red, margin: 0, valign: 'middle' });
     s.addText(coverTx.flatMap((k, i, a) => [{ text: COVER_LABEL[k] + '  ', options: { ...HEAD } }, { text: cover[k].replace(/\n/g, ' / '), options: { breakLine: i < a.length - 1 } }]),
-      { ...BODY, x: 6.08, y: 5.32, w: 6.1, h: 1.55, fontSize: 11, color: PPT.ink, valign: 'top', margin: 0, lineSpacingMultiple: 1.2, fit: 'shrink' });
+      { ...BODY, x: 6.08, y: my + 0.45, w: MW, h: cl + 0.05, fontSize: mfs, color: PPT.ink, valign: 'top', margin: 0, lineSpacingMultiple: 1.25 });
   }
 
-  // 4~. 속지 3장씩 (카드뉴스 광고 콘텐츠 콘티(2)~)
-  const XS = [0.47, 4.6, 8.73];
-  for (let p = 0, page = 2; p < inner.length; p += 3, page++) {
+  // 4~. 속지 2장씩 (카드뉴스 광고 콘텐츠 콘티(2)~) — 칸마다 왼쪽 그림, 오른쪽 콘텐츠 내용·이미지 내용
+  //   (예전엔 3장씩 그림 아래에 글을 둬서 글 자리가 2인치도 안 돼 글자가 8pt 까지 줄거나 바닥 글귀와 겹쳤다)
+  //   한 장 안의 두 칸은 같은 글자 크기로 맞춘다
+  const XS = [0.47, 6.79], CW = 6.07, IW = 2.8, IH = 3.5, TW = 2.5, TOP = 1.78, BOT = 6.88;
+  const LAB = 0.38, GAP = 0.2;
+  for (let p = 0, page = 2; p < inner.length; p += 2, page++) {
     s = reelsFrame(pptx, `카드뉴스 광고 콘텐츠 콘티(${page})`);
-    inner.slice(p, p + 3).forEach((c, j) => {
-      const n = S.cards.indexOf(c) + 1, X = XS[j], tx = X - 0.15;
-      s.addText(`속지(${n})`, { ...HEAD, x: X, y: 1.08, w: 2.0, h: 0.42, fontSize: 14, color: PPT.ink, margin: 0, valign: 'middle' });
-      s.addImage({ data: pics[c.id], x: X, y: 1.5, w: 2.8, h: 3.5 });
-      s.addText('콘텐츠 내용', { ...HEAD, x: tx, y: 5.08, w: 2.0, h: 0.36, fontSize: 14, color: PPT.ink, margin: 0 });
-      const body = [c.sub.trim(), c.detail.trim()].filter(Boolean).join('\n') || '(작성 전)', desc = c.desc.trim() || '(작성 전)';
-      // 글이 길면 글자를 줄이고, '이미지 내용'은 콘텐츠 내용 바로 아래로 (기존 콘티도 장마다 자리가 다르다)
-      const top = 5.44, room = 7.06 - top - 0.4;
-      let fs = 11, lh, bl, dl;
-      for (; fs > 8; fs -= 0.5) { lh = fs * 1.1 * 1.17 / 72; bl = estLines(body, 4.0, fs); dl = estLines(desc, 3.95, fs); if ((bl + dl) * lh <= room) break; }
-      const bh = bl * lh + 0.04, ly = top + bh + 0.02;
-      s.addText(body, { ...BODY, x: tx, y: top, w: 4.0, h: bh, fontSize: fs, color: body === '(작성 전)' ? PPT.muted : PPT.ink, valign: 'top', margin: 0, lineSpacingMultiple: 1.1 });
-      s.addText('이미지 내용', { ...HEAD, x: tx, y: ly, w: 2.0, h: 0.34, fontSize: 14, color: PPT.ink, margin: 0 });
-      s.addText(desc, { ...BODY, x: tx, y: ly + 0.36, w: 3.95, h: dl * lh + 0.04, fontSize: fs, color: desc === '(작성 전)' ? PPT.muted : PPT.ink, valign: 'top', margin: 0, lineSpacingMultiple: 1.1 });
+    const two = inner.slice(p, p + 2).map(c => ({ c, body: [c.sub.trim(), c.detail.trim()].filter(Boolean).join('\n') || '(작성 전)', desc: c.desc.trim() || '(작성 전)' }));
+    let fs = 11, lh;
+    const fits = f => two.every(t => (estLines(t.body, TW, f) + estLines(t.desc, TW, f)) * f * 1.15 * 1.17 / 72 <= BOT - TOP - LAB * 2 - GAP);
+    while (fs > 8 && !fits(fs)) fs -= 0.5;
+    lh = fs * 1.15 * 1.17 / 72;
+    two.forEach(({ c, body, desc }, j) => {
+      const n = S.cards.indexOf(c) + 1, X = XS[j], tx = X + 0.25 + IW + 0.3;
+      s.addShape(pptx.ShapeType.rect, { x: X, y: 1.18, w: CW, h: 5.85, fill: { color: 'F6F4EF' }, line: { color: 'F6F4EF' } });
+      s.addText(`속지(${n})`, { ...HEAD, x: X + 0.25, y: 1.3, w: 2.0, h: 0.4, fontSize: 14, color: PPT.ink, margin: 0, valign: 'middle' });
+      s.addImage({ data: pics[c.id], x: X + 0.25, y: TOP, w: IW, h: IH });
+      // 라벨과 글을 한 글상자에 이어 넣는다 → 글 길이를 어림해 자리를 정할 때 생기던 빈틈·겹침이 없다
+      const part = (label, text, first) => [
+        { text: label, options: { ...HEAD, fontSize: 12, color: 'B07800', paraSpaceBefore: first ? 0 : 14, paraSpaceAfter: 4, breakLine: true } },
+        ...text.split('\n').map((l, i, a) => ({ text: l || ' ', options: { ...BODY, fontSize: fs, color: text === '(작성 전)' ? PPT.muted : PPT.ink, breakLine: first || i < a.length - 1 } })),
+      ];
+      s.addText([...part('콘텐츠 내용', body, true), ...part('이미지 내용', desc, false)],
+        { x: tx, y: TOP - 0.04, w: TW, h: BOT - TOP + 0.04, valign: 'top', margin: 0, lineSpacingMultiple: 1.15 });
     });
   }
 
@@ -1841,7 +1878,7 @@ function igGo(d) {
   const tr = $('#igTrack'), k = Math.max(0, Math.min(S.cards.length - 1, IGK + d));
   igMark(k); tr.scrollTo({ left: k * tr.clientWidth, behavior: 'smooth' });
 }
-function closeInsta() { closeM(mInsta); $('#igCount').textContent = ''; }
+function closeInsta() { if (IG_ONLY) return; closeM(mInsta); $('#igCount').textContent = ''; }   // 미리보기 전용 주소는 닫을 데가 없다
 document.addEventListener('keydown', e => {
   if ($('#mInsta').hidden) return;
   if (e.key === 'ArrowRight') igGo(1); else if (e.key === 'ArrowLeft') igGo(-1);
@@ -1871,7 +1908,9 @@ function renderNotice() { const b = $('#noticeBox'); if (b) { b.textContent = ''
 //   url = 콘티 내용을 담은 Storage 스크립트(window.__CONTI_SHARE=…) — <script> 로 읽는다
 // 담당자는 장마다 글을 눌러 바로 고치거나 메모를 남기고 [수정 요청 보내기] → Firestore feedback/{id}
 //   (규칙: 링크의 열쇠가 맞을 때만 쓸 수 있다. 칸 이름은 릴스와 같아 장별 수정도 clips 에 담는다)
-const SHARE2 = /^#v=([\w-]+)\.([\w-]+)$/.exec(location.hash);
+// #i= 는 같은 링크의 '인스타 미리보기만' 주소 — 캐러셀 화면만 띄우고 수정 요청·PPT 받기는 보이지 않는다(PPT 표지 장에 자동으로 들어감)
+const IG_ONLY = /^#i=/.test(location.hash);
+const SHARE2 = /^#[vi]=([\w-]+)\.([\w-]+)$/.exec(location.hash);
 let VIEW = null;   // null = 편집 · 'preview' = 내 미리보기 · 'share' = 담당자
 let SH = null;     // 담당자 화면에서 연 링크 정보 { sid, key, contiId, at }
 function enterViewer(preview) {
@@ -2129,8 +2168,10 @@ async function openShared() {
     if (!x || !x.conti) throw new Error('내용 없음');
     if (x.conti.kind !== 'cardnews') { location.replace('./' + location.hash); return; }   // 릴스 콘티 링크면 릴스 담당자 화면으로
     S = normalize(x.conti); SEL = S.cards[0].id;
-    renderHead(); renderViewer(); document.body.classList.add('loaded'); fbCheckSeen();
+    renderHead(); renderViewer(); document.body.classList.add('loaded');
     document.title = `[콘티] ${S.info.title || '카드뉴스'} (카드뉴스)`;
+    if (IG_ONLY) { document.body.classList.add('igonly'); document.title = `${S.info.title || '카드뉴스'} · 인스타 미리보기`; openInsta(); }
+    else fbCheckSeen();
   } catch (e) {
     console.warn(e);
     v.textContent = ''; v.append(el('div', 'wrap vw-msg', '콘티를 열 수 없습니다.\n링크가 닫혔거나 주소가 잘렸을 수 있습니다. 보내 드린 링크를 다시 눌러 주세요.'));
@@ -2164,6 +2205,12 @@ function renderShare(msg) {
     const cp = el('button', 'btn brand', '복사'); cp.onclick = async () => { try { await navigator.clipboard.writeText(inp.value); } catch (e) { inp.select(); document.execCommand('copy'); } toast('링크를 복사했습니다'); };
     const op = el('a', 'btn', '열어 보기'); op.href = inp.value; op.target = '_blank'; op.rel = 'noopener';
     r.append(inp, cp, op); b.append(r);
+    if (sh.key) {   // 인스타 화면만 보는 주소 (PPT 표지 장에도 들어간다)
+      const ri = el('div', 'sh-row'), ig = igLink(sh);
+      const ci = el('button', 'btn', '인스타 미리보기 주소 복사'); ci.onclick = async () => { try { await navigator.clipboard.writeText(ig); } catch (e) {} toast('인스타 미리보기 주소를 복사했습니다'); };
+      const oi = el('a', 'btn', '미리보기 열기'); oi.href = ig; oi.target = '_blank'; oi.rel = 'noopener';
+      ri.append(ci, oi, el('span', 'sh-note', '수정 요청 칸 없이 인스타 화면만 보여 줍니다')); b.append(ri);
+    }
     const changed = hashOf(JSON.stringify(shareSnapshot())) !== sh.hash;
     const when = sh.updatedAt && sh.updatedAt !== sh.at ? `${fmtWhen(sh.at)}에 만든 링크 · ${fmtWhen(sh.updatedAt)}에 갱신` : `${fmtWhen(sh.at)}에 만든 링크`;
     b.append(el('p', 'sh-note', when + (sh.by ? ' · ' + sh.by.split('@')[0] : '') + (changed ? ' · 링크를 만든 뒤 콘티를 고쳤습니다. 담당자에게는 아직 예전 내용이 보입니다.' : ' · 지금 내용과 같습니다.')));
@@ -2181,26 +2228,42 @@ async function publishShare(btn) {
   const old = S.share, fresh = !old?.key;   // 예전 방식(토큰) 링크면 새로 만든다
   btn.disabled = true; btn.textContent = '올리는 중…';
   try {
-    const snap = shareSnapshot(), now = Date.now();
-    const sid = fresh ? 's' + now.toString(36) + uid() + uid() : old.sid;
-    const key = fresh ? uid() + uid() + uid() + uid() : old.key;
-    const file = `conti-share/${sid}-${now.toString(36)}.js`;
-    const ref = FBX.ST.ref(FBX.storage, file);
-    await FBX.ST.uploadString(ref, 'window.__CONTI_SHARE = ' + JSON.stringify({ v: 2, at: now, conti: snap }) + ';\n', 'raw',
-      { contentType: 'application/javascript; charset=utf-8', cacheControl: 'no-cache' });
-    const url = await FBX.ST.getDownloadURL(ref);
-    const at = fresh ? now : old.at;
-    await FBX.F.setDoc(FBX.F.doc(FBX.db, 'shares', sid), { key, url, contiId: CONTI_ID, title: S.info.title || '', at, updatedAt: now, by: FBX.user?.email || '' });
-    // 지난 내용 파일 정리
-    const gone = old ? (old.key ? old.file : `conti-share/${old.sid}.js`) : null;
-    if (gone && gone !== file) FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, gone)).catch(() => {});
-    S.share = { sid, key, file, at, updatedAt: now, by: FBX.user?.email || '', hash: hashOf(JSON.stringify(snap)) };
-    save();
+    await pushShare();
     renderShare(fresh ? (old ? '새 링크를 만들었습니다. 예전 링크는 닫혔으니 새 링크를 보내 주세요.' : '링크를 만들었습니다. [복사]해서 담당자에게 보내 주세요.')
       : '담당자 화면을 지금 내용으로 바꿨습니다. 링크는 그대로입니다.');
   } catch (e) {
     console.error(e); renderShare('링크를 만들지 못했습니다 — ' + (/permission/i.test(e.message) ? '권한이 없습니다(보안 규칙)' : e.message));
   }
+}
+// 링크가 없으면 만들고, 있으면 지금 내용으로 갱신(주소 그대로) — [링크 만들기]·[지금 내용으로 갱신]·[PPT 받기]가 같이 쓴다
+async function pushShare() {
+  const old = S.share, fresh = !old?.key;
+  const snap = shareSnapshot(), now = Date.now();
+  const sid = fresh ? 's' + now.toString(36) + uid() + uid() : old.sid;
+  const key = fresh ? uid() + uid() + uid() + uid() : old.key;
+  const file = `conti-share/${sid}-${now.toString(36)}.js`;
+  const ref = FBX.ST.ref(FBX.storage, file);
+  await FBX.ST.uploadString(ref, 'window.__CONTI_SHARE = ' + JSON.stringify({ v: 2, at: now, conti: snap }) + ';\n', 'raw',
+    { contentType: 'application/javascript; charset=utf-8', cacheControl: 'no-cache' });
+  const url = await FBX.ST.getDownloadURL(ref);
+  const at = fresh ? now : old.at;
+  await FBX.F.setDoc(FBX.F.doc(FBX.db, 'shares', sid), { key, url, contiId: CONTI_ID, title: S.info.title || '', at, updatedAt: now, by: FBX.user?.email || '' });
+  // 지난 내용 파일 정리
+  const gone = old ? (old.key ? old.file : `conti-share/${old.sid}.js`) : null;
+  if (gone && gone !== file) FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, gone)).catch(() => {});
+  S.share = { sid, key, file, at, updatedAt: now, by: FBX.user?.email || '', hash: hashOf(JSON.stringify(snap)) };
+  save();
+}
+// 인스타 미리보기만 보는 주소 (PPT 표지 장에 넣는다)
+const igLink = sh => sh?.key ? `${VIEW_SITE}#i=${sh.sid}.${sh.key}` : null;
+async function ensureIgLink() {
+  if (VIEW === 'share') return SH?.key ? igLink(SH) : null;   // 담당자가 받는 PPT 는 지금 보고 있는 링크로
+  if (!FBX?.storage || !CONTI_ID) return null;                // 서버에 없는 시안 파일이면 넣지 않는다
+  if (!S.share?.key || hashOf(JSON.stringify(shareSnapshot())) !== S.share.hash) {
+    toast('인스타 미리보기 링크를 지금 내용으로 맞추는 중…');
+    await pushShare();
+  }
+  return igLink(S.share);
 }
 async function closeShare(btn) {
   if (!S.share || !confirm('이 링크를 닫을까요? 담당자가 더 이상 열 수 없습니다.')) return;
@@ -2347,7 +2410,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFileMen
 // ───────── 공통 ─────────
 function openM(m) { m.hidden = false; }
 function closeM(m) { m.hidden = true; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => m.hidden = true); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => { if (!(IG_ONLY && m.id === 'mInsta')) m.hidden = true; }); });
 let tt; function toast(t) { const x = $('#toast'); x.textContent = t; x.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => x.classList.remove('show'), 1800); }
 
 function renderAll() {
