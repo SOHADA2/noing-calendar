@@ -612,26 +612,37 @@ button.bgm-ad{cursor:pointer}
 .ig-shot.none{display:grid;place-items:center;color:#bbb;font-size:14px;padding:28px;text-align:center;background:#262524;line-height:1.5}
 @keyframes igzoom{from{transform:scale(1)}to{transform:scale(1.12)}}
 .ig-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0,transparent 16%,transparent 58%,rgba(0,0,0,.62) 100%);pointer-events:none}
-.ig-bars{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:3px}
-.ig-bars i{flex:1;height:3px;background:rgba(255,255,255,.35);border-radius:2px;overflow:hidden}
+.ig-prog{display:flex;align-items:center;gap:10px;width:min(calc(min(76vh,720px) * 9 / 16), 92vw)}   /* 클립 진행(실제 화면엔 없음 — 폰 밖) */
+.ig-prog .ig-bars{flex:1;display:flex;gap:3px}
+.ig-bars i{flex:1;height:3px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden}
 .ig-bars b{display:block;height:100%;width:0;background:#fff}
-.ig-top{position:absolute;left:14px;right:14px;top:22px;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:16px}
-.ig-top span{font-size:11.5px;background:rgba(0,0,0,.4);padding:2px 9px;border-radius:99px}
-.ig-shotnote{position:absolute;left:12px;right:12px;top:52px;color:#fff;font-size:11.5px;line-height:1.4;background:rgba(0,0,0,.46);border-radius:9px;padding:6px 9px;pointer-events:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;word-break:keep-all}
+.ig-prog span{color:#d8d2c6;font-size:12px;white-space:nowrap}
+/* 실제 인스타 릴스 화면 배치(9:16 틀 기준 cqw·cqh) */
+.ig-top{position:absolute;left:4cqw;right:4cqw;top:3cqh;display:flex;justify-content:space-between;align-items:center;color:#fff;pointer-events:none}
+.ig-top b{display:flex;align-items:center;gap:1cqw;font-size:5.6cqw;font-weight:700;letter-spacing:-.02em}
+.ig-top b svg{width:4cqw;height:4cqw}.ig-top>svg{width:7cqw;height:7cqw}
+.ig-shotnote{position:absolute;left:3cqw;right:3cqw;top:9.5cqh;color:#fff;font-size:11.5px;line-height:1.4;background:rgba(0,0,0,.46);border-radius:9px;padding:6px 9px;pointer-events:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;word-break:keep-all}
 .ig-shotnote[hidden]{display:none}
 .ig-shotnote b{display:inline-block;font-size:10.5px;font-weight:700;color:#2b1d00;background:var(--brand);border-radius:4px;padding:0 5px;margin-right:5px;vertical-align:1px}
 .ig-phone{container-type:size}
 /* 자막 = life 채널 릴스와 같게: 한 줄, 흰 글자 + 검정 52% 둥근 상자, 글자 = 화면 폭 6.5%, 상자 가운데 = 높이 71.6% (넘치면 글자만 줄임) */
 .ig-sub{position:absolute;left:3%;right:3%;top:71.6%;transform:translateY(-50%);text-align:center;font-size:6.5cqw;pointer-events:none}
 .ig-sub span{display:inline-block;max-width:none;white-space:nowrap;background:rgba(0,0,0,.52);color:#fff;font-weight:500;line-height:1.2;letter-spacing:-.01em;padding:.27em .36em .29em;border-radius:.17em}
-.ig-side{position:absolute;right:10px;bottom:96px;display:flex;flex-direction:column;gap:15px;align-items:center;color:#fff;font-size:22px;pointer-events:none}
-.ig-side small{display:block;font-size:10px;text-align:center;margin-top:1px}
-.ig-bottom{position:absolute;left:12px;right:58px;bottom:14px;color:#fff;font-size:12.5px;pointer-events:none}
-.ig-user{display:flex;align-items:center;gap:7px;margin-bottom:6px}
-.ig-user img{width:28px;height:28px;border-radius:50%;background:#fff}
-.ig-follow{border:1px solid rgba(255,255,255,.85);border-radius:6px;padding:0 7px;font-size:11.5px}
-.ig-bottom .ig-cap{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0;font-size:12.5px}
-.ig-audio{margin-top:4px;font-size:11.5px;opacity:.85}
+.ig-side{position:absolute;right:1.8cqw;bottom:3cqh;width:11cqw;display:flex;flex-direction:column;align-items:center;gap:1.3cqh;color:#fff;pointer-events:none}
+.ig-side>span{display:flex;flex-direction:column;align-items:center}
+.ig-side svg{width:7cqw;height:7cqw;filter:drop-shadow(0 0 2px rgba(0,0,0,.35))}
+.ig-side small{font-size:3.1cqw;font-weight:600;margin-top:.4cqh;text-shadow:0 0 3px rgba(0,0,0,.4)}
+.ig-disc{width:7.4cqw;height:7.4cqw;border:.55cqw solid #fff;border-radius:1.8cqw;overflow:hidden;background:#fff;margin-top:.6cqh}
+.ig-disc img{width:100%;height:100%;object-fit:cover}
+.ig-bottom{position:absolute;left:3.6cqw;right:15cqw;bottom:3cqh;color:#fff;pointer-events:none;text-shadow:0 0 3px rgba(0,0,0,.35)}
+.ig-user{display:flex;align-items:center;gap:2.2cqw;margin-bottom:1.1cqh}
+.ig-user img{width:7.6cqw;height:7.6cqw;border-radius:50%;background:#fff}
+.ig-user b{font-size:3.7cqw;font-weight:700}
+.ig-follow{border:.3cqw solid rgba(255,255,255,.9);border-radius:2cqw;padding:.5cqw 2.4cqw;font-size:3.3cqw;font-weight:600}
+.ig-bottom .ig-cap{display:flex;font-size:3.6cqw;line-height:1.35;padding:0}
+.ig-cap #igCap{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ig-cap .more{flex:none;margin-left:1.2cqw;opacity:.75}
+.ig-audio{display:flex;align-items:center;gap:1.6cqw;margin-top:1cqh;font-size:3.3cqw}
+.ig-audio svg{width:3.4cqw;height:3.4cqw;flex:none}.ig-audio span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ig-ctrl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:min(calc(min(76vh,720px) * 9 / 16), 92vw)}
 .ig-ctrl .btn{height:38px;padding:0 4px;font-size:13px;display:flex;align-items:center;justify-content:center;white-space:nowrap;border-radius:10px}
 .ig-close{position:fixed;top:14px;right:16px;z-index:2;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1}
@@ -910,17 +921,17 @@ body:has(#mInsta:not([hidden])) .fb-bar{visibility:hidden}
     <div class="ig-phone" id="igPhone" title="왼쪽·오른쪽을 누르면 이전·다음 클립, 가운데는 멈춤">
       <div class="ig-stage" id="igStage"></div>
       <div class="ig-shade"></div>
-      <div class="ig-bars" id="igBars"></div>
-      <div class="ig-top"><b>릴스</b><span id="igClip"></span></div>
+      <div class="ig-top"><b>릴스 <svg viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='2.4' stroke-linecap='round'><path d='M7 10l5 5 5-5'/></svg></b><svg viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.6-2h6.4l1.6 2h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z'/><circle cx='12' cy='12.8' r='3.8'/></svg></div>
       <div class="ig-shotnote" id="igShot" hidden></div>
       <div class="ig-sub" id="igSub"></div>
-      <div class="ig-side"><span>♡<small>좋아요</small></span><span>💬<small>댓글</small></span><span>➤<small>공유</small></span><span>⋯</span></div>
+      <div class="ig-side"><span><svg viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M12 20.5s-7.5-4.6-7.5-10.4A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.7c0 5.8-7.5 10.4-7.5 10.4z'/></svg><small>2.1만</small></span><span><svg viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M20.6 12a8.6 8.6 0 1 1-3.4-6.8L21 4.3l-1 3.8A8.5 8.5 0 0 1 20.6 12z'/></svg><small>312</small></span><span><svg viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M17 2.8 20.2 6 17 9.2'/><path d='M3.8 11V9.6A3.6 3.6 0 0 1 7.4 6h12.8'/><path d='M7 21.2 3.8 18 7 14.8'/><path d='M20.2 13v1.4a3.6 3.6 0 0 1-3.6 3.6H3.8'/></svg><small>48</small></span><span><svg viewBox='0 0 24 24' fill='none' stroke='#fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M21.5 3 10 14.2'/><path d='M21.5 3 14.6 21l-4.6-6.8L3 9.6z'/></svg><small>1,027</small></span><span><svg viewBox='0 0 24 24' fill='#fff'><circle cx='5' cy='12' r='1.8'/><circle cx='12' cy='12' r='1.8'/><circle cx='19' cy='12' r='1.8'/></svg></span><span class="ig-disc"><img src="img/logo.png" alt=""></span></div>
       <div class="ig-bottom">
         <div class="ig-user"><img src="img/logo.png" alt=""><b id="igName">one_home_life</b><span class="ig-follow">팔로우</span></div>
-        <div class="ig-cap" id="igCap"></div>
-        <div class="ig-audio">♪ BGM은 발행 때 인스타그램 음악으로</div>
+        <div class="ig-cap"><span id="igCap"></span><span class="more">더 보기</span></div>
+        <div class="ig-audio"><svg viewBox='0 0 24 24' fill='#fff'><path d='M9 17.5V5.5l11-2.5v12'/><circle cx='6.5' cy='17.5' r='2.5'/><circle cx='17.5' cy='15' r='2.5'/></svg><span id="igAudio">one_home_life · 원본 오디오</span></div>
       </div>
     </div>
+    <div class="ig-prog"><div class="ig-bars" id="igBars"></div><span id="igClip"></span></div>
     <div class="ig-ctrl">
       <button class="btn" onclick="playClip(IG.i - 1)" title="이전 클립 (←)">◀ 이전</button>
       <button class="btn primary" id="igPlay" onclick="togglePlay()" title="재생·멈춤 (스페이스)">❚❚ 멈춤</button>
@@ -2026,9 +2037,13 @@ async function buildPptx() {
 // 클립마다 사진을 천천히 넘기고(살짝 확대), 나레이션을 자막으로 나눠 보여준다.
 // [소리] 를 켜면 브라우저의 한국어 음성으로 나레이션을 읽고, 읽기가 끝나면 다음 클립으로 넘어간다.
 const IG = { note: true, i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, take: null, takeSrc: null, seg: null };
-// 자막 나누기 — ① 글에서 줄을 바꾼 곳 ② 문장 끝(. ! ? …) ③ 그래도 길면(한 줄 15자 넘게) 가운데에 가까운 자연스러운 띄어쓰기
+// 자막 나누기 — ① 글에서 줄을 바꾼 곳 ② 문장 끝(. ! ? …) ③ 그래도 길면(자막 상자가 오른쪽 버튼 줄에 닿을 만큼) 가운데에 가까운 자연스러운 띄어쓰기
 //   (쉼표 뒤를 가장 먼저, '~고/~서/~며/~면/~는데/~지만' 같은 이음말 뒤를 그다음으로). 낱말 중간에서는 끊지 않는다
-const SUB_MAX = 15, SUB_LINE = 99;   // life 채널 자막처럼 한 줄 한 덩어리(공백 빼고 15자 안팎)
+const SUB_MAX = 15, SUB_LINE = 99;   // (참고) life 채널 자막 한 덩어리 = 공백 빼고 15자 안팎
+// 한 덩어리 최대 폭 — 자막 상자(글자 = 화면 폭 6.5%, 좌우 여백 0.36em)가 가운데 정렬이라 오른쪽 끝이 버튼 줄(폭 88.5%)에 닿지 않으려면
+//   상자 폭 ≤ 75% → 글자 폭 ≤ 75/6.5 − 0.72 ≈ 10.8em (Pretendard 500 으로 잼, '1,027' 같은 버튼 숫자와도 여유)
+const SUB_EM = 10.8;
+let _subCv; function subEm(t) { _subCv = _subCv || document.createElement('canvas').getContext('2d'); _subCv.font = '500 100px "Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif'; return _subCv.measureText(t).width / 100 * 0.99; }
 const subLen = t => t.replace(/\s/g, '').length;
 function subBreak(words, minLeft = 1) {   // 둘로 나눌 띄어쓰기 자리(왼쪽 낱말 개수)
   const total = subLen(words.join(''));
@@ -2048,7 +2063,7 @@ function subBreak(words, minLeft = 1) {   // 둘로 나눌 띄어쓰기 자리(�
   return best;
 }
 function splitLong(t) {
-  if (subLen(t) <= SUB_MAX) return [t];
+  if (subEm(t) <= SUB_EM) return [t];
   const w = t.split(' '); if (w.length < 2) return [t];
   const k = subBreak(w);
   return [...splitLong(w.slice(0, k).join(' ')), ...splitLong(w.slice(k).join(' '))];
@@ -2081,6 +2096,7 @@ function openInsta() {
   $('#igName').textContent = (S.info.channel || 'one_home_life').replace(/^인스타그램\s*/, '');
   const cap = (S.caption.mention || '').replace(/#광고\s*/, '').trim().split('\n').filter(Boolean)[0] || '';
   $('#igCap').textContent = cap;
+  $('#igAudio').textContent = `${$('#igName').textContent} · 원본 오디오`;
   $('#igSound').classList.toggle('on', IG.sound);
   $('#igSound').hidden = !('speechSynthesis' in window) && !takeOf();
   if (!VIEW) voiceRow();   // 담당자 화면에서는 이 PC 의 목소리 중계를 찾지 않는다
