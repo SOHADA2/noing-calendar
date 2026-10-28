@@ -1283,6 +1283,22 @@ async function revertTo(v, btn) {
   } catch (e) { console.error(e); toast('되돌리지 못했습니다 — ' + e.message); }
   renderVerChip();
 }
+// 녹음본 보호 — 녹음이 지금 글과 맞을 때 나레이션·클립 구성을 고치면(고치기 직전에 부른다)
+//   그 직전 내용을 녹음본째 지금 버전 이름으로 얼려 두고 다음 번호로 넘어간다 → 고친 글은 새 버전에서 새로 녹음
+//   한 번 얼린 녹음본엔 frozen 표시 — 같은 녹음으로 또 얼리지 않는다(새로 녹음하면 표시가 없어진다)
+function guardTake() {
+  if (!FBX || !CONTI_ID || VER_VIEW || !takeOf() || S.take.frozen) return;
+  const snap = JSON.parse(JSON.stringify(S));
+  let n = verNum(S.info.version); if (VERS.some(v => v.n === n)) n = Math.max(...VERS.map(v => v.n)) + 1;
+  S.take.frozen = true; S.info.version = 'v' + (n + 1);
+  renderVerChip(); if (typeof renderInfo === 'function') renderInfo();
+  toast(`v${n}을 녹음본과 함께 확정해 두고 v${n + 1}에서 고칩니다 — 고친 글은 다시 녹음해 주세요`);
+  const v = { n, label: 'v' + n, at: Date.now(), by: FBX.user?.email || '', note: '녹음본 (나레이션 고치기 전 자동 확정)', data: JSON.stringify(withoutMedia(snap)), media: mediaList(snap).map(m => m.mid) };
+  v.media.forEach(m => KEEP.add(m));
+  VERS = VERS.filter(x => x.n !== n).concat({ id: 'v' + n, ...v }).sort((a, b) => a.n - b.n); renderVerChip();
+  FBX.F.setDoc(FBX.F.doc(FBX.db, 'contis', CONTI_ID, 'versions', 'v' + n), v)
+    .catch(e => { console.error(e); toast(`v${n} 자동 확정을 서버에 저장하지 못했습니다 — ${e.message}`); });
+}
 // 서버 문서 하나는 1MB 까지 → 그림은 약 900KB 안쪽으로 줄여 둔다
 async function fitStore(url) {
   if (!url || url.length < 900000 || !/^data:image\//.test(url)) return url;
@@ -1508,6 +1524,7 @@ function selectClip(id) {
   revealSel();
 }
 function addClip() {
+  guardTake();
   const c = newClip(); S.clips.push(c); SEL = c.id; renderClips(); save();
   $('#clipEditor textarea')?.focus();
   toast(`클립 ${S.clips.length}을 추가했습니다`);
@@ -1515,11 +1532,13 @@ function addClip() {
 function deleteClip(c) {
   if (S.clips.length === 1) { toast('클립은 하나 이상 있어야 합니다'); return; }
   if ((c.narration || c.shots || c.photos.length) && !confirm(`${clipNo(c)}을 삭제할까요?`)) return;
+  guardTake();
   const i = S.clips.indexOf(c); S.clips.splice(i, 1); SEL = S.clips[Math.min(i, S.clips.length - 1)].id;
   renderClips(); save(); toast('클립을 삭제했습니다');
 }
 function moveClip(from, to) {
   if (to < 0 || to >= S.clips.length || from === to) return;
+  guardTake();
   const [c] = S.clips.splice(from, 1); S.clips.splice(to, 0, c);
   SEL = c.id; renderClips(); save(); toast(`${to + 1}번째 클립으로 옮겼습니다`);
 }
@@ -1588,6 +1607,7 @@ function renderClipEditor() {
     if (f === 'narration') { est = el('div', 'est'); subp = el('div', 'subprev'); fd.append(est, subp); }
     const upd = () => { if (subp) { subp.textContent = ''; const ch = chunkCaption(c.narration); if (ch.length) { subp.append(el('span', 'k', '자막 나뉨')); ch.forEach(x => subp.append(el('span', 'ch' + (subLen(x) > 20 ? ' long' : ''), subLines(x)))); subp.append(el('span', 'hint', '줄을 바꾸면 거기서 나뉩니다')); } } if (est) { const n = c.narration.replace(/\s/g, '').length; est.textContent = `약 ${fmtSec(secs(c.narration))} · ${n}자 (전체 예상 약 ${fmtSec(totalSecs())} / ${S.info.length || '1분 이내'})`; est.classList.toggle('bad', totalSecs() > limitSecs()); } };
     ta.addEventListener('input', () => {
+      if (f === 'narration') guardTake();
       c[f] = ta.value; grow(ta); upd();
       const t = document.querySelector(`#clipGrid .tile[data-id="${c.id}"]`); if (t) fillClipTile(t, c);
       renderHead(); save();
@@ -2790,7 +2810,7 @@ function renderFb() {
       const sec = el('div', 'fbc-s'); sec.append(el('div', 'fbc-t', `클립 ${x.no}` + (c ? (S.clips.indexOf(c) + 1 !== x.no ? ` (지금 ${S.clips.indexOf(c) + 1}번)` : '') : ' — 지금 콘티에 없는 클립')));
       [['narration', '자막 · 나레이션'], ['shots', '영상 클립']].forEach(([k, lab]) => {
         if (same(x[k], x.base?.[k])) return;
-        sec.append(fbField(lab, x.base?.[k], x[k], c ? c[k] : null, () => { c[k] = x[k]; afterApply(); }));
+        sec.append(fbField(lab, x.base?.[k], x[k], c ? c[k] : null, () => { if (k === 'narration') guardTake(); c[k] = x[k]; afterApply(); }));
       });
       if ((x.memo || '').trim()) sec.append(el('div', 'fbc-memo', '메모: ' + x.memo.trim()));
       card.append(sec);
@@ -2818,6 +2838,7 @@ function fbField(label, base, next, cur, apply) {
   return d;
 }
 function applyAll(f) {
+  if ((f.clips || []).some(x => !same(x.narration, x.base?.narration))) guardTake();
   (f.clips || []).forEach(x => { const c = S.clips.find(k => k.id === x.id); if (!c) return; ['narration', 'shots'].forEach(k => { if (!same(x[k], x.base?.[k])) c[k] = x[k]; }); });
   if (f.caption) ['mention', 'tags', 'account'].forEach(k => { if (!same(f.caption[k], f.caption.base?.[k])) S.caption[k] = f.caption[k]; });
   afterApply(); toast('담당자 수정 내용을 반영했습니다');
