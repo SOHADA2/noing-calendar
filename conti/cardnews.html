@@ -1400,10 +1400,18 @@ async function addBriefFiles(files) {
 
 // ───────── 멘션 ─────────
 function tagCount() { return (S.caption.mention + ' ' + S.caption.tags).match(/#[^\s#]+/g)?.length || 0; }
+// 겹치는 태그 — 같은 태그가 두 번이거나 한 태그가 다른 태그 안에 들어 있으면(#오트몬드 ⊂ #오트몬드검은콩단백) 핵심이 아니면 빼는 게 낫다
+function tagOverlap() {
+  const tags = ((S.caption.mention + ' ' + S.caption.tags).match(/#[^\s#]+/g) || []).map(x => x.replace(/[.,!?…]+$/, '')), out = [];
+  tags.forEach((a, i) => tags.forEach((b, j) => { if (i < j && a !== '#광고' && b !== '#광고' && (a === b || a.includes(b.slice(1)) || b.includes(a.slice(1)))) out.push(a === b ? `${a} 두 번` : `${a.length < b.length ? a : b} ⊂ ${a.length < b.length ? b : a}`); }));
+  return out;
+}
 function renderCaption(setValues) {
   if (setValues) document.querySelectorAll('[data-capf]').forEach(inp => inp.value = S.caption[inp.dataset.capf] || '');
   const tc = tagCount(), ct = $('#tagCounter');
-  ct.textContent = `#광고 포함 ${tc}개 / 최대 5개`; ct.classList.toggle('bad', tc > 5);
+  const ov = tagOverlap();
+  ct.textContent = `#광고 포함 ${tc}개 / 최대 5개` + (tc > 5 ? ' — 줄여 주세요' : '') + (ov.length ? ` · 겹치는 태그: ${ov.join(', ')} (핵심 태그가 아니면 빼는 게 좋아요)` : '');
+  ct.classList.toggle('bad', tc > 5 || ov.length > 0);
 }
 document.querySelectorAll('[data-capf]').forEach(inp => inp.addEventListener('input', () => {
   S.caption[inp.dataset.capf] = inp.value; renderCaption(false); save();
