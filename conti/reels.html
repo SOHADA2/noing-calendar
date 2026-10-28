@@ -358,6 +358,13 @@ body.viewer:not(.loaded):not(.pv) .topbar{visibility:hidden}   /* 담당자 링�
 .sh-link{flex:1;min-width:220px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.5px;background:#f6f3ed}
 .sh-row a.btn{text-decoration:none;color:var(--ink)}
 .sh-note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+/* 버전 */
+.ver-btn{margin-left:4px;vertical-align:1px;border:1px solid var(--line,#e2ddd3);background:#fff;border-radius:99px;font:inherit;font-size:11.5px;font-weight:700;padding:1px 9px;cursor:pointer}
+.ver-btn:hover{border-color:var(--brand)}
+.ver-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #ece7dd;border-radius:10px;margin-top:8px}
+.ver-row b{min-width:34px}.ver-row span{flex:1;font-size:13px;color:var(--muted)}
+.ver-row.cur{background:#fff8e6;border-color:#f3d48a}.ver-row.cur span{color:#8a6a1c}
+.pv-banner .btn+.btn{margin-left:6px}
 .sh-msg{font-size:13px;font-weight:600;color:#8a5a00;margin:10px 0 0}
 .sh-cut{color:#c0392b;border-color:#f0c4bc}
 @media (max-width:760px){
@@ -717,7 +724,7 @@ body:has(#mInsta:not([hidden])) .fb-bar{visibility:hidden}
     <div class="brand">
       <img src="img/logo.png" alt="">
       <div style="min-width:0">
-        <div class="t1">릴스 콘티 <select class="status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select></div>
+        <div class="t1">릴스 콘티 <select class="status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select> <button class="ver-btn ed-only" id="verBtn" onclick="openVer()" hidden title="지난 버전 보기 · 새 버전 시작">v1 ▾</button></div>
         <div class="t2" id="tTitle">새 릴스 콘티</div>
       </div>
     </div>
@@ -838,6 +845,16 @@ body:has(#mInsta:not([hidden])) .fb-bar{visibility:hidden}
 </div>
 
 <!-- 담당자 링크 -->
+<!-- 버전 -->
+<div class="modal" id="mVer" hidden onclick="if(event.target===this)closeM(this)">
+  <div class="dialog" style="max-width:560px">
+    <h3>버전</h3>
+    <p class="desc">고친 내용은 지금 버전에 자동 저장됩니다. 고객사에 보낸 뒤 수정을 시작할 땐 <b>[확정하고 새 버전 시작]</b>을 눌러 지금 내용을 얼려 두세요. 지난 버전은 덮어쓰지 않고 언제든 다시 보거나 PPT로 받을 수 있습니다.</p>
+    <div id="verList"></div>
+    <div class="foot"><button class="btn brand" id="verNew" onclick="startNewVersion(this)">＋ 새 버전 시작</button><button class="btn" onclick="closeM(mVer)">닫기</button></div>
+  </div>
+</div>
+
 <div class="modal" id="mShare" hidden onclick="if(event.target===this)closeM(this)">
   <div class="dialog" style="max-width:620px">
     <h3>담당자에게 보낼 링크</h3>
@@ -1062,7 +1079,8 @@ const briefItems = () => S.brief.map((t, i) => ({ n: i + 1, t }));
 //   (문서 하나가 1MB 를 넘을 수 없어 사진을 나눠 둔다. 콘텐츠 기획 탭은 contis 문서만 읽는다)
 // 내 PC 에서 파일로 열면 이 브라우저(IndexedDB)에 저장
 let FBX = null, CONTI_ID = null;
-const UPLOADED = new Set();   // 서버에 올라가 있는 사진 id
+const UPLOADED = new Set();
+let VERS = [], KEEP = new Set(), VER_VIEW = null, VER_CUR = null, PV_HTML = null;   // 버전(아래 '버전' 참고)   // 서버에 올라가 있는 사진 id
 const DB = { name: 'noing-conti', store: 'reels', key: CID ? 'cid:' + CID : 'current' };
 function idb() {
   return new Promise((res, rej) => {
@@ -1098,12 +1116,8 @@ function withoutMedia(st) {
   (c.bgm || []).forEach(b => { if (b.sound) { b.hasSound = true; delete b.sound; } else delete b.hasSound; });
   return c;
 }
-async function remoteLoad(id) {
-  const F = FBX.F, snap = await F.getDoc(F.doc(FBX.db, 'contis', id));
-  if (!snap.exists()) return null;
-  const meta = snap.data(), st = JSON.parse(meta.data || '{}');
-  if (meta.type === 'cardnews') return { other: meta.type, meta };   // 카드뉴스 콘티를 이 주소로 열었을 때
-  const need = [];
+async function fillMedia(st, id) {   // 글(JSON)의 사진 id 마다 서버 media 에서 그림·소리를 채운다(지금 콘티·지난 버전 같이 씀)
+  const F = FBX.F, need = [];
   (st.clips || []).forEach(c => (c.photos || []).forEach(p => need.push([p.id, u => { p.url = u; }])));
   if (st.take?.id) need.push([st.take.id, u => { st.take.url = u; }]);
   (st.briefFiles || []).forEach(f => need.push([f.id, u => { f.url = u; }]));
@@ -1113,6 +1127,14 @@ async function remoteLoad(id) {
     const m = await F.getDoc(F.doc(FBX.db, 'contis', id, 'media', mid));
     if (m.exists()) { set(m.data().data); UPLOADED.add(mid); }
   }));
+  return st;
+}
+async function remoteLoad(id) {
+  const F = FBX.F, snap = await F.getDoc(F.doc(FBX.db, 'contis', id));
+  if (!snap.exists()) return null;
+  const meta = snap.data(), st = JSON.parse(meta.data || '{}');
+  if (meta.type === 'cardnews') return { other: meta.type, meta };   // 카드뉴스 콘티를 이 주소로 열었을 때
+  await fillMedia(st, id);
   return { st, meta };
 }
 let thumbCache = { src: null, url: null };
@@ -1130,7 +1152,8 @@ async function makeThumb() {   // 콘텐츠 기획 탭 목록용 작은 그림(9
 async function remoteSave() {
   const F = FBX.F, id = CONTI_ID, list = mediaList(S);
   for (const m of list) if (!UPLOADED.has(m.mid)) { await F.setDoc(F.doc(FBX.db, 'contis', id, 'media', m.mid), { data: m.url, at: Date.now() }); UPLOADED.add(m.mid); }
-  for (const mid of [...UPLOADED]) if (!list.some(m => m.mid === mid)) { await F.deleteDoc(F.doc(FBX.db, 'contis', id, 'media', mid)); UPLOADED.delete(mid); }
+  for (const mid of [...UPLOADED]) if (!list.some(m => m.mid === mid) && !KEEP.has(mid)) {   // 지난 버전이 쓰는 사진은 남긴다
+    await F.deleteDoc(F.doc(FBX.db, 'contis', id, 'media', mid)); UPLOADED.delete(mid); }
   await F.setDoc(F.doc(FBX.db, 'contis', id), {
     id, type: 'reels', status: S.status || 'draft', cid: CID || '',
     title: S.info.title || '', company: S.cal?.company || '', channel: S.info.channel || '', date: S.info.date || '', time: S.info.time || '',
@@ -1144,6 +1167,7 @@ let saveTimer, saving = false, saveAgain = false;
 function save() {
   if (typeof deleted !== 'undefined' && deleted) return;   // 삭제 중·삭제 후에는 다시 저장하지 않는다
   if (typeof VIEW !== 'undefined' && VIEW === 'share') return;   // 담당자 화면은 저장하지 않는다
+  if (VER_VIEW) return;   // 지난 버전을 보는 중엔 저장하지 않는다
   clearTimeout(saveTimer);
   $('#saveBadge').textContent = '저장 중…';
   saveTimer = setTimeout(doSave, FBX ? 1200 : 400);
@@ -1162,6 +1186,102 @@ async function doSave() {
     saving = false;
     if (saveAgain) { saveAgain = false; doSave(); }
   }
+}
+// ───────── 버전 (v1 · v2 … 단계별로 남겨 두고 골라 보기) ─────────
+// contis/{id}/versions/v{n} = { n, label, at, by, note, data: 사진 뺀 글(JSON), media: [사진 id…] }
+//   [새 버전 시작] = 지금 내용을 그 버전 이름(S.info.version)으로 얼려 두고 다음 번호로 넘어간다. 그 뒤 고치는 건 새 버전에 쌓인다
+//   지난 버전 = 보기 전용(담당자 화면 모양)으로 띄워 확인하거나 그 버전 PPT 를 받는다
+//     [이 버전으로 되돌리기] = 지금 내용도 먼저 얼려 둔 뒤 그 버전 내용을 다음 번호로 이어 쓴다(어떤 버전도 지워지지 않는다)
+//   얼린 버전이 쓰는 사진은 지우지 않는다(remoteSave 의 사진 정리에서 KEEP 으로 뺀다)
+const verNum = l => +((/(\d+)/.exec(l || '') || [])[1]) || 1;
+const fmtVerAt = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const nextVerNum = () => Math.max(verNum(S.info.version), ...VERS.map(v => v.n)) + 1;
+async function loadVersions() {
+  if (!FBX || !CONTI_ID) return;
+  try {
+    const F = FBX.F, q = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'versions'));
+    VERS = q.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.n - b.n);
+  } catch (e) { console.warn('버전 읽기 실패', e); VERS = []; }
+  KEEP = new Set(VERS.flatMap(v => v.media || []));
+  renderVerChip();
+}
+function renderVerChip() {
+  const b = $('#verBtn'); if (!b) return;
+  b.hidden = !(FBX && CONTI_ID);
+  b.textContent = `${S.info.version || 'v1'}${VERS.length ? ` · 지난 버전 ${VERS.length}` : ''} ▾`;
+}
+function openVer() {
+  const L = $('#verList'); L.textContent = '';
+  const cur = el('div', 'ver-row cur');
+  cur.append(el('b', null, S.info.version || 'v1'), el('span', null, '지금 작업 중 · 고치면 자동 저장'));
+  L.append(cur);
+  [...VERS].reverse().forEach(v => {
+    const r = el('div', 'ver-row');
+    r.append(el('b', null, v.label), el('span', null, [fmtVerAt(v.at), v.by ? v.by.split('@')[0] : '', v.note].filter(Boolean).join(' · ')));
+    const b = el('button', 'btn', '보기'); b.onclick = () => { closeM(mVer); viewVersion(v); };
+    r.append(b); L.append(r);
+  });
+  if (!VERS.length) L.append(el('p', 'sh-note', '아직 얼려 둔 지난 버전이 없습니다.'));
+  $('#verNew').textContent = `＋ ${S.info.version || 'v1'} 확정하고 v${nextVerNum()} 시작`;
+  openM(mVer);
+}
+async function freezeCurrent(note) {
+  clearTimeout(saveTimer); await remoteSave();
+  const F = FBX.F;
+  let n = verNum(S.info.version); if (VERS.some(v => v.n === n)) n = Math.max(...VERS.map(v => v.n)) + 1;
+  const v = { n, label: 'v' + n, at: Date.now(), by: FBX.user?.email || '', note: note || '', data: JSON.stringify(withoutMedia(S)), media: mediaList(S).map(m => m.mid) };
+  await F.setDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'versions', 'v' + n), v);
+  VERS = VERS.filter(x => x.n !== n).concat({ id: 'v' + n, ...v }).sort((a, b) => a.n - b.n);
+  v.media.forEach(m => KEEP.add(m));
+  return n;
+}
+async function startNewVersion(btn) {
+  if (!FBX || !CONTI_ID) return;
+  const note = prompt(`${S.info.version || 'v1'} 을 지금 내용으로 확정해 둡니다. 메모를 남길까요? (예: 고객사 1차 전달본, 비워도 됩니다)`, '');
+  if (note === null) return;
+  btn.disabled = true;
+  try {
+    const n = await freezeCurrent(note.trim());
+    S.info.version = 'v' + (n + 1); renderAll(); save(); closeM(mVer);
+    toast(`v${n} 을 얼려 두고 v${n + 1} 을 시작했습니다`);
+  } catch (e) { console.error(e); toast('버전을 만들지 못했습니다 — ' + e.message); }
+  finally { btn.disabled = false; renderVerChip(); }
+}
+async function viewVersion(v) {
+  toast(`${v.label} 불러오는 중…`);
+  try {
+    const st = await fillMedia(JSON.parse(v.data), CONTI_ID);
+    clearTimeout(saveTimer);
+    VER_CUR = S; VER_VIEW = v; S = normalize(st);
+    enterViewer(true);
+    const ban = $('#pvBanner'); if (PV_HTML == null) PV_HTML = ban.innerHTML;
+    ban.textContent = '';
+    const t = el('span'); t.append(el('b', null, `${v.label} 보기`), ` · ${fmtVerAt(v.at)}에 확정해 둔 지난 버전입니다(고칠 수 없음)${v.note ? ' — ' + v.note : ''}. PPT도 이 버전으로 받을 수 있습니다`);
+    const rb = el('button', 'btn', '이 버전으로 되돌리기'); rb.onclick = () => revertTo(v, rb);
+    const bb = el('button', 'btn', '지금 버전으로 돌아가기'); bb.onclick = () => exitViewer();
+    ban.append(t, rb, bb);
+  } catch (e) { console.error(e); toast('버전을 열지 못했습니다 — ' + e.message); }
+}
+function closeVersionView() {
+  S = VER_CUR; VER_CUR = null; VER_VIEW = null;
+  VIEW = null; document.body.classList.remove('viewer', 'pv');
+  const ban = $('#pvBanner'); ban.hidden = true; if (PV_HTML != null) ban.innerHTML = PV_HTML;
+  renderAll(); window.scrollTo(0, 0);
+}
+async function revertTo(v, btn) {
+  const curLabel = VER_CUR?.info.version || 'v1';
+  if (!confirm(`${v.label} 내용으로 되돌릴까요?\n지금 작업 중인 ${curLabel}도 먼저 확정해 두므로 아무것도 지워지지 않습니다.`)) return;
+  btn.disabled = true;
+  const old = S; closeVersionView();
+  try {
+    const n = await freezeCurrent(`${v.label}로 되돌리기 전`);
+    const cur = S;   // 달력에서 온 정보(제목·채널·일시)와 담당자 링크·상태는 지금 것을 그대로 쓴다
+    S = normalize({ ...JSON.parse(JSON.stringify(old)), share: cur.share, cal: cur.cal, status: cur.status,
+      info: { ...old.info, title: cur.info.title, channel: cur.info.channel, date: cur.info.date, time: cur.info.time, titleFromCal: cur.info.titleFromCal, version: 'v' + (n + 1) } });
+    renderAll(); save();
+    toast(`${curLabel}을 확정해 두고 ${v.label} 내용으로 v${n + 1}을 시작했습니다`);
+  } catch (e) { console.error(e); toast('되돌리지 못했습니다 — ' + e.message); }
+  renderVerChip();
 }
 // 서버 문서 하나는 1MB 까지 → 그림은 약 900KB 안쪽으로 줄여 둔다
 async function fitStore(url) {
@@ -1232,7 +1352,7 @@ document.querySelectorAll('[data-info]').forEach(i => ['input', 'change'].forEac
 $('#statusSel').addEventListener('change', e => { S.status = e.target.value; renderHead(); save(); toast(S.status === 'done' ? '완성으로 표시했습니다' : '작성 중으로 표시했습니다'); });
 function renderHead() {
   renderNotice();
-  $('#tTitle').textContent = S.info.title || '새 릴스 콘티';
+  renderVerChip(); $('#tTitle').textContent = S.info.title || '새 릴스 콘티';
   document.title = '릴스 콘티 · ' + (S.info.title || '새 콘티');
   const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'status-sel ed-only ' + ss.value;
   const t = totalSecs(), over = t > limitSecs();
@@ -2175,7 +2295,7 @@ function enterViewer(preview) {
   if (preview) FB = null;
   renderViewer(); window.scrollTo(0, 0);
 }
-function exitViewer() { VIEW = null; document.body.classList.remove('viewer', 'pv'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
+function exitViewer() { if (VER_VIEW) return closeVersionView(); VIEW = null; document.body.classList.remove('viewer', 'pv'); $('#pvBanner').hidden = true; window.scrollTo(0, 0); }
 function vwSec(title) { const s = el('section'); s.append(el('h2', 'sec-title', title)); const p = el('div', 'panel'); s.append(p); return [s, p]; }
 function zoomable(im, url) { im.title = '크게 보기'; im.onclick = () => { GAL = null; $('#mImgSrc').src = url; $('#mImgCap').hidden = true; $('#lbPrev').hidden = $('#lbNext').hidden = true; openM(mImg); }; return im; }
 let GAL = null;   // 크게 보기 중인 클립 사진 { c, i, k }
@@ -2941,7 +3061,7 @@ function renderAll() {
   if (CID) { applyCalendar(await calendarInfo()); if (!S.cal) $('#saveBadge').textContent = '달력 정보를 찾지 못했습니다 — 달력에서 [콘티 만들기]로 다시 열어 주세요'; }
   renderAll();
   if (CID && S.cal) save();
-  if (FBX && CONTI_ID) loadFeedback();
+  if (FBX && CONTI_ID) { loadFeedback(); loadVersions(); }
 })();
 // 이 콘티 삭제 (서버 모드) — 글 문서와 사진을 모두 지우고 달력의 콘텐츠 기획 탭으로 돌아간다
 let deleted = false;
@@ -2953,6 +3073,8 @@ async function deleteThisConti() {
   try {
     const ms = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'media'));
     for (const d of ms.docs) await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'media', d.id));
+    const vs = await F.getDocs(F.collection(FBX.db, 'contis', CONTI_ID, 'versions'));   // 지난 버전도 같이 지운다
+    for (const d of vs.docs) await F.deleteDoc(F.doc(FBX.db, 'contis', CONTI_ID, 'versions', d.id));
     if (S.share?.sid) {
       if (S.share.key) await F.deleteDoc(F.doc(FBX.db, 'shares', S.share.sid)).catch(() => {});
       await FBX.ST.deleteObject(FBX.ST.ref(FBX.storage, S.share.key ? S.share.file : `conti-share/${S.share.sid}.js`)).catch(() => {});
