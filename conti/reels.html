@@ -1472,8 +1472,9 @@ function renderCaption(setValues) {
   if (setValues) document.querySelectorAll('[data-capf]').forEach(inp => inp.value = S.caption[inp.dataset.capf] || '');
   const tc = tagCount(), ct = $('#tagCounter');
   const ov = tagOverlap();
-  ct.textContent = `#광고 포함 ${tc}개 / 최대 5개` + (tc > 5 ? ' — 줄여 주세요' : '') + (ov.length ? ` · 겹치는 태그: ${ov.join(', ')} (핵심 태그가 아니면 빼는 게 좋아요)` : '');
-  ct.classList.toggle('bad', tc > 5 || ov.length > 0);
+  const star = /\*\*/.test(S.caption.mention + S.caption.tags);   // 인스타는 굵게가 안 돼 별표가 그대로 보이고, AI 로 쓴 티가 난다
+  ct.textContent = `#광고 포함 ${tc}개 / 최대 5개` + (tc > 5 ? ' — 줄여 주세요' : '') + (ov.length ? ` · 겹치는 태그: ${ov.join(', ')} (핵심 태그가 아니면 빼는 게 좋아요)` : '') + (star ? ' · 멘션에 별표(**)가 있어요 — 인스타에 그대로 보이니 빼 주세요' : '');
+  ct.classList.toggle('bad', tc > 5 || ov.length > 0 || star);
 }
 document.querySelectorAll('[data-capf]').forEach(inp => inp.addEventListener('input', () => {
   S.caption[inp.dataset.capf] = inp.value; renderCaption(false); save();
