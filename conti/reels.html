@@ -620,8 +620,10 @@ button.bgm-ad{cursor:pointer}
 .ig-shotnote{position:absolute;left:12px;right:12px;top:52px;color:#fff;font-size:11.5px;line-height:1.4;background:rgba(0,0,0,.46);border-radius:9px;padding:6px 9px;pointer-events:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;word-break:keep-all}
 .ig-shotnote[hidden]{display:none}
 .ig-shotnote b{display:inline-block;font-size:10.5px;font-weight:700;color:#2b1d00;background:var(--brand);border-radius:4px;padding:0 5px;margin-right:5px;vertical-align:1px}
-.ig-sub{position:absolute;left:6%;right:15%;top:57%;text-align:center;color:#fff;font-weight:800;font-size:clamp(15px,2.6vh,22px);line-height:1.38;text-shadow:0 0 4px #000,0 2px 8px rgba(0,0,0,.9);word-break:keep-all;white-space:pre-line;pointer-events:none}
-.ig-sub.long{font-size:clamp(13.5px,2.25vh,19px)}
+.ig-phone{container-type:size}
+/* 자막 = life 채널 릴스와 같게: 한 줄, 흰 글자 + 검정 52% 둥근 상자, 글자 = 화면 폭 6.5%, 상자 가운데 = 높이 71.6% (넘치면 글자만 줄임) */
+.ig-sub{position:absolute;left:3%;right:3%;top:71.6%;transform:translateY(-50%);text-align:center;font-size:6.5cqw;pointer-events:none}
+.ig-sub span{display:inline-block;max-width:none;white-space:nowrap;background:rgba(0,0,0,.52);color:#fff;font-weight:500;line-height:1.2;letter-spacing:-.01em;padding:.27em .36em .29em;border-radius:.17em}
 .ig-side{position:absolute;right:10px;bottom:96px;display:flex;flex-direction:column;gap:15px;align-items:center;color:#fff;font-size:22px;pointer-events:none}
 .ig-side small{display:block;font-size:10px;text-align:center;margin-top:1px}
 .ig-bottom{position:absolute;left:12px;right:58px;bottom:14px;color:#fff;font-size:12.5px;pointer-events:none}
@@ -2024,9 +2026,9 @@ async function buildPptx() {
 // 클립마다 사진을 천천히 넘기고(살짝 확대), 나레이션을 자막으로 나눠 보여준다.
 // [소리] 를 켜면 브라우저의 한국어 음성으로 나레이션을 읽고, 읽기가 끝나면 다음 클립으로 넘어간다.
 const IG = { note: true, i: 0, playing: false, sound: false, t0: 0, dur: 0, timer: 0, raf: 0, voice: null, utter: null, elapsed: 0, take: null, takeSrc: null, seg: null };
-// 자막 나누기 — ① 글에서 줄을 바꾼 곳 ② 문장 끝(. ! ? …) ③ 그래도 길면(두 줄 26자 넘게) 가운데에 가까운 자연스러운 띄어쓰기
+// 자막 나누기 — ① 글에서 줄을 바꾼 곳 ② 문장 끝(. ! ? …) ③ 그래도 길면(한 줄 15자 넘게) 가운데에 가까운 자연스러운 띄어쓰기
 //   (쉼표 뒤를 가장 먼저, '~고/~서/~며/~면/~는데/~지만' 같은 이음말 뒤를 그다음으로). 낱말 중간에서는 끊지 않는다
-const SUB_MAX = 26, SUB_LINE = 13;
+const SUB_MAX = 15, SUB_LINE = 99;   // life 채널 자막처럼 한 줄 한 덩어리(공백 빼고 15자 안팎)
 const subLen = t => t.replace(/\s/g, '').length;
 function subBreak(words, minLeft = 1) {   // 둘로 나눌 띄어쓰기 자리(왼쪽 낱말 개수)
   const total = subLen(words.join(''));
@@ -2165,7 +2167,14 @@ function tick() {
     for (let q = 0; q < IG.subAbs.length; q++) if (IG.subAbs[q] <= ct) ci = q;
   } else { ci = IG.cum.findIndex(x => p < x); if (ci < 0) ci = n - 1; }
   const txt = n ? IG.chunks[ci] : '';
-  if (sub.dataset.t !== txt) { sub.dataset.t = txt; sub.textContent = subLines(txt); sub.classList.toggle('long', subLen(txt) > 20); }
+  if (sub.dataset.t !== txt) {
+    sub.dataset.t = txt; sub.textContent = ''; sub.style.fontSize = '';
+    if (txt) {   // 한 줄로 두고, 화면 폭을 넘으면 글자 크기만 줄인다
+      const sp = el('span', null, txt); sub.append(sp);
+      const w = sp.offsetWidth, room = sub.clientWidth;
+      if (w > room && room > 0) sub.style.fontSize = (parseFloat(getComputedStyle(sub).fontSize) * room / w * 0.98) + 'px';
+    }
+  }
   if (p >= 1 && !(IG.sound && !onTake && 'speechSynthesis' in window && speechSynthesis.speaking)) { playClip(IG.i + 1, !!onTake); return; }
   IG.raf = requestAnimationFrame(tick);
 }
