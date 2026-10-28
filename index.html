@@ -1119,7 +1119,23 @@
     .chip.s-cancel { opacity: .45; text-decoration: line-through; }
 
     /* ── Sidebar ── */
-    .sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; margin-top: 46px; }
+    .sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; margin-top: 46px; position: relative; }
+    /* 정보 영역 접기 손잡이 — 사이드바 왼쪽 가장자리에 걸쳐 있음 */
+    .side-toggle {
+      position: absolute; top: 9px; left: -12px; z-index: 3;
+      width: 22px; height: 22px; padding: 0; border-radius: 50%;
+      border: 1px solid var(--border-2); background: var(--bg-2); color: var(--text-3);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+    .side-toggle:hover { color: var(--text); background: var(--bg-3); }
+    .side-toggle svg { width: 12px; height: 12px; transition: transform .2s; }
+    @media (min-width: 901px) {
+      body.side-collapsed .sidebar { width: 10px; }
+      body.side-collapsed .sidebar > :not(.side-toggle) { display: none; }
+      body.side-collapsed .side-toggle svg { transform: rotate(180deg); }
+    }
+    @media (max-width: 900px) { .side-toggle { display: none; } }
 
     .stat-card {
       background: var(--bg-2);
@@ -2193,6 +2209,7 @@
     </div>
 
     <div class="sidebar">
+      <button type="button" class="side-toggle" onclick="toggleSidebar()" title="정보 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
       <div class="stat-card" data-key="channel">
         <h4 onclick="toggleCard(this)">이번 달 채널별</h4>
         <div class="stat-body">
@@ -2336,6 +2353,7 @@
     </div>
 
     <div class="sidebar" style="margin-top:0">
+      <button type="button" class="side-toggle" onclick="toggleSidebar()" title="정보 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
       <div class="stat-card" data-key="orders-summary">
         <h4 onclick="toggleCard(this)">이번 달 요약</h4>
         <div class="stat-body">
@@ -2453,9 +2471,9 @@
     </div>
 
     <div class="form-group" style="margin-top:-6px">
-      <label style="font-size:11px;color:var(--text-4)">🧮 부가세 포함 금액으로 입력 <span style="font-weight:400;text-transform:none;letter-spacing:0">(재료비 포함 정산 등 특수 케이스용)</span></label>
+      <label style="font-size:11px;color:var(--text-4)">🧮 부가세 포함 청구 총액으로 입력 <span style="font-weight:400;text-transform:none;letter-spacing:0">(스폰서드가 있으면 그만큼 빼서 광고비 자동 계산)</span></label>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="oAmountIncVat" placeholder="예) 1,100,000 (입력 시 위 VAT 별도 자동 계산)" oninput="onAmountIncVatInput()" style="flex:1" />
+        <input type="text" id="oAmountIncVat" placeholder="예) 2,576,000 (입력 시 광고비 자동 계산)" oninput="onAmountIncVatInput()" style="flex:1" />
       </div>
       <div id="oAmountBreakdown" style="font-size:11px;color:var(--muted);margin-top:4px;display:none">
         <span>공급가액 <b id="oAmtSupply">0</b></span>
@@ -2479,7 +2497,7 @@
           </select>
         </div>
         <div class="form-group" style="flex:1"><label>스폰서드 금액 (VAT 별도)</label>
-          <input type="text" id="oSponsoredAmount" placeholder="예) 300,000" oninput="updateOrderTotal()" />
+          <input type="text" id="oSponsoredAmount" placeholder="예) 300,000" oninput="onSponsoredInput()" />
         </div>
       </div>
       <div class="form-group" style="margin-bottom:0"><label>스폰서드 메모</label>
@@ -2921,7 +2939,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.39.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.40.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3508,6 +3526,7 @@ async function fetchOrdersFromSheet() {
     amount: Number(r.amount) || 0,
     amount_memo: r.amount_memo || '',
     amount_inc_vat: r.amount_inc_vat ? Number(r.amount_inc_vat) : 0,
+    inc_vat_basis: r.inc_vat_basis || '',
     sponsored_status: r.sponsored_status || '없음',
     sponsored_amount: Number(r.sponsored_amount) || 0,
     sponsored_memo: r.sponsored_memo || '',
@@ -3887,21 +3906,42 @@ function titleWithChannels(title, channelsStr) {
   return `${t} (${chans.join(', ')})`;
 }
 
-// 부가세 포함 금액 입력 시 → VAT 별도 금액 자동 계산
+// 부가세 포함 청구 총액 입력 시 → 광고비(VAT 별도) 자동 계산
+// 청구 총액에는 스폰서드가 포함돼 있다고 보고, 공급가액에서 스폰서드를 뺀 값이 광고비
 function onAmountIncVatInput() {
   const inc = parseMoney(document.getElementById('oAmountIncVat').value);
   if (!inc) {
     document.getElementById('oAmountBreakdown').style.display = 'none';
+    updateOrderTotal();
     return;
   }
   const supply = Math.round(inc / 1.1);
-  const vat    = inc - supply;
-  document.getElementById('oAmount').value = fmtMoney(supply);
+  const sp     = parseMoney(document.getElementById('oSponsoredAmount').value);
+  document.getElementById('oAmount').value = fmtMoney(Math.max(0, supply - sp));
+  showIncVatBreakdown(inc);
+  updateOrderTotal();
+}
+function showIncVatBreakdown(inc) {
+  const supply = Math.round(inc / 1.1);
   document.getElementById('oAmtSupply').textContent = '₩' + fmtMoney(supply);
-  document.getElementById('oAmtVat').textContent    = '₩' + fmtMoney(vat);
+  document.getElementById('oAmtVat').textContent    = '₩' + fmtMoney(inc - supply);
   document.getElementById('oAmtTotal').textContent  = '₩' + fmtMoney(inc);
   document.getElementById('oAmountBreakdown').style.display = '';
-  updateOrderTotal();
+}
+// 스폰서드 금액을 바꾸면: 청구 총액이 입력돼 있으면 총액은 그대로 두고 광고비만 다시 계산
+function onSponsoredInput() {
+  const inc = document.getElementById('oAmountIncVat');
+  if (inc && parseMoney(inc.value)) onAmountIncVatInput();
+  else updateOrderTotal();
+}
+// 수주의 부가세 포함 청구 총액. 예전 저장분(광고비만의 VAT 포함액)은 스폰서드까지 넣어 환산
+function orderIncVatTotal(o) {
+  const inc = Number(o && o.amount_inc_vat) || 0;
+  if (!inc) return 0;
+  const sp = Number(o.sponsored_amount) || 0;
+  if (o.inc_vat_basis === 'total' || !sp) return inc;
+  const t = orderTotal(o);
+  return t + Math.round(t * 0.1);
 }
 // VAT 별도 금액 직접 수정 시 → VAT 포함 입력칸 비우기 (혼동 방지)
 function onAmountInput() {
@@ -4267,6 +4307,22 @@ document.addEventListener('mousedown', (e) => {
     m.style.display = 'none';
   }
 });
+
+// 오른쪽 정보 영역(이번 달 요약·채널별 등) 접기 — 달력·광고 수주 공통, 이 기기에 기억
+const SIDE_COLLAPSE_KEY = 'cc-side-collapsed';
+function applySidebarState() {
+  let c = false;
+  try { c = localStorage.getItem(SIDE_COLLAPSE_KEY) === '1'; } catch (e) {}
+  document.body.classList.toggle('side-collapsed', c);
+  document.querySelectorAll('.side-toggle').forEach(b => { b.title = c ? '정보 펼치기' : '정보 접기'; });
+}
+function toggleSidebar() {
+  const c = !document.body.classList.contains('side-collapsed');
+  try { localStorage.setItem(SIDE_COLLAPSE_KEY, c ? '1' : '0'); } catch (e) {}
+  applySidebarState();
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 60);   // 달력 칸 폭이 바뀌니 밀림 라벨 재계산
+}
+applySidebarState();
 
 // 작업 메뉴 선 아이콘 (이모지 대신 — 모든 항목이 같은 폭으로 정렬되게)
 const MENU_ICON_PATHS = {
@@ -4887,14 +4943,10 @@ function openOrderModal(id) {
     document.getElementById('oChannels').value = o.channels || '';
     setSegValues('oChannelSeg', (o.channels || '').split(/[,\/]/).map(s => s.trim()).filter(Boolean));
     document.getElementById('oAmount').value = o.amount ? fmtMoney(o.amount) : '';
-    if (o.amount_inc_vat && o.amount_inc_vat > 0) {
-      document.getElementById('oAmountIncVat').value = fmtMoney(o.amount_inc_vat);
-      const supply = Math.round(o.amount_inc_vat / 1.1);
-      const vat    = o.amount_inc_vat - supply;
-      document.getElementById('oAmtSupply').textContent = '₩' + fmtMoney(supply);
-      document.getElementById('oAmtVat').textContent    = '₩' + fmtMoney(vat);
-      document.getElementById('oAmtTotal').textContent  = '₩' + fmtMoney(o.amount_inc_vat);
-      document.getElementById('oAmountBreakdown').style.display = '';
+    const incShow = orderIncVatTotal(o);
+    if (incShow > 0) {
+      document.getElementById('oAmountIncVat').value = fmtMoney(incShow);
+      showIncVatBreakdown(incShow);
     } else {
       document.getElementById('oAmountIncVat').value = '';
       document.getElementById('oAmountBreakdown').style.display = 'none';
@@ -4996,6 +5048,7 @@ async function _saveOrder() {
   const channels       = getSegValues('oChannelSeg').join(', ');
   const amount         = parseMoney(document.getElementById('oAmount').value);
   const amount_inc_vat = parseMoney(document.getElementById('oAmountIncVat').value);
+  const inc_vat_basis  = amount_inc_vat ? 'total' : '';   // 부가세 포함 칸 = 스폰서드 포함 청구 총액
   const amount_memo    = document.getElementById('oAmountMemo').value.trim();
   const sponsored_status = document.getElementById('oSponsoredStatus').value;
   const sponsored_amount = parseMoney(document.getElementById('oSponsoredAmount').value);
@@ -5014,7 +5067,7 @@ async function _saveOrder() {
     const idx = orders.findIndex(o => String(o.id) === String(editingOrderId));
     if (idx === -1) return;
     const prev = orders[idx];
-    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
+    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, inc_vat_basis, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
     // 세금계산서 스냅샷 동기화: 수주 금액을 그대로 따르던 값이면 새 금액으로 갱신(수동 override는 보존)
     // → 수주 금액 수정 후 세금계산서 공유 시 옛 금액이 뜨던 문제 방지
     if (prev.inv_amount && Number(prev.inv_amount) === orderTotal(prev) && orderTotal(item) !== orderTotal(prev)) {
@@ -5026,7 +5079,7 @@ async function _saveOrder() {
     }
     orders[idx] = item;
   } else {
-    item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
+    item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, inc_vat_basis, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
     orders.push(item);
     pinnedNewOrderIds.unshift(item.id);  // 새로 추가한 수주는 최상단으로 (탭 전환 전까지 유지)
   }
@@ -6765,7 +6818,7 @@ async function shareInvoiceToKakao() {
 
   // 연결된 수주의 부가세 포함 입력 케이스 여부 (재료비/방문비 등 포함 정산)
   const linkedOrder = orders.find(x => String(x.id) === String(invoiceOrderId));
-  const incVat = linkedOrder && linkedOrder.amount_inc_vat ? Number(linkedOrder.amount_inc_vat) : 0;
+  const incVat = linkedOrder ? orderIncVatTotal(linkedOrder) : 0;
 
   // 사업자등록증 링크 (입력칸에 있으면 그것, 없으면 같은 회사 다른 수주에서 자동 조회)
   let bizCertUrl = document.getElementById('iBizCertUrl').value.trim();
@@ -7573,7 +7626,7 @@ function openContentView(id) {
         ${row('수주일', escapeHtml(linked.order_date || '-'))}
         ${row('업체', escapeHtml(linked.company || '-'))}
         ${row('제목', escapeHtml(linked.title || '-'))}
-        ${row('금액', linked.amount ? '₩ ' + fmtMoney(linked.amount) + (linked.amount_inc_vat ? ` <span style="color:var(--muted);font-size:11px">(VAT 포함 ₩${fmtMoney(linked.amount_inc_vat)} 입력)</span>` : '') : '-')}
+        ${row('금액', orderTotal(linked) ? '₩ ' + fmtMoney(orderTotal(linked)) + (orderIncVatTotal(linked) ? ` <span style="color:var(--muted);font-size:11px">(VAT 포함 ₩${fmtMoney(orderIncVatTotal(linked))} 입력)</span>` : '') : '-')}
         ${row('담당자', escapeHtml(linked.owner || '-'))}
         ${row('세금계산서', escapeHtml(linked.invoice_status || '-'))}
        </div>`
