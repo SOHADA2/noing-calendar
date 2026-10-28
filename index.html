@@ -1129,10 +1129,33 @@
       box-shadow: 0 1px 4px rgba(0,0,0,.35);
     }
     .side-toggle:hover { color: var(--text); background: var(--bg-3); }
+    /* 정산 내역 (수주 모달 · 영수증식) */
+    .settle-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 10px; margin-bottom: 14px; }
+    .settle-head { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px dashed var(--border-2); }
+    .settle-title { font-size: 12.5px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+    .settle-sub { font-size: 10.5px; color: var(--text-4); flex: 1; min-width: 0; }
+    .settle-add { flex-shrink: 0; background: transparent; border: 1px solid var(--border-2); color: var(--text-2); border-radius: 6px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; font-family: inherit; }
+    .settle-add:hover { background: var(--bg-3); color: var(--text); }
+    .settle-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 108px 22px; gap: 6px; align-items: center; padding: 3px 0; }
+    .settle-row input { padding: 6px 8px; font-size: 12.5px; min-width: 0; }
+    .settle-row .s-amt { text-align: right; font-variant-numeric: tabular-nums; }
+    .settle-del { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--text-4); cursor: pointer; font-size: 12px; }
+    .settle-del:hover { color: var(--err); background: var(--bg-3); }
+    .settle-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 3px 0; font-size: 12.5px; color: var(--text-2); }
+    .settle-line .v { font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+    .settle-line .k small { color: var(--text-4); font-size: 10.5px; margin-left: 4px; }
+    .settle-sep { border-top: 1px dashed var(--border-2); margin: 6px 0 4px; }
+    .settle-line.total { padding-top: 6px; font-size: 13px; font-weight: 700; color: var(--text); }
+    .settle-line.total .v { color: var(--accent); font-size: 17px; font-weight: 800; }
+    @media (max-width: 640px) { .settle-row { grid-template-columns: 78px minmax(0, 1fr) 92px 22px; gap: 4px; } }
     .side-toggle svg { width: 12px; height: 12px; transition: transform .2s; }
     @media (min-width: 901px) {
-      body.side-collapsed .sidebar { width: 10px; }
+      /* 접으면 사이드바 폭과 사이 간격을 0으로 → 본문이 오른쪽 끝까지 */
+      body.side-collapsed .layout, body.side-collapsed .orders-layout { gap: 0; }
+      body.side-collapsed .sidebar { width: 0; }
       body.side-collapsed .sidebar > :not(.side-toggle) { display: none; }
+      /* 손잡이는 페이지 오른쪽 여백에 붙는 세로 탭으로 */
+      body.side-collapsed .side-toggle { left: 3px; width: 16px; height: 34px; border-radius: 8px; }
       body.side-collapsed .side-toggle svg { transform: rotate(180deg); }
     }
     @media (max-width: 900px) { .side-toggle { display: none; } }
@@ -2466,11 +2489,11 @@
     </div>
 
     <div class="form-row">
-      <div class="form-group" style="flex:2"><label>광고비 (VAT 별도)</label><input type="text" id="oAmount" placeholder="예) 2,300,000" oninput="onAmountInput()" /></div>
+      <div class="form-group" style="flex:2"><label id="oAmountLabel">광고비 (VAT 별도)</label><input type="text" id="oAmount" placeholder="예) 2,300,000" oninput="onAmountInput()" /></div>
       <div class="form-group" style="flex:1"><label>담당자</label><input type="text" id="oOwner" list="dlOwners" autocomplete="off" /></div>
     </div>
 
-    <div class="form-group" style="margin-top:-6px">
+    <div class="form-group" id="oIncVatGroup" style="margin-top:-6px">
       <label style="font-size:11px;color:var(--text-4)">🧮 부가세 포함 청구 총액으로 입력 <span style="font-weight:400;text-transform:none;letter-spacing:0">(스폰서드가 있으면 그만큼 빼서 광고비 자동 계산)</span></label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="oAmountIncVat" placeholder="예) 2,576,000 (입력 시 광고비 자동 계산)" oninput="onAmountIncVatInput()" style="flex:1" />
@@ -2505,13 +2528,20 @@
       </div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;margin-bottom:14px;border-radius:8px;background:var(--bg-3)">
-      <span style="color:var(--text-2);font-size:12px;font-weight:600">최종 금액 (VAT 별도)</span>
-      <span style="text-align:right">
-        <span id="oTotalBreak" style="font-size:11px;color:var(--muted);margin-right:8px"></span>
-        <b id="oTotalAmount" style="color:var(--accent);font-size:15px;font-variant-numeric:tabular-nums">0원</b>
-      </span>
+    <!-- 정산 내역: 항목을 넣으면 합계가 광고비가 되고, 견적서 세부 내역에 그대로 들어간다 -->
+    <div class="settle-box" id="oSettleBox">
+      <div class="settle-head">
+        <span class="settle-title">정산 내역</span>
+        <span class="settle-sub">VAT 별도 · 항목을 넣으면 견적서에 그대로 들어갑니다</span>
+        <button type="button" class="settle-add" onclick="addSettleItem()">+ 항목</button>
+      </div>
+      <div id="oSettleRows"></div>
+      <div id="oSettleSummary"></div>
     </div>
+    <datalist id="dlSettleNames">
+      <option value="채널 발행"></option><option value="콘텐츠 제작"></option><option value="방문 촬영"></option>
+      <option value="제품비"></option><option value="재료비"></option><option value="기타"></option>
+    </datalist>
 
     <div class="form-row">
       <div class="form-group"><label>세금계산서</label>
@@ -2939,7 +2969,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.40.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.41.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3527,6 +3557,7 @@ async function fetchOrdersFromSheet() {
     amount_memo: r.amount_memo || '',
     amount_inc_vat: r.amount_inc_vat ? Number(r.amount_inc_vat) : 0,
     inc_vat_basis: r.inc_vat_basis || '',
+    settle_items: (() => { try { const v = typeof r.settle_items === 'string' ? JSON.parse(r.settle_items) : r.settle_items; return Array.isArray(v) ? v : []; } catch (e) { return []; } })(),
     sponsored_status: r.sponsored_status || '없음',
     sponsored_amount: Number(r.sponsored_amount) || 0,
     sponsored_memo: r.sponsored_memo || '',
@@ -3960,10 +3991,87 @@ function orderTotal(o) {
 function updateOrderTotal() {
   const ad = parseMoney(document.getElementById('oAmount').value);
   const sp = parseMoney(document.getElementById('oSponsoredAmount').value);
-  const brk = document.getElementById('oTotalBreak');
-  if (brk) brk.textContent = sp ? ('광고비 ' + fmtMoney(ad) + ' + 스폰서드 ' + fmtMoney(sp)) : '';
-  const el = document.getElementById('oTotalAmount');
-  if (el) el.textContent = fmtMoney(ad + sp) + '원';
+  const box = document.getElementById('oSettleSummary');
+  if (!box) return;
+  const supply = ad + sp;
+  const vat = Math.round(supply * 0.1);
+  const line = (k, v, cls) => `<div class="settle-line${cls ? ' ' + cls : ''}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  let h = '';
+  if (!settleItems.length) h += line('광고비', fmtMoney(ad));
+  if (sp) h += line('콘텐츠 스폰서드<small>위 스폰서드에서 자동</small>', fmtMoney(sp));
+  h += '<div class="settle-sep"></div>';
+  h += line('공급가액<small>목록에 보이는 금액</small>', fmtMoney(supply));
+  h += line('부가세 (10%)', fmtMoney(vat));
+  h += line('합계 (VAT 포함)', `<span id="oTotalAmount">${fmtMoney(supply + vat)}원</span>`, 'total');
+  box.innerHTML = h;
+}
+
+// ── 정산 내역 (영수증식 항목) ──
+// 항목이 하나라도 있으면: 광고비 = 항목 합계(직접 입력 잠김), 부가세 포함 칸은 숨김, 견적서는 이 항목 그대로
+let settleItems = [];   // [{name, desc, amount}] — 수주 모달 편집 상태
+function settleSum() { return settleItems.reduce((t, it) => t + (Number(it.amount) || 0), 0); }
+function renderSettle() {
+  const box = document.getElementById('oSettleRows');
+  if (!box) return;
+  box.innerHTML = settleItems.map((it, i) => `
+    <div class="settle-row">
+      <input type="text" list="dlSettleNames" placeholder="항목" value="${escapeHtml(it.name || '')}" oninput="setSettleField(${i}, 'name', this.value)" />
+      <input type="text" placeholder="세부 내용 (선택)" value="${escapeHtml(it.desc || '')}" oninput="setSettleField(${i}, 'desc', this.value)" />
+      <input type="text" class="s-amt" inputmode="numeric" placeholder="0" value="${it.amount ? fmtMoney(it.amount) : ''}" oninput="setSettleField(${i}, 'amount', this.value)" onblur="this.value = this.value ? fmtMoney(parseMoney(this.value)) : ''" />
+      <button type="button" class="settle-del" onclick="removeSettleItem(${i})" title="항목 삭제">✕</button>
+    </div>`).join('');
+  syncSettleMode();
+}
+function setSettleField(i, k, v) {
+  if (!settleItems[i]) return;
+  settleItems[i][k] = k === 'amount' ? parseMoney(v) : v;
+  if (k === 'amount') syncSettleMode();
+}
+function syncSettleMode() {
+  const on = settleItems.length > 0;
+  const amt = document.getElementById('oAmount');
+  const lab = document.getElementById('oAmountLabel');
+  const incG = document.getElementById('oIncVatGroup');
+  if (on) {
+    amt.value = fmtMoney(settleSum());
+    amt.readOnly = true; amt.style.opacity = '.7';
+    if (lab) lab.textContent = '광고비 (정산 내역 합계)';
+    const inc = document.getElementById('oAmountIncVat');
+    if (inc && inc.value) { inc.value = ''; document.getElementById('oAmountBreakdown').style.display = 'none'; }
+    if (incG) incG.style.display = 'none';
+  } else {
+    amt.readOnly = false; amt.style.opacity = '';
+    if (lab) lab.textContent = '광고비 (VAT 별도)';
+    if (incG) incG.style.display = '';
+  }
+  updateOrderTotal();
+}
+function addSettleItem() {
+  if (!settleItems.length) {
+    // 처음 열 때: 지금 광고비를 견적서와 같은 방식으로 나눠 미리 채움
+    const amount = parseMoney(document.getElementById('oAmount').value);
+    const isJejak = (document.getElementById('oAdType').value || '').includes('제작');
+    if (amount > 0 && isJejak) {
+      const jejak = Math.min(amount, CONTRACT_RATES.제작);
+      if (amount - jejak > 0) settleItems.push({ name: '채널 발행', desc: '', amount: amount - jejak });
+      settleItems.push({ name: '콘텐츠 제작', desc: '카드뉴스/릴스 제작', amount: jejak });
+    } else {
+      settleItems.push({ name: '채널 발행', desc: '', amount: amount || 0 });
+    }
+  } else {
+    settleItems.push({ name: '', desc: '', amount: 0 });
+  }
+  renderSettle();
+  const rows = document.querySelectorAll('#oSettleRows .settle-row');
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector('input').focus();
+}
+function removeSettleItem(i) {
+  const prev = settleSum();
+  settleItems.splice(i, 1);
+  // 마지막 항목까지 지우면 합계를 광고비로 남겨 둔다(숫자가 사라지지 않게)
+  if (!settleItems.length) document.getElementById('oAmount').value = prev ? fmtMoney(prev) : '';
+  renderSettle();
 }
 
 function getContentProgress(orderId) {
@@ -4956,7 +5064,10 @@ function openOrderModal(id) {
     document.getElementById('oSponsoredStatus').value = o.sponsored_status || '없음';
     document.getElementById('oSponsoredAmount').value = o.sponsored_amount ? fmtMoney(o.sponsored_amount) : '';
     document.getElementById('oSponsoredMemo').value   = o.sponsored_memo || '';
-    updateOrderTotal();
+    settleItems = Array.isArray(o.settle_items)
+      ? o.settle_items.map(it => ({ name: it.name || '', desc: it.desc || '', amount: Number(it.amount) || 0 }))
+      : [];
+    renderSettle();
     document.getElementById('oInvoiceStatus').value = o.invoice_status || '미발행';
     document.getElementById('oPaymentStatus').value = o.payment_status || '미입금';
     document.getElementById('oNotes').value = o.notes || '';
@@ -4980,7 +5091,8 @@ function openOrderModal(id) {
     document.getElementById('oSponsoredStatus').value = '없음';
     document.getElementById('oSponsoredAmount').value = '';
     document.getElementById('oSponsoredMemo').value = '';
-    updateOrderTotal();
+    settleItems = [];
+    renderSettle();
     document.getElementById('oInvoiceStatus').value = '미발행';
     document.getElementById('oPaymentStatus').value = '미입금';
     document.getElementById('oNotes').value = '';
@@ -5046,8 +5158,12 @@ async function _saveOrder() {
   const title          = document.getElementById('oTitle').value.trim();
   const ad_type        = document.getElementById('oAdType').value;
   const channels       = getSegValues('oChannelSeg').join(', ');
-  const amount         = parseMoney(document.getElementById('oAmount').value);
-  const amount_inc_vat = parseMoney(document.getElementById('oAmountIncVat').value);
+  const settle_items   = settleItems
+    .map(it => ({ name: String(it.name || '').trim(), desc: String(it.desc || '').trim(), amount: Number(it.amount) || 0 }))
+    .filter(it => it.name || it.desc || it.amount);
+  const amount         = settle_items.length ? settle_items.reduce((t, it) => t + it.amount, 0)
+                                             : parseMoney(document.getElementById('oAmount').value);
+  const amount_inc_vat = settle_items.length ? 0 : parseMoney(document.getElementById('oAmountIncVat').value);
   const inc_vat_basis  = amount_inc_vat ? 'total' : '';   // 부가세 포함 칸 = 스폰서드 포함 청구 총액
   const amount_memo    = document.getElementById('oAmountMemo').value.trim();
   const sponsored_status = document.getElementById('oSponsoredStatus').value;
@@ -5067,7 +5183,7 @@ async function _saveOrder() {
     const idx = orders.findIndex(o => String(o.id) === String(editingOrderId));
     if (idx === -1) return;
     const prev = orders[idx];
-    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, inc_vat_basis, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
+    item = { ...prev, order_date, company, title, ad_type, channels, amount, amount_inc_vat, inc_vat_basis, settle_items, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
     // 세금계산서 스냅샷 동기화: 수주 금액을 그대로 따르던 값이면 새 금액으로 갱신(수동 override는 보존)
     // → 수주 금액 수정 후 세금계산서 공유 시 옛 금액이 뜨던 문제 방지
     if (prev.inv_amount && Number(prev.inv_amount) === orderTotal(prev) && orderTotal(item) !== orderTotal(prev)) {
@@ -5079,7 +5195,7 @@ async function _saveOrder() {
     }
     orders[idx] = item;
   } else {
-    item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, inc_vat_basis, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
+    item = { id: String(Date.now()), order_date, company, title, ad_type, channels, amount, amount_inc_vat, inc_vat_basis, settle_items, amount_memo, sponsored_status, sponsored_amount, sponsored_memo, invoice_status, payment_status, owner, status, notes };
     orders.push(item);
     pinnedNewOrderIds.unshift(item.id);  // 새로 추가한 수주는 최상단으로 (탭 전환 전까지 유지)
   }
@@ -5344,8 +5460,16 @@ async function generateQuote() {
   const channels = String(o.channels || '').split(/[,\s]+/).filter(Boolean);
   const totalAmount = Number(o.amount) || 0;
   const isJejak = (o.ad_type || '').includes('제작');
+  const settle = Array.isArray(o.settle_items) ? o.settle_items.filter(it => it && (it.name || Number(it.amount))) : [];
 
-  if (isJejak) {
+  if (settle.length) {
+    // 수주에 정산 내역을 넣어 뒀으면 그 항목을 그대로 견적서 세부 내역으로 (합계가 수주와 1원도 안 어긋남)
+    const chList = channels.map(ch => CHANNEL_FULLNAME[ch.toLowerCase()] || ch).join(', ');
+    quoteItems = settle.map(it => {
+      const isPub = /발행/.test(it.name || '');
+      return { category: it.name || '항목', desc: it.desc || (isPub ? (o.title || '') : ''), channel: isPub ? chList : '', qty: 1, price: Number(it.amount) || 0 };
+    });
+  } else if (isJejak) {
     // 예) life 제작발행 150만 = 발행 100만 + 카드뉴스 제작 50만
     const jejakCost = Math.min(totalAmount, CONTRACT_RATES.제작);   // 콘텐츠 제작비(기본 50만)
     const pubTotal = Math.max(0, totalAmount - jejakCost);
