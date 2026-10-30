@@ -2051,7 +2051,7 @@ async function buildPptx(ig) {
   // 릴스 구성 한눈에 — 클립마다 첫 사진(9:16)·길이·첫 줄. 누르면 인스타 화면으로 처음부터
   {
     s = reelsFrame(pptx, '릴스 광고 콘텐츠 구성 한눈에', ig ? { bandNote: '그림을 누르면 인스타그램 릴스 화면으로 볼 수 있습니다' } : {});
-    const N = S.clips.length, rows = N > 6 ? 2 : 1, cols = Math.ceil(N / rows), TXT_H = 0.62, LAB = 0.3, GX = 0.25, GY = 0.25;
+    const N = S.clips.length, rows = N > 8 ? 2 : 1, cols = Math.ceil(N / rows), TXT_H = 0.62, LAB = 0.3, GX = 0.25, GY = 0.25;
     const AW = 12.13, AH = 5.75;
     const ih = Math.min((AH - GY * (rows - 1)) / rows - LAB - TXT_H, ((AW - GX * (cols - 1)) / cols) * 16 / 9), iw = ih * 9 / 16;
     const x0 = 0.6 + (AW - cols * iw - GX * (cols - 1)) / 2, y0 = 1.2 + (AH - rows * (ih + LAB + TXT_H) - GY * (rows - 1)) / 2;
