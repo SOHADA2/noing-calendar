@@ -1631,7 +1631,7 @@ function renderClipEditor() {
     let est = null;
     let subp = null;
     if (f === 'narration') { est = el('div', 'est'); subp = el('div', 'subprev'); fd.append(est, subp); }
-    const upd = () => { if (subp) { subp.textContent = ''; const ch = chunkCaption(c.narration); if (ch.length) { subp.append(el('span', 'k', '자막 나뉨')); ch.forEach(x => subp.append(el('span', 'ch' + (subLen(x) > 20 ? ' long' : ''), subLines(x)))); subp.append(el('span', 'hint', '줄을 바꾸면 거기서 나뉩니다')); } } if (est) { const n = c.narration.replace(/\s/g, '').length; est.textContent = `약 ${fmtSec(secs(c.narration))} · ${n}자 (전체 예상 약 ${fmtSec(totalSecs())} / ${S.info.length || '1분 이내'})`; est.classList.toggle('bad', totalSecs() > limitSecs()); } };
+    const upd = () => { if (subp) { subp.textContent = ''; const ch = subChunks(c.narration); if (ch.length) { subp.append(el('span', 'k', '자막 나뉨')); ch.forEach(x => subp.append(el('span', 'ch' + (subLen(x) > 20 ? ' long' : ''), subLines(x)))); subp.append(el('span', 'hint', '줄을 바꾸면 거기서 나뉩니다')); } } if (est) { const n = c.narration.replace(/\s/g, '').length; est.textContent = `약 ${fmtSec(secs(c.narration))} · ${n}자 (전체 예상 약 ${fmtSec(totalSecs())} / ${S.info.length || '1분 이내'})`; est.classList.toggle('bad', totalSecs() > limitSecs()); } };
     ta.addEventListener('input', () => {
       if (f === 'narration') guardTake();
       c[f] = ta.value; grow(ta); upd();
@@ -2148,6 +2148,36 @@ function chunkCaption(text) {
     .forEach(para => para.split(/(?<=[.!?…~])\s+/).forEach(sent => splitLong(sent).forEach(ch => out.push(ch))));
   return out;
 }
+// 라이프 채널 자막(2026-10-29 사용자 '짧게 팍팍, 말이 되게 끊어서') — 어절 1~2개씩. 줄바꿈·문장 끝은 넘지 않는다
+//   릴스제작기 render_life_reel.py(WORD_MODE)와 같은 기준. 미리보기·자막 나뉨·녹음 자막 시각이 모두 이걸 쓴다
+//   앞에 붙는 말: 한 글자 꾸밈말 '이·그·꼭·다·쏙'은 뒤 단어와('이 영수증'·'꼭 챙겨')
+//   뒤에 붙는 말: 그 밖의 한 글자('산'·'수'·'게'·'때' → '다이소에서 산'·'받을 수')·'중인데'·보조 용언('찍혀 있으면'·'챙겨 두세요')
+//   한 덩어리: 숫자+단위('2천 원짜리'·'11월 14일까지')·이름+숫자('에어팟 맥스2')·짧은 'A랑 B'('데랑 드가')
+const subChunks = text => /life/i.test(S.info.channel || '') ? wordChunks(text) : chunkCaption(text);
+function wordChunks(text) {
+  const bare = s => s.replace(/[^가-힣0-9A-Za-z]/g, ''), endP = s => /[.!?…~,]$/.test(s);
+  const FWD = /^(이|그|저|꼭|다|쏙|딱|더|잘|또|안|못|좀|막|확|꽉|싹|툭|탁|쭉|첫|새|헌|해|[A-Za-z0-9])$/;
+  const out = [];   // 줄·문장으로만 나눈 뒤 어절로 (chunkCaption 의 긴 줄 나누기를 거치면 그 경계에서 덩어리가 붙어 버린다)
+  (text || '').split(/\n+/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean).flatMap(p => p.split(/(?<=[.!?…~])\s+/)).forEach(part => {
+    const u = [];
+    part.split(' ').forEach(x => {
+      const p = u.length ? u[u.length - 1] : null, glue = () => { u[u.length - 1] += ' ' + x; };
+      if (p == null) u.push(x);
+      else if (!endP(p) && FWD.test(bare(p))) glue();
+      else if (endP(p)) u.push(x);
+      else if (/\d[천만월일시등점]?$/.test(bare(p)) && /^(\d|원|개|점|명|등|일|월|시|분|초)/.test(x) || /[천만]$/.test(bare(p)) && /^원/.test(x)) glue();
+      else if (bare(x).length === 1 && !FWD.test(bare(x))) glue();
+      else if (/^중(인|이)/.test(x) || /^[가-힣]+\d+[,.!?]?$/.test(x) && /[가-힣]$/.test(p) && bare(p).length <= 3) glue();
+      else if (/[아어여해혀워와져쳐켜겨려]$/.test(p) && /^(있|없|주|두|보|볼|봐|놓|버리|드리|드려|가|와)/.test(x)) glue();
+      else if (/ (수|것|줄)$/.test(p) && /^(있|없)/.test(x)) glue();
+      else if (/(랑|와|과)$/.test(p) && bare(p).length <= 3 && bare(x).length <= 2) glue();   // 'A랑 B' ('데랑 드가')
+      else u.push(x);
+    });
+    if (u.length > 1 && bare(u[u.length - 1]).length <= 2 && !/[!?]$/.test(u[u.length - 1]) && !u[u.length - 1].includes(' ')) u.splice(-2, 2, u[u.length - 2] + ' ' + u[u.length - 1]);
+    out.push(...u.map(x => /\.\.\.$|…$/.test(x) ? x : x.replace(/[,.]$/, '')));   // 끝 쉼표·마침표는 화면에서 뺀다(말줄임은 남김)
+  });
+  return out;
+}
 function subLines(t) {   // 한 줄(13자)이 넘으면 가운데에 가까운 자연스러운 띄어쓰기에서 두 줄로
   if (subLen(t) <= SUB_LINE) return t;
   const w = t.split(' '); if (w.length < 2) return t;
@@ -2219,7 +2249,7 @@ function playClip(i, flow) {   // flow: 앞 클립에서 자연스럽게 넘어�
     else { d.classList.add('none'); d.textContent = c.shots ? '🎬 ' + c.shots.split('\n')[0] : '참고 사진 없음'; }
     d.dataset.k = k; stage.append(d);
   });
-  IG.chunks = chunkCaption(c.narration);
+  IG.chunks = subChunks(c.narration);
   { let acc = 0; const tot = IG.chunks.reduce((a, x) => a + subLen(x), 0) || 1; IG.cum = IG.chunks.map(x => (acc += subLen(x)) / tot); }
   IG.photoN = photos.length;
   // 사진이 예시라는 표시 + 이 클립에서 찍을 컷 설명(화면을 덜 가리게 위쪽에 작게)
@@ -2352,7 +2382,7 @@ async function makeVoices() {
   const prof = { id: sel.value, name: sel.selectedOptions[0]?.textContent || '' };
   if (!prof.id) return;
   S.voiceProfile = prof;
-  const texts = narrTexts(), subC = S.clips.map(c => chunkCaption(c.narration)), est = Math.round(totalSecs() * 2.2 + 12), t0 = Date.now();
+  const texts = narrTexts(), subC = S.clips.map(c => subChunks(c.narration)), est = Math.round(totalSecs() * 2.2 + 12), t0 = Date.now();
   VOICE_BUSY = true; btn.disabled = sel.disabled = true;
   stopInsta(); $('#igPlay').textContent = '▶ 재생';
   const show = () => { msg.textContent = `전체 나레이션 만드는 중… ${Math.round((Date.now() - t0) / 1000)}초 (보통 ${est}초 안팎, 컴퓨터를 켜고 처음이면 1분 더)`; };
