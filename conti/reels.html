@@ -566,6 +566,8 @@ button.bgm-ad{cursor:pointer}
 .ig-bgmrow[hidden]{display:none}
 .ig-bgmrow select{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:6px 8px;border-radius:8px;border:1px solid #5a534a;background:#2b2722;color:#f3eee6}
 .ig-bgmrow input[type=range]{width:90px;accent-color:var(--brand)}
+.ig-bgmlink{flex:none;color:#f3eee6;font-size:12px;text-decoration:underline;white-space:nowrap}
+.ig-bgmrow{flex-wrap:wrap;row-gap:6px}.ig-bgmrow select{min-width:58%}   /* 곡 이름이 보이게 — 링크·볼륨은 넘치면 다음 줄 */
 .bgm-acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .bgm-form{display:grid;grid-template-columns:1fr 1.6fr auto;gap:8px;margin-top:8px}
 .bgm-form input,.bgm-sf input,.bgm-sf select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:13px}
@@ -943,8 +945,9 @@ body.igonly #viewer,body.igonly .ig-close{display:none}
       <button class="btn" id="igSound" onclick="toggleSound()" title="나레이션 켜고 끄기">🔇 나레이션</button>
     </div>
     <div class="ig-bgmrow" id="igBgmRow" hidden>
-      <span class="k">🎵 BGM</span>
+      <span class="k">🎵 BGM 레퍼런스</span>
       <select id="igBgmSel" onchange="bgmPick(this.value)"></select>
+      <a id="igBgmLink" class="ig-bgmlink" target="_blank" rel="noopener" hidden>인스타그램 ↗</a>
       <input type="range" id="igBgmVol" min="0" max="100" value="22" title="BGM 크기" oninput="bgmVolume(this.value)">
     </div>
     <div class="ig-bgm" id="igBgmNote">배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.</div>
@@ -1080,7 +1083,10 @@ let S = blank(), SEL = S.clips[0].id;
 
 // ───────── 길이 계산 (글자 수 기반 대략값: 1초에 약 6.5자) ─────────
 const secs = t => Math.round((t || '').replace(/\s/g, '').length / 6.5);
-const totalSecs = () => S.clips.reduce((a, c) => a + secs(c.narration), 0);
+// 녹음이 있으면 클립 길이 = 녹음에서 그 클립이 차지한 길이(본편 원본 소리처럼 나레이션 없는 클립도 길이가 잡힌다)
+const clipSecs = c => { const t = takeOf(), i = S.clips.indexOf(c); if (t && i >= 0) return Math.round((i + 1 < t.marks.length ? t.marks[i + 1] : t.dur) - t.marks[i]); return secs(c.narration); };
+const totalSecs = () => { const t = takeOf(); return t ? Math.round(t.dur) : S.clips.reduce((a, c) => a + secs(c.narration), 0); };
+const noNar = () => takeOf() ? '(나레이션 없음 · 영상 소리 그대로)' : '(작성 전)';   // 녹음까지 끝났는데 빈 클립 = 일부러 비운 것
 const fmtSec = s => s >= 60 ? `${Math.floor(s / 60)}분 ${pad(s % 60)}초` : `${s}초`;
 function limitSecs() {
   const t = S.info.length || '';
@@ -1514,7 +1520,7 @@ function fillClipTile(t, c) {
   one(t.querySelector('.tb'), c.narration, '(자막·나레이션 없음)');
   const shots = c.shots.split('\n').map(x => x.trim()).filter(Boolean);
   one(t.querySelector('.ti'), shots.length ? '컷 · ' + shots.join(' / ') : '', '컷 · (촬영 컷 설명 없음)');
-  const sec = t.querySelector('.sec'); sec.textContent = `약 ${fmtSec(secs(c.narration))}`;
+  const sec = t.querySelector('.sec'); sec.textContent = `약 ${fmtSec(clipSecs(c))}`;
   t.title = `${clipNo(c)}\n${c.narration}\n촬영: ${shots.join(' / ')}`;
 }
 function buildClipTile(c, i) {
@@ -1734,7 +1740,7 @@ function printPdf() {
     const r = el('div', 'pr-clip');
     const ph = el('div', 'pr-ph'); c.photos.slice(0, 6).forEach(p => { const im = el('img'); im.src = p.url; ph.append(im); }); r.append(ph);
     const tx = el('div');
-    tx.append(el('h3', null, `클립 (${i + 1}) · 약 ${fmtSec(secs(c.narration))}`));
+    tx.append(el('h3', null, `클립 (${i + 1}) · 약 ${fmtSec(clipSecs(c))}`));
     const add = (k, v) => { if (!v) return; const p = el('p'); p.append(el('span', 'k', k + '  ')); p.append(v); tx.append(p); };
     add('자막·나레이션', c.narration); add('영상 클립', c.shots);
     add('주의사항', c.notes.split('\n').filter(Boolean).map(x => '*' + x.replace(/^\*\s*/, '')).join('\n'));
@@ -2043,9 +2049,17 @@ async function buildPptx(ig) {
   const mUsed = Math.min(mH, estLines(ment || ' ', 5.51, mfs) * mfs * 1.2 * 1.17 / 72);   // 멘션이 짧으면 안내를 바로 아래에
   s.addText(`⭐ #광고 포함 태그 ${tc}개 (릴스는 최대 5개)` + (tc > 5 ? ' — 줄여야 합니다' : ''), { ...BODY, x: 6.4, y: 1.78 + mUsed + 0.18, w: 5.51, h: 0.3, fontSize: 10.5, color: RC.red, margin: 0 });
   if (bgms.length) {
-    s.addText('<BGM 후보>', { ...BODY, x: 6.15, y: 5.3, w: 2.0, h: 0.4, align: 'center', fontSize: 14, color: RC.red, margin: 0 });
-    s.addText(bgms.map((b, i, a) => ({ text: `${i + 1}. ${[b.title, b.artist].filter(Boolean).join(' - ')}${b.ads === true ? '  (스폰서드 가능)' : b.ads === false ? '  (스폰서드 불가)' : ''}`, options: { breakLine: i < a.length - 1 } })),
-      { ...BODY, x: 6.4, y: 5.72, w: 5.51, h: 1.1, fontSize: 10.5, color: '000000', valign: 'top', margin: 0, lineSpacingMultiple: 1.2, fit: 'shrink' });
+    s.addText(`<BGM 레퍼런스 · ${bgms.length}곡 중 1곡 선택>`, { ...BODY, x: 6.15, y: 5.3, w: 3.6, h: 0.4, align: 'left', fontSize: 14, color: RC.red, margin: 0 });
+    // 곡 이름을 누르면 인스타그램 오디오 페이지로. 미리보기 링크가 있으면 나레이션과 함께 듣기 안내
+    const runs = [];
+    bgms.forEach((b, i) => {
+      const nm = `${i + 1}. ${[b.title, b.artist].filter(Boolean).join(' - ')}`, ad = b.ads === true ? '  (스폰서드 가능)' : b.ads === false ? '  (스폰서드 불가)' : '';
+      runs.push({ text: nm, options: b.link ? { hyperlink: { url: b.link, tooltip: '누르면 인스타그램에서 들어볼 수 있습니다' } } : {} });
+      runs.push({ text: ad, options: { breakLine: true } });
+    });
+    if (ig) runs.push({ text: '▶ 미리보기에서 나레이션과 함께 듣기', options: { hyperlink: { url: igAt(1), tooltip: '릴스 화면 아래 BGM 레퍼런스에서 곡을 고를 수 있습니다' } } });
+    else if (runs.length) runs[runs.length - 1].options.breakLine = false;
+    s.addText(runs, { ...BODY, x: 6.4, y: 5.72, w: 5.51, h: 1.1, fontSize: 10.5, color: '000000', valign: 'top', margin: 0, lineSpacingMultiple: 1.2, fit: 'shrink' });
   }
 
   // 릴스 구성 한눈에 — 클립마다 첫 사진(9:16)·길이·첫 줄. 누르면 인스타 화면으로 처음부터
@@ -2057,11 +2071,11 @@ async function buildPptx(ig) {
     const x0 = 0.6 + (AW - cols * iw - GX * (cols - 1)) / 2, y0 = 1.2 + (AH - rows * (ih + LAB + TXT_H) - GY * (rows - 1)) / 2;
     for (const [i, c] of S.clips.entries()) {
       const r = Math.floor(i / cols), x = x0 + (i % cols) * (iw + GX), y = y0 + r * (ih + LAB + TXT_H + GY);
-      s.addText([{ text: `클립(${i + 1})`, options: { ...HEAD } }, { text: `  약 ${fmtSec(secs(c.narration))}`, options: { color: PPT.muted, fontSize: 10 } }],
+      s.addText([{ text: `클립(${i + 1})`, options: { ...HEAD } }, { text: `  약 ${fmtSec(clipSecs(c))}`, options: { color: PPT.muted, fontSize: 10 } }],
         { ...BODY, x, y, w: iw + 0.5, h: LAB - 0.04, fontSize: 11.5, color: PPT.ink, margin: 0, valign: 'middle' });
       s.addImage({ data: await coverImage(c.photos[0]?.url, Math.round(iw * 200), Math.round(ih * 200)), x, y: y + LAB, w: iw, h: ih, ...igOpt(i + 1) });
       const first = (chunkCaption(c.narration)[0] || '').trim();
-      s.addText(first || '(작성 전)', { ...BODY, x, y: y + LAB + ih + 0.06, w: iw, h: TXT_H - 0.08, fontSize: 9.5, color: first ? PPT.ink : PPT.muted, valign: 'top', margin: 0, lineSpacingMultiple: 1.1 });
+      s.addText(first || (takeOf() ? '(나레이션 없음)' : '(작성 전)'), { ...BODY, x, y: y + LAB + ih + 0.06, w: iw, h: TXT_H - 0.08, fontSize: 9.5, color: first ? PPT.ink : PPT.muted, valign: 'top', margin: 0, lineSpacingMultiple: 1.1 });
     }
   }
 
@@ -2073,7 +2087,7 @@ async function buildPptx(ig) {
     s = reelsFrame(pptx, `릴스 광고 콘텐츠 콘티(${page})`);
     if (NOTE) s.addText(NOTE, { ...HEAD, x: 0.44, y: 7.03, w: 6.5, h: 0.4, fontSize: 13, color: RC.red, margin: 0 });
     const two = S.clips.slice(p, p + 2).map(c => ({
-      c, nar: c.narration.trim() || '(작성 전)',
+      c, nar: c.narration.trim() || noNar(),
       shots: c.shots.split('\n').map(x => x.trim()).filter(Boolean),
       notes: c.notes.split('\n').map(x => x.trim()).filter(Boolean).map(x => '*' + x.replace(/^\*\s*/, '')),
     }));
@@ -2082,7 +2096,7 @@ async function buildPptx(ig) {
     for (const [j, q] of two.entries()) {
       const n = p + j + 1, X = XS[j], tx = X + 0.25 + PW + 0.28;
       s.addShape(pptx.ShapeType.rect, { x: X, y: 1.12, w: CW, h: 5.78, fill: { color: 'F6F4EF' }, line: { color: 'F6F4EF' } });
-      s.addText([{ text: `클립(${n})`, options: { ...HEAD } }, { text: `   약 ${fmtSec(secs(q.c.narration))}`, options: { color: PPT.muted, fontSize: 11 } }],
+      s.addText([{ text: `클립(${n})`, options: { ...HEAD } }, { text: `   약 ${fmtSec(clipSecs(q.c))}`, options: { color: PPT.muted, fontSize: 11 } }],
         { ...BODY, x: X + 0.25, y: 1.2, w: 4, h: 0.42, fontSize: 14, color: PPT.ink, margin: 0, valign: 'middle' });
       const ph = Math.min(PH, BOT - TOP - (ig ? 0.4 : 0));
       s.addShape(pptx.ShapeType.rect, { x: X + 0.25, y: TOP, w: PW, h: ph, fill: { color: 'E9E4DA' }, line: { color: 'E9E4DA' } });
@@ -2524,9 +2538,9 @@ function renderViewer() {
   w.append(hero);
   const [ns, np] = vwSec('릴스 제작 안내'); np.append(noticeList()); w.append(ns);
   if ((S.bgm || []).length) {
-    const [bs, bp] = vwSec('BGM 후보');
-    const l = el('div', 'bgm-list'); S.bgm.forEach(b => l.append(bgmItem(b, false))); bp.append(l);
-    bp.append(el('p', 'vw-note', '*눌러서 인스타그램에서 들어보실 수 있습니다. 원하시는 곡이나 다른 곡이 있으면 아래 [추가 요청]에 적어 주세요. 고르지 않으시면 근래 반응 좋은 곡으로 정해 발행합니다.'));
+    const [bs, bp] = vwSec(`BGM 레퍼런스 (${S.bgm.length}곡 중 1곡 선택)`);
+    const l = el('div', 'bgm-list'); S.bgm.forEach((b, n) => { const r = bgmItem(b, false); r.querySelector('.bgm-tx b')?.prepend(`${n + 1}. `); l.append(r); }); bp.append(l);
+    bp.append(el('p', 'vw-note', '*눌러서 인스타그램에서 들어보실 수 있고, [릴스 화면으로 보기]에서 나레이션과 함께 들어 보실 수 있습니다. 고르신 곡 번호나 다른 곡이 있으면 아래 [추가 요청]에 적어 주세요. 고르지 않으시면 1번으로 발행합니다.'));
     w.append(bs);
   }
 
@@ -3124,7 +3138,7 @@ function bgmRow() {
   row.hidden = !list.length;
   sel.textContent = '';
   const off = el('option', null, '끄기'); off.value = ''; sel.append(off);
-  list.forEach(b => { const o = el('option', null, [b.title, b.artist].filter(Boolean).join(' - ') || '(곡)'); o.value = b.id; sel.append(o); });
+  list.forEach((b, n) => { const o = el('option', null, `${n + 1}. ` + ([b.title, b.artist].filter(Boolean).join(' - ') || '(곡)')); o.value = b.id; sel.append(o); });
   let pick = null; try { if (VIEW === 'share') pick = localStorage.getItem('noing-bgm-pick:' + (SH?.sid || '')); } catch (e) {}
   if (pick === null) pick = S.bgmPick ?? (list[0]?.id || '');
   if (pick && !list.some(b => b.id === pick)) pick = list[0]?.id || '';
@@ -3134,8 +3148,17 @@ function bgmRow() {
   bgmNote();
 }
 function bgmNote() {
-  $('#igBgmNote').textContent = IG.bgmId ? 'BGM은 분위기를 보여 드리기 위한 예시입니다. 실제 영상의 BGM은 발행할 때 인스타그램 음악으로 붙입니다.'
-    : '배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.';
+  const n = bgmWithSound().length;
+  $('#igBgmNote').textContent = IG.bgmId ? `BGM 레퍼런스 ${n}곡 중 하나를 골라 들어 보세요. 고르신 곡을 발행할 때 인스타그램 음악으로 붙입니다(미리보기 소리는 분위기 예시).`
+    : (n ? `BGM 레퍼런스 ${n}곡이 있습니다. 위 목록에서 골라 나레이션과 함께 들어 보세요.` : '배경음악(BGM)은 넣지 않은 미리보기입니다. BGM은 발행할 때 인스타그램 음악으로 붙입니다.');
+  igAudioInfo();
+}
+// 폰 화면 왼쪽 아래 '♪ 곡 · 가수'·오른쪽 아래 표지 = 고른 BGM (실제 릴스에서 음악을 붙였을 때 모양). 끄면 '계정 · 원본 오디오'
+function igAudioInfo() {
+  const b = (S.bgm || []).find(x => x.id === IG.bgmId), lk = $('#igBgmLink'), disc = document.querySelector('#igPhone .ig-disc img');
+  $('#igAudio').textContent = b ? [b.title, b.artist].filter(Boolean).join(' · ') : `${$('#igName').textContent} · 원본 오디오`;
+  if (disc) disc.src = b?.cover || 'img/logo.png';
+  if (lk) { lk.hidden = !b?.link; if (b?.link) { lk.href = b.link; lk.title = `'${b.title}' 인스타그램 오디오 페이지`; } }
 }
 function bgmAudio() {
   const b = bgmWithSound().find(x => x.id === IG.bgmId); if (!b) return null;
