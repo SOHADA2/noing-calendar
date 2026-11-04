@@ -601,6 +601,10 @@ button.bgm-ad{cursor:pointer}
 .status-sel{border:0;font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:3px 8px}
 .status-sel.draft{background:#efebe3;color:var(--ink-2)}
 .status-sel.done{background:var(--ok-soft);color:#1d5e40}
+.status-sel.sent{background:#fff1d6;color:#8a5a00}.status-sel.revise{background:#fde4e0;color:#a3271a}
+.status-sel.final,.status-sel.production{background:var(--ok-soft);color:#1d5e40}.status-sel.published{background:#e6e3dc;color:#5c574f}
+#btnShare,#btnFb,#btnPv{display:none!important}   /* 담당자 링크·수정 요청은 쓰지 않음(11.4) — PPT 속 인스타 미리보기 링크만 남김 */
+.field label .lbl-sub{color:var(--muted);font-size:11px;margin-left:6px}
 /* 인스타로 보기 (릴스 화면) */
 .ig-modal{background:rgba(10,10,10,.84)}
 .ig-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;max-height:96vh}
@@ -758,14 +762,14 @@ body.igonly #viewer,body.igonly .ig-close{display:none}
     <div class="brand">
       <img src="img/logo.png" alt="">
       <div style="min-width:0">
-        <div class="t1">카드뉴스 콘티 <select class="status-sel ed-only" id="statusSel" title="달력의 [콘텐츠 기획] 탭에서 작성 중인 콘티는 흐리게 보입니다"><option value="draft">작성 중</option><option value="done">완성</option></select> <button class="ver-btn ed-only" id="verBtn" onclick="openVer()" hidden title="지난 버전 보기 · 새 버전 시작">v1 ▾</button></div>
+        <div class="t1">카드뉴스 콘티 <select class="status-sel ed-only" id="statusSel" title="진행 단계 — 달력 [콘텐츠 기획] 현황판에 보입니다"><option value="draft">작성 중</option><option value="sent">담당자 확인 대기</option><option value="revise">수정 중</option><option value="final">확정</option><option value="production">제작 중</option><option value="published">발행 완료</option></select> <button class="ver-btn ed-only" id="verBtn" onclick="openVer()" hidden title="지난 버전 보기 · 새 버전 시작">v1 ▾</button></div>
         <div class="t2" id="tTitle">새 카드뉴스 콘티</div>
       </div>
     </div>
     <div class="spacer"></div>
     <div class="tb-acts ed-only">
       <button class="btn" onclick="openInsta()">▶ 인스타로 보기</button>
-      <button class="btn" onclick="enterViewer(true)" title="담당자가 링크를 열면 보는 화면">미리보기</button>
+      <button class="btn" id="btnPv" onclick="enterViewer(true)" title="담당자가 링크를 열면 보는 화면">미리보기</button>
       <div class="menu-wrap">
         <button class="btn" id="btnFile" onclick="toggleFileMenu(event)" aria-haspopup="true" aria-expanded="false">파일 ▾</button>
         <div class="menu" id="fileMenu" hidden>
@@ -787,6 +791,7 @@ body.igonly #viewer,body.igonly .ig-close{display:none}
     <h2 class="sec-title">기본 정보</h2>
     <div class="panel info-form">
       <div class="cal-note" id="calNote" hidden></div>
+      <div class="field wide"><label>다음 할 일 <span class="lbl-sub">달력 [콘텐츠 기획] 현황판에 보입니다</span></label><input id="nextIn" placeholder="예: 담당자 피드백 반영 · 촬영본 받기 · 응모권 장수 회신 대기"></div>
       <div class="field wide"><label>서비스명 (제품명)</label><input data-info="title" placeholder="예: 움버거앤윙스 버거 치킨불고기"></div>
       <div class="field"><label>발행 채널</label><input data-info="channel" list="channels"></div>
       <div class="field"><label>발행 날짜</label><input type="date" data-info="date"></div>
@@ -842,7 +847,7 @@ body.igonly #viewer,body.igonly .ig-close{display:none}
   </section>
 
   <section>
-    <h2 class="sec-title">카드뉴스 제작 안내 <span class="sub">담당자 화면에 함께 들어갑니다</span></h2>
+    <h2 class="sec-title">카드뉴스 제작 안내 <span class="sub">PPT 에 함께 들어갑니다</span></h2>
     <div class="panel" id="noticeBox"></div>
   </section>
 
@@ -1149,6 +1154,7 @@ async function remoteSave() {
     await F.deleteDoc(F.doc(FBX.db, 'contis', id, 'media', mid)); UPLOADED.delete(mid); }
   await F.setDoc(F.doc(FBX.db, 'contis', id), {
     id, type: 'cardnews', status: S.status || 'draft', cid: CID || '',
+    stage: stageOf(), next: S.next || '', sentAt: S.sentAt || null, sentVer: S.sentVer || '', version: S.info.version || 'v1',   // 달력 현황판
     title: S.info.title || '', company: S.cal?.company || '', channel: S.info.channel || '', date: S.info.date || '', time: S.info.time || '',
     owner: S.cal?.owner || '', cardCount: S.cards.length,
     thumb: await makeThumb().catch(() => null),
@@ -1342,11 +1348,20 @@ document.querySelectorAll('[data-info]').forEach(i => ['input', 'change'].forEac
   if (i.dataset.info === 'title') S.info.titleFromCal = false;   // 직접 고친 서비스명은 달력 값으로 덮지 않는다
   renderHead(); save();
 })));
-$('#statusSel').addEventListener('change', e => { S.status = e.target.value; renderHead(); save(); toast(S.status === 'done' ? '완성으로 표시했습니다' : '작성 중으로 표시했습니다'); });
+// 진행 단계(현황판) — 예전 status(draft/done)는 '확정' 이후를 done 으로 같이 적어 둔다
+const STAGE = { draft: '작성 중', sent: '담당자 확인 대기', revise: '수정 중', final: '확정', production: '제작 중', published: '발행 완료' };
+const stageOf = () => STAGE[S.stage] ? S.stage : (S.status === 'done' ? 'final' : 'draft');
+function setStage(v) {
+  S.stage = v; S.status = ['final', 'production', 'published'].includes(v) ? 'done' : 'draft';
+  if (v === 'sent') { S.sentAt = Date.now(); S.sentVer = S.info.version || 'v1'; }
+}
+$('#statusSel').addEventListener('change', e => { setStage(e.target.value); renderHead(); save(); toast(`'${STAGE[S.stage]}'(으)로 표시했습니다`); });
+$('#nextIn').addEventListener('input', e => { S.next = e.target.value; save(); });
 function renderHead() {
   renderVerChip(); $('#tTitle').textContent = S.info.title || '새 카드뉴스 콘티';
   document.title = '카드뉴스 콘티 · ' + (S.info.title || '새 콘티');
-  const ss = $('#statusSel'); ss.value = S.status || 'draft'; ss.className = 'status-sel ed-only ' + ss.value;
+  const ss = $('#statusSel'); ss.value = stageOf(); ss.className = 'status-sel ed-only ' + ss.value;
+  const ni = $('#nextIn'); if (ni && document.activeElement !== ni) ni.value = S.next || '';
   const tl = $('#tally'); tl.textContent = '';
   const a = el('span', null, '카드 '); a.append(el('b', null, S.cards.length), `장 (표지 1 + 속지 ${S.cards.length - 1})`); tl.append(a);
   const no = S.cards.filter(c => !c.img).length;
@@ -1777,6 +1792,10 @@ async function downloadPptx(btn) {
     const a = document.createElement('a'); a.href = url; a.download = contiFileName(); document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     toast('PPT를 내려받았습니다');
+    // 사장님 흐름: PPT 를 받아 담당자에게 메일로 보냄 → 현황판에 '담당자 확인 대기 · vN · 오늘'
+    if (FBX && CONTI_ID && !VER_VIEW && confirm(`이 PPT(${S.info.version || 'v1'})를 담당자에게 보내시나요?\n확인을 누르면 달력 현황판에 '담당자 확인 대기 · ${S.info.version || 'v1'} · 오늘'로 표시됩니다.`)) {
+      setStage('sent'); renderHead(); save(); toast(`'담당자 확인 대기 · ${S.sentVer}'로 표시했습니다`);
+    }
   } catch (e) { console.error(e); toast('PPT를 만들지 못했습니다: ' + e.message); }
   finally { if (btn) btn.disabled = false; }
 }

@@ -288,6 +288,8 @@
     .plans-bar .plans-refresh { margin-left: auto; }
     .plans-bar .btn { white-space: nowrap; }
     .plans-bar .pill { cursor: pointer; user-select: none; }
+    .plans-bar .pill { white-space: nowrap; }
+    .plans-bar .filter-group { flex-wrap: wrap; }
     .plan-card .pc-thumb .ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px; text-align: center; color: var(--text-3); font-size: 12px; line-height: 1.35; word-break: keep-all; background: linear-gradient(160deg, var(--bg-3), #3a3430); }
     .plan-card .pc-thumb .ph b { font-size: 10px; font-weight: 700; color: var(--accent-2); letter-spacing: .02em; }
     .pc-del { position: absolute; right: 7px; top: 7px; z-index: 2; border: 0; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-family: inherit; background: rgba(0,0,0,.65); color: #f0d0c8; cursor: pointer; opacity: 0; transition: opacity .15s; }
@@ -314,10 +316,48 @@
     .pc-meta { font-size: 11.5px; color: var(--text-3); margin-top: 4px; line-height: 1.45; }
     .plan-card.draft { opacity: .5; filter: grayscale(.35); }
     .plan-card.draft:hover { opacity: .9; filter: none; }
+    /* 현황판(11.4) */
+    .plan-board { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    .plan-board th { text-align: left; font-weight: 600; font-size: 11.5px; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .plan-board td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .plan-board tbody tr { cursor: pointer; }
+    .plan-board tbody tr:hover td { background: var(--bg-2); }
+    .pb-c { display: flex; gap: 10px; align-items: center; min-width: 220px; }
+    .pb-th { position: relative; flex: none; width: 34px; height: 48px; border-radius: 5px; overflow: hidden; background: var(--bg-3); }
+    .pb-th.cardnews { height: 42px; }
+    .pb-th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .pb-th .ph { display: none; }
+    .pb-co { font-size: 11.5px; color: var(--text-3); }
+    .pb-ti { font-weight: 600; line-height: 1.35; }
+    .pb-type { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 5px; color: #fff; background: var(--accent); white-space: nowrap; }
+    .pb-type.cardnews { background: var(--info); }
+    .pb-date { white-space: nowrap; }
+    .pb-dd { font-size: 11px; color: var(--text-3); margin-left: 4px; }
+    .pb-ver { white-space: nowrap; color: var(--text-2); }
+    .pb-st { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 99px; white-space: nowrap; background: var(--bg-3); color: var(--text-2); }
+    .pb-st.sent { background: rgba(212,160,78,.18); color: var(--warn); }
+    .pb-st.revise { background: rgba(201,119,102,.2); color: var(--err); }
+    .pb-st.final, .pb-st.production { background: rgba(122,155,118,.2); color: var(--ok); }
+    .pb-st.published { color: var(--text-3); }
+    .pb-sub { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; font-weight: 400; }
+    .pb-next { color: var(--text-2); line-height: 1.4; min-width: 160px; }
+    .pb-when { white-space: nowrap; font-size: 12px; color: var(--text-3); }
+    .plan-board tr.urgent td:first-child { box-shadow: inset 3px 0 0 var(--err); }
+    .plan-board tr.urgent .pb-dd { color: var(--err); font-weight: 700; }
+    .plan-board tr.past td { opacity: .55; }
+    .pb-del { border: 0; background: none; color: var(--text-4); cursor: pointer; font-size: 12px; padding: 2px 4px; font-family: inherit; }
+    .pb-del:hover { color: var(--err); }
+    @media (max-width: 760px) {
+      .plan-board thead { display: none; }
+      .plan-board, .plan-board tbody, .plan-board tr, .plan-board td { display: block; width: 100%; }
+      .plan-board tr { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; padding: 6px 4px; }
+      .plan-board td { border: 0; padding: 4px 8px; }
+      .plan-board td[data-k]::before { content: attr(data-k) ' '; color: var(--text-4); font-size: 11px; margin-right: 6px; }
+    }
     .plans-empty { color: var(--text-3); text-align: center; padding: 56px 0; font-size: 13.5px; line-height: 1.7; }
     @media (max-width: 640px) {
       .plan-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .plans-bar { gap: 10px; }
+      .plans-bar { gap: 10px; flex-wrap: wrap; }
       .plans-bar .plans-refresh { margin-left: 0; }
     }
 
@@ -2421,7 +2461,7 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div class="orders-search">
-            <input type="text" id="planSearch" placeholder="제목, 업체, 담당자 검색..." oninput="renderPlans()" />
+            <input type="text" id="planSearch" placeholder="제목, 업체, 담당자, 다음 할 일 검색..." oninput="renderPlans()" />
           </div>
         </div>
       </div>
@@ -2434,9 +2474,9 @@
         </div>
         <div class="filter-group">
           <span class="filter-label">상태</span>
-          <span class="pill active" data-pk="status" data-v="all">전체</span>
-          <span class="pill" data-pk="status" data-v="done">완성</span>
-          <span class="pill" data-pk="status" data-v="draft">작성 중</span>
+          <span class="pill active" data-pk="status" data-v="active">진행 중</span>
+          <span class="pill" data-pk="status" data-v="published">발행 완료</span>
+          <span class="pill" data-pk="status" data-v="all">전체</span>
         </div>
         <button class="btn plans-refresh" onclick="loadPlans(true)" title="새로고침">↻ 새로고침</button>
         <button class="btn btn-primary" onclick="newPlan('reels')">+ 새 릴스 기획</button>
@@ -2975,7 +3015,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.41.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.42.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -3199,7 +3239,7 @@ async function doLogin() {
 }
 window.addEventListener('fb-auth', (ev) => {
   if (!USE_FB) return;
-  if (ev.detail) { showLoginGate(false); startFirestoreSync(); loadPlanFb(); }
+  if (ev.detail) { showLoginGate(false); startFirestoreSync(); }   // (11.4) 담당자 수정 요청 배지 뺌
   else { showLoginGate(true); setStatus('로그인 필요', 'warn'); }
 });
 document.addEventListener('keydown', (e) => {
@@ -3799,33 +3839,28 @@ async function init() {
 // 콘티 화면(conti/reels.html)이 저장할 때 목록용 정보(제목·업체·일정·상태·작은 그림)를 같이 남긴다.
 // 작성 중(draft)은 흐리게. 폴더 = 발행 월별 / 업체별.
 let plans = [], plansLoaded = false;
-const planF = { type: 'all', status: 'all' };
+const planF = { type: 'all', status: 'active' };
 document.querySelectorAll('#viewPlans .pill[data-pk]').forEach(p => p.addEventListener('click', () => {
   document.querySelectorAll(`#viewPlans .pill[data-pk="${p.dataset.pk}"]`).forEach(x => x.classList.toggle('active', x === p));
   planF[p.dataset.pk] = p.dataset.v;
   renderPlans();
 }));
-// 담당자 수정 요청(feedback, 담당자 링크에서 보낸 것) — 처리 안 한 것만 콘티별로 센다
-let planFb = {};
-async function loadPlanFb() {
-  try {
-    const FB = await fbReady(); if (!FB.user) return;
-    const snap = await FB.getDocs(FB.collection(FB.db, 'feedback'));
-    planFb = {};
-    snap.docs.forEach(d => { const x = d.data(); if (!x.done && x.contiId) planFb[x.contiId] = (planFb[x.contiId] || 0) + 1; });
-    const n = Object.values(planFb).reduce((a, b) => a + b, 0);
-    const tab = document.querySelector('.view-tab[data-view="plans"]');
-    if (tab) { tab.dataset.fb = n ? String(n) : ''; tab.classList.toggle('has-fb', n > 0); tab.title = n ? `담당자 수정 요청 ${n}건 (처리 안 함)` : ''; }
-  } catch (e) { console.warn('수정 요청 읽기 실패', e); }
-}
+// 진행 단계(콘티 편집기 상단 단계 선택과 같음). 예전 콘티는 status(draft/done)로 짐작
+const PLAN_STAGE = { draft: '작성 중', sent: '담당자 확인 대기', revise: '수정 중', final: '확정', production: '제작 중', published: '발행 완료' };
+const planStage = p => PLAN_STAGE[p.stage] ? p.stage : (p.status === 'done' ? 'final' : 'draft');
 async function loadPlans(force) {
   if (plansLoaded && !force) { renderPlans(); return; }
   const FB = await fbReady();
   if (!FB.user) { renderPlans('로그인하면 저장된 콘티가 보입니다'); return; }
   if (!plansLoaded) renderPlans('불러오는 중…');
   try {
-    const [snap] = await Promise.all([FB.getDocs(FB.collection(FB.db, 'contis')), loadPlanFb()]);
-    plans = snap.docs.map(d => { const x = d.data(); delete x.data; return { ...x, id: d.id }; });
+    const snap = await FB.getDocs(FB.collection(FB.db, 'contis'));
+    plans = snap.docs.map(d => {
+      const x = d.data();
+      // 편집기를 새로 저장하기 전인 콘티는 맨 위 칸이 없어 글(data) 안에서 꺼낸다
+      try { const S = JSON.parse(x.data || '{}'); x.stage = x.stage || S.stage; x.next = x.next ?? S.next; x.sentAt = x.sentAt || S.sentAt; x.sentVer = x.sentVer || S.sentVer; x.version = x.version || S.info?.version; } catch (e) {}
+      delete x.data; return { ...x, id: d.id };
+    });
     plansLoaded = true; renderPlans();
   } catch (e) {
     renderPlans('콘티를 불러오지 못했습니다 — ' + (/permission/i.test(e.message || '') ? '권한이 없습니다(Firestore 보안 규칙에 contis 허용 필요)' : (e.message || e)));
@@ -3833,40 +3868,47 @@ async function loadPlans(force) {
 }
 function planUrl(p) { return `conti/${p.type === 'cardnews' ? 'cardnews' : 'reels'}.html?id=${encodeURIComponent(p.id)}`; }
 function newPlan(type) { window.open(`conti/${type === 'cardnews' ? 'cardnews' : 'reels'}.html`, '_blank'); }
-const PLAN_CH = { 'one_home_life': 'life', 'one_home_guide': 'guide', 'one_home_mag': 'mag' };
 function planEl(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
-function planCard(p) {
-  const st = p.status === 'done' ? 'done' : 'draft', type = p.type === 'cardnews' ? 'cardnews' : 'reels';
-  const b = planEl('button', `plan-card ${type} ${st}`); b.type = 'button';
-  const th = planEl('div', 'pc-thumb');
-  th.append(planThumb(p, 'large'));
-  const bd = planEl('div', 'pc-badges');
-  bd.append(planEl('span', 'pc-badge ' + type, type === 'reels' ? '릴스' : '카드뉴스'), planEl('span', 'pc-badge ' + st, st === 'done' ? '완성' : '작성 중'));
-  if (planFb[p.id]) { b.classList.add('has-fb'); bd.append(planEl('span', 'pc-badge fb', `💬 수정 요청 ${planFb[p.id]}`)); }
-  th.append(bd); b.append(th);
-  const body = planEl('div', 'pc-body');
-  body.append(planEl('div', 'pc-title', p.title || '(서비스명 없음)'));
-  const ch = Object.entries(PLAN_CH).find(([k]) => (p.channel || '').includes(k))?.[1] || '';
-  const d = p.date ? `${+p.date.slice(5, 7)}.${+p.date.slice(8, 10)}${p.time ? ' ' + p.time : ''}` : '날짜 미정';
-  const m1 = [d, ch].filter(Boolean).join(' · ');
-  const m2 = [p.owner ? '담당 ' + p.owner : '', type === 'reels' ? `클립 ${p.clipCount || 0} · 약 ${p.secs || 0}초` : `카드 ${p.cardCount || 0}장`].filter(Boolean).join(' · ');
-  const meta = planEl('div', 'pc-meta'); meta.append(m1); if (m2) { meta.append(document.createElement('br')); meta.append(m2); }
-  body.append(meta); b.append(body);
-  const u = p.updatedAt ? new Date(p.updatedAt) : null;
-  b.title = `${p.title || ''}\n마지막 저장 ${u ? `${u.getMonth() + 1}.${u.getDate()} ${String(u.getHours()).padStart(2, '0')}:${String(u.getMinutes()).padStart(2, '0')}` : '-'}${p.updatedBy ? ' · ' + p.updatedBy : ''}`;
-  b.onclick = () => window.open(planUrl(p), '_blank');
-  const del = planEl('span', 'pc-del', '삭제'); del.setAttribute('role', 'button'); del.tabIndex = 0; del.title = '이 콘티 삭제';
-  del.onclick = e => { e.stopPropagation(); deleteConti(p); };
-  del.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteConti(p); } };
-  th.append(del);
-  return b;
+const pmd = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()}`; };
+function planDays(p) {   // 발행일까지 남은 날 (오늘 0)
+  if (!p.date) return null;
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((new Date(p.date + 'T00:00:00') - t) / 86400000);
 }
-// 썸네일: 저장된 작은 그림, 없으면 제목이 들어간 카드
-function planThumb(p, size) {
+function planRow(p) {
+  const type = p.type === 'cardnews' ? 'cardnews' : 'reels', st = planStage(p), dd = planDays(p);
+  const tr = planEl('tr');
+  if (dd != null && dd <= 2 && ['draft', 'sent', 'revise'].includes(st)) tr.classList.add('urgent');   // 발행이 코앞인데 확정 전
+  if (st === 'published') tr.classList.add('past');
+  const c1 = planEl('td'); const cc = planEl('div', 'pb-c');
+  const th = planEl('div', 'pb-th ' + type); th.append(planThumb(p)); cc.append(th);
+  const tx = planEl('div'); tx.append(planEl('div', 'pb-co', [p.company, p.owner ? '담당 ' + p.owner : ''].filter(Boolean).join(' · ')), planEl('div', 'pb-ti', p.title || '(서비스명 없음)'));
+  cc.append(tx); c1.append(cc);
+  const c2 = planEl('td'); c2.dataset.k = '유형'; c2.append(planEl('span', 'pb-type ' + type, type === 'reels' ? '릴스' : '카드뉴스'));
+  const c3 = planEl('td', 'pb-date'); c3.dataset.k = '발행';
+  c3.append(p.date ? `${+p.date.slice(5, 7)}.${+p.date.slice(8, 10)}${p.time ? ' ' + p.time : ''}` : '미정');
+  if (dd != null && st !== 'published') c3.append(planEl('span', 'pb-dd', dd === 0 ? 'D-day' : dd > 0 ? `D-${dd}` : `D+${-dd}`));
+  const c4 = planEl('td', 'pb-ver', p.version || ''); c4.dataset.k = '버전';
+  const c5 = planEl('td'); c5.dataset.k = '상태';
+  const sp = planEl('span', 'pb-st ' + st, PLAN_STAGE[st]);
+  if (st === 'sent' && p.sentAt) sp.append(planEl('span', 'pb-sub', `${p.sentVer || ''} · ${pmd(p.sentAt)} 보냄`));
+  c5.append(sp);
+  const c6 = planEl('td', 'pb-next', p.next || ''); c6.dataset.k = '다음';
+  const c7 = planEl('td', 'pb-when'); c7.dataset.k = '마지막 작업';
+  const u = p.updatedAt ? new Date(p.updatedAt) : null;
+  c7.append(u ? `${u.getMonth() + 1}.${u.getDate()} ${String(u.getHours()).padStart(2, '0')}:${String(u.getMinutes()).padStart(2, '0')}` : '-');
+  const del = planEl('button', 'pb-del', '삭제'); del.type = 'button'; del.title = '이 콘티 삭제';
+  del.onclick = e => { e.stopPropagation(); deleteConti(p); };
+  c7.append(' ', del);
+  tr.append(c1, c2, c3, c4, c5, c6, c7);
+  tr.title = `${p.title || ''}\n누르면 콘티 편집 화면이 열립니다${p.updatedBy ? '\n마지막 저장 ' + p.updatedBy : ''}`;
+  tr.onclick = () => window.open(planUrl(p), '_blank');
+  return tr;
+}
+// 썸네일: 저장된 작은 그림, 없으면 비움
+function planThumb(p) {
   if (p.thumb) { const im = planEl('img'); im.src = p.thumb; im.alt = ''; im.loading = 'lazy'; return im; }
-  const ph = planEl('div', 'ph');
-  ph.append(planEl('b', null, p.type === 'cardnews' ? '카드뉴스' : '릴스'), planEl('span', null, (p.title || '제목 없음').slice(0, 40)), planEl('span', null, '아직 사진 없음'));
-  return ph;
+  return planEl('span', 'ph');
 }
 // 콘티 삭제 — 글 문서와 사진(media) 모두 지운다. 되돌릴 수 없다
 async function deleteConti(p) {
@@ -3888,16 +3930,21 @@ function renderPlans(msg) {
   if (msg) { body.append(planEl('div', 'plans-empty', msg)); document.getElementById('plansCount').textContent = ''; return; }
   const q = (document.getElementById('planSearch').value || '').trim().toLowerCase();
   const list = plans.filter(p => (planF.type === 'all' || (p.type || 'reels') === planF.type)
-    && (planF.status === 'all' || (p.status === 'done' ? 'done' : 'draft') === planF.status)
-    && (!q || [p.title, p.company, p.owner].join(' ').toLowerCase().includes(q)))
-    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.updatedAt || 0) - (a.updatedAt || 0));
+    && (planF.status === 'all' || (planF.status === 'published') === (planStage(p) === 'published'))
+    && (!q || [p.title, p.company, p.owner, p.next].join(' ').toLowerCase().includes(q)));
+  // 진행 중 = 발행 가까운 순(날짜 없는 건 뒤로) · 발행 완료 = 최근 순
+  const key = p => p.date || '9999';
+  list.sort((a, b) => planF.status === 'published' ? (b.date || '').localeCompare(a.date || '') : key(a).localeCompare(key(b)) || (b.updatedAt || 0) - (a.updatedAt || 0));
   document.getElementById('plansCount').textContent = `${list.length}건`;
   if (!list.length) {
     const e = planEl('div', 'plans-empty', plans.length ? '조건에 맞는 콘티가 없습니다'
       : '아직 저장된 콘티가 없습니다.\n달력에서 릴스·카드뉴스 콘텐츠를 누르고 [콘티 만들기]를 누르거나, [+ 새 릴스 기획]·[+ 새 카드뉴스 기획]으로 시작하세요.');
     e.style.whiteSpace = 'pre-line'; body.append(e); return;
   }
-  const g = planEl('div', 'plan-grid'); list.forEach(p => g.append(planCard(p))); body.append(g);
+  const t = planEl('table', 'plan-board'), hd = planEl('thead'), hr = planEl('tr');
+  ['콘텐츠', '유형', '발행', '버전', '상태', '다음 할 일', '마지막 작업'].forEach(x => hr.append(planEl('th', null, x)));
+  hd.append(hr); t.append(hd);
+  const tb = planEl('tbody'); list.forEach(p => tb.append(planRow(p))); t.append(tb); body.append(t);
 }
 
 // ── View switching ──
