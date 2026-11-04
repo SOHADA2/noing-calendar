@@ -1113,7 +1113,7 @@
     .chip-type.t-card   { background: rgba(110,138,166,.2); color: #9bb4cf; }
     .chip-type.t-simple { background: rgba(122,155,118,.2); color: #9fbf9b; }
     .chip-type.t-other  { background: var(--bg-3); color: var(--text-3); }
-    .chip-new { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; letter-spacing: .2px; background: rgba(212,160,78,.24); color: #e8c17a; }
+    .chip-new { display: inline-block; vertical-align: 1px; margin-right: 4px; font-size: 9px; font-weight: 800; line-height: 1.35; padding: 0 4px; border-radius: 3px; letter-spacing: .2px; background: rgba(212,160,78,.24); color: #e8c17a; }
 
     .chip-channel {
       font-size: 9px;
@@ -3017,7 +3017,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.43.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.43.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -7515,9 +7515,8 @@ function render() {
           ${c.time ? `<span class="chip-time">${escapeHtml(c.time)}</span>` : ''}
           ${c.channel ? `<span class="chip-channel ch-${c.channel}">${escapeHtml(c.channel)}</span><span class="chip-ch-short ch-${c.channel}">${escapeHtml((c.channel || '').charAt(0).toUpperCase())}</span>` : ''}
           <span class="chip-type ${tCls}">${TYPE_SHORT[c.type] || (c.type ? c.type.slice(0,4) : '?')}</span>
-          ${h.cRank === 1 ? '<span class="chip-new" title="이 업체와 첫 거래">신규</span>' : ''}
         </div>
-        <div class="chip-title">${escapeHtml(c.title)}</div>
+        <div class="chip-title">${h.cRank === 1 ? '<span class="chip-new" title="이 업체와 첫 거래">신규</span>' : ''}${escapeHtml(c.title)}</div>
       `;
       chip.onclick = (e) => {
         if (isMobileView()) { e.stopPropagation(); openDayDetail(c.date); return; }   // 모바일은 날짜 상세로
