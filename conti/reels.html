@@ -1897,10 +1897,6 @@ async function downloadPptx(btn) {
     const a = document.createElement('a'); a.href = url; a.download = contiFileName(); document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     toast('PPT를 내려받았습니다');
-    // 사장님 흐름: PPT 를 받아 담당자에게 메일로 보냄 → 현황판에 '담당자 확인 대기 · vN · 오늘'
-    if (FBX && CONTI_ID && !VER_VIEW && confirm(`이 PPT(${S.info.version || 'v1'})를 담당자에게 보내시나요?\n확인을 누르면 달력 현황판에 '담당자 확인 대기 · ${S.info.version || 'v1'} · 오늘'로 표시됩니다.`)) {
-      setStage('sent'); renderHead(); save(); toast(`'담당자 확인 대기 · ${S.sentVer}'로 표시했습니다`);
-    }
   } catch (e) { console.error(e); toast('PPT를 만들지 못했습니다: ' + e.message); }
   finally { if (btn) btn.disabled = false; }
 }
