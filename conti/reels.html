@@ -634,6 +634,10 @@ button.bgm-ad{cursor:pointer}
 /* 자막 = life 채널 릴스와 같게: 한 줄, 흰 글자 + 검정 52% 둥근 상자, 글자 = 화면 폭 6.5%, 상자 가운데 = 높이 71.6% (넘치면 글자만 줄임) */
 .ig-sub{position:absolute;left:3%;right:3%;top:71.6%;transform:translateY(-50%);text-align:center;font-size:6.5cqw;pointer-events:none}
 .ig-sub span{display:inline-block;max-width:none;white-space:nowrap;background:rgba(0,0,0,.52);color:#fff;font-weight:500;line-height:1.2;letter-spacing:-.01em;padding:.27em .36em .29em;border-radius:.17em}
+/* 라이프 채널 새 형식(10.29, 네버다이 프로젝트 기준) = 자막 화면 가운데(상자 y 909~1029 → 가운데 50.5%) + 상자 70% — render_life_reel.py SUB_TOP·BOX_ALPHA 와 같게 */
+.ig-phone.life .ig-sub{top:50.5%}
+.ig-phone.life .ig-sub span{background:rgba(0,0,0,.70)}
+.ig-phone:has(.ig-start) .ig-sub{visibility:hidden}   /* 미리보기 주소 첫 화면: 가운데 '눌러서 보기'와 겹치지 않게 누르기 전엔 자막 숨김 */
 .ig-side{position:absolute;right:1.8cqw;bottom:3cqh;width:11cqw;display:flex;flex-direction:column;align-items:center;gap:1.3cqh;color:#fff;pointer-events:none}
 .ig-side>span{display:flex;flex-direction:column;align-items:center}
 .ig-side svg{width:7cqw;height:7cqw;filter:drop-shadow(0 0 2px rgba(0,0,0,.35))}
@@ -2227,6 +2231,7 @@ function openInsta() {
   if (takeOf()) IG.sound = true;   // 만들어 둔 나레이션이 있으면 소리 켜고 시작
   $('#igSound').textContent = IG.sound ? '🔊 나레이션' : '🔇 나레이션';
   $('#igName').textContent = (S.info.channel || 'one_home_life').replace(/^인스타그램\s*/, '');
+  $('#igPhone').classList.toggle('life', /life/i.test(S.info.channel || ''));
   const cap = (S.caption.mention || '').replace(/#광고\s*/, '').trim().split('\n').filter(Boolean)[0] || '';
   $('#igCap').textContent = cap;
   $('#igAudio').textContent = `${$('#igName').textContent} · 원본 오디오`;
@@ -2244,6 +2249,8 @@ function closeInsta() { if (IG_ONLY) return; stopInsta(); bgmStop(); closeM(mIns
 function igOnlyStart(k) {
   document.body.classList.add('igonly'); document.title = `${S.info.title || '릴스'} · 인스타 미리보기`;
   openInsta(); stopInsta(); k = Math.max(0, Math.min(S.clips.length - 1, k)); IG.i = k; renderBars(0);
+  // 누르기 전엔 사진도 멈춰 둔다(타이머만 멈추면 CSS 확대 애니메이션은 혼자 돌아 '벌써 재생 중'처럼 보였다)
+  document.querySelectorAll('#igStage .ig-shot img').forEach(im => im.style.animationPlayState = 'paused');
   $('#igClip').textContent = `클립 ${k + 1} / ${S.clips.length}`; $('#igPlay').textContent = '▶ 재생';
   const go = el('button', 'ig-start', ''); go.append(el('b', null, '▶'), el('span', null, k ? `클립 ${k + 1}부터 보기` : '눌러서 보기'));
   go.onclick = e => { e.stopPropagation(); go.remove(); playClip(k); };
@@ -2340,6 +2347,7 @@ function renderBars(p) {
   [...$('#igBars').children].forEach((b, k) => { b.firstChild.style.width = (k < IG.i ? 100 : k > IG.i ? 0 : p * 100) + '%'; });
 }
 function togglePlay() {
+  const go = $('#igPhone .ig-start'); if (go) { go.click(); return; }   // 미리보기 주소 첫 화면: ▶ 재생도 '눌러서 보기'와 같게 처음부터
   if (IG.i >= S.clips.length - 1 && !IG.playing && $('#igPlay').textContent.includes('처음')) { playClip(0); return; }
   if (IG.playing) {
     IG.elapsed += performance.now() - IG.t0; IG.playing = false; cancelAnimationFrame(IG.raf);
