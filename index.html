@@ -1113,6 +1113,7 @@
     .chip-type.t-card   { background: rgba(110,138,166,.2); color: #9bb4cf; }
     .chip-type.t-simple { background: rgba(122,155,118,.2); color: #9fbf9b; }
     .chip-type.t-other  { background: var(--bg-3); color: var(--text-3); }
+    .chip-new { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; letter-spacing: .2px; background: rgba(212,160,78,.24); color: #e8c17a; }
 
     .chip-channel {
       font-size: 9px;
@@ -1921,6 +1922,7 @@
       .chip { padding: 2px 4px; margin-bottom: 2px; border-radius: 4px; }
       .chip .chip-title { display: none; }
       .chip .chip-type { display: none; }
+      .chip .chip-new { display: none; }
       .chip .chip-row1 { gap: 3px; }
       .chip-time { font-size: 9.5px; }
       .chip-channel { display: none; }
@@ -3015,7 +3017,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.42.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.43.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4468,6 +4470,41 @@ document.addEventListener('mousedown', (e) => {
     m.style.display = 'none';
   }
 });
+
+// ── 거래 이력: 업체·담당자별로 몇 번째 수주인지 (취소 건 제외, 수주일 순) ──
+// 업체명은 띄어쓰기·(주)·㈜·주식회사 표기가 달라도 같은 업체로 본다
+function normCompany(v) { return String(v || '').replace(/\(주\)|㈜|주식회사|\s+/g, '').toLowerCase(); }
+function normPerson(v)  { return String(v || '').replace(/\s+/g, ''); }
+function buildOrderHistory() {
+  const live = orders.filter(o => o && o.status !== '취소').slice()
+    .sort((a, b) => String(a.order_date || '').localeCompare(String(b.order_date || '')) || String(a.id).localeCompare(String(b.id)));
+  const byCompany = new Map(), byOwner = new Map();
+  const push = (m, k, o) => { if (!k) return; if (!m.has(k)) m.set(k, []); m.get(k).push(o); };
+  live.forEach(o => { push(byCompany, normCompany(o.company), o); push(byOwner, normPerson(o.owner), o); });
+  return { byCompany, byOwner };
+}
+function orderHistoryInfo(c, lo, hist) {
+  const company = (lo && lo.company) || c.company || '';
+  const owner   = (lo && lo.owner)   || c.owner   || '';
+  const cList = hist.byCompany.get(normCompany(company)) || [];
+  const oList = hist.byOwner.get(normPerson(owner)) || [];
+  const rankIn = list => lo ? list.findIndex(x => String(x.id) === String(lo.id)) + 1 : 0;
+  return { company, owner, cTotal: cList.length, oTotal: oList.length, cRank: rankIn(cList), oRank: rankIn(oList) };
+}
+function orderHistoryLines(h) {
+  const lines = [];
+  if (h.company) {
+    if (h.cRank === 1) lines.push(h.cTotal > 1 ? `거래: ${h.company} 첫 거래 · 이후 재의뢰 ${h.cTotal - 1}건` : `거래: ${h.company} 첫 거래 (신규)`);
+    else if (h.cRank > 1) lines.push(`거래: ${h.company} ${h.cRank}번째 수주 (전체 ${h.cTotal}건)`);
+    else lines.push(h.cTotal ? `거래: ${h.company} 수주 전체 ${h.cTotal}건 (이 콘텐츠는 수주 연결 안 됨)` : `거래: ${h.company} 수주 기록 없음`);
+  }
+  if (h.owner) {
+    if (h.oRank === 1) lines.push(h.oTotal > 1 ? `담당자: ${h.owner}님 첫 진행 · 이후 ${h.oTotal - 1}건 더` : `담당자: ${h.owner}님 첫 진행 (새 담당자)`);
+    else if (h.oRank > 1) lines.push(`담당자: ${h.owner}님과 ${h.oRank}번째 (전체 ${h.oTotal}건)`);
+    else if (h.oTotal) lines.push(`담당자: ${h.owner}님 수주 전체 ${h.oTotal}건`);
+  }
+  return lines;
+}
 
 // 오른쪽 정보 영역(이번 달 요약·채널별 등) 접기 — 달력·광고 수주 공통, 이 기기에 기억
 const SIDE_COLLAPSE_KEY = 'cc-side-collapsed';
@@ -7455,6 +7492,7 @@ function render() {
   requestAnimationFrame(() => { applyLabelMarquee(); applyChipsMarquee(); });   // 넘치는 라벨·일정만 밀어서 보여주기
   setTimeout(() => { applyLabelMarquee(); applyChipsMarquee(); }, 120);   // 표시 지연 대비 재계산
 
+  const hist = buildOrderHistory();
   contents
     .filter(passesFilter)
     .slice()
@@ -7469,12 +7507,15 @@ function render() {
       const lo = c.order_id ? orders.find(o => String(o.id) === String(c.order_id)) : null;
       const wrapped = c.status === '발행완료' && lo && (lo.invoice_status === '요청됨' || lo.invoice_status === '발행완료');
       chip.className = `chip ch-${c.channel} ${sCls}${wrapped ? ' chip-wrapped' : ''}`;
-      chip.title = `${c.time || ''} · [${c.channel}] ${c.type}\n${c.company ? c.company + ' · ' : ''}${c.title}\n담당: ${c.owner || '-'} · 상태: ${c.status}${wrapped ? '\n세금계산서: ' + lo.invoice_status + ' (마무리 단계)' : ''}${c.memo ? '\n메모: '+c.memo : ''}`;
+      const h = orderHistoryInfo(c, lo, hist);
+      const histLines = orderHistoryLines(h);
+      chip.title = `${c.time || ''} · [${c.channel}] ${c.type}\n${c.company ? c.company + ' · ' : ''}${c.title}\n담당: ${c.owner || '-'} · 상태: ${c.status}${histLines.length ? '\n' + histLines.join('\n') : ''}${wrapped ? '\n세금계산서: ' + lo.invoice_status + ' (마무리 단계)' : ''}${c.memo ? '\n메모: '+c.memo : ''}`;
       chip.innerHTML = `
         <div class="chip-row1">
           ${c.time ? `<span class="chip-time">${escapeHtml(c.time)}</span>` : ''}
           ${c.channel ? `<span class="chip-channel ch-${c.channel}">${escapeHtml(c.channel)}</span><span class="chip-ch-short ch-${c.channel}">${escapeHtml((c.channel || '').charAt(0).toUpperCase())}</span>` : ''}
           <span class="chip-type ${tCls}">${TYPE_SHORT[c.type] || (c.type ? c.type.slice(0,4) : '?')}</span>
+          ${h.cRank === 1 ? '<span class="chip-new" title="이 업체와 첫 거래">신규</span>' : ''}
         </div>
         <div class="chip-title">${escapeHtml(c.title)}</div>
       `;
