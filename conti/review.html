@@ -214,14 +214,16 @@ const store = {
     if (!FBX) { const a = JSON.parse(localStorage.getItem('rv-reviews') || '[]').filter(x => x.id !== r.id); a.unshift(r); localStorage.setItem('rv-reviews', JSON.stringify(a)); return; }
     const { id, ...d } = r; await FBX.F.setDoc(FBX.F.doc(FBX.db, 'reviews', id), d, { merge: true });
   },
+  // Firestore 는 '목록 안의 목록'을 못 담는다 → 선은 [x0,y0,x1,y1,…] 한 줄로 펴서 저장하고, 읽을 때 [[x,y],…] 로 다시 묶는다
   async listNotes(rid) {
     if (!FBX) return JSON.parse(localStorage.getItem('rv-notes-' + rid) || '[]');
     const F = FBX.F, q = await F.getDocs(F.collection(FBX.db, 'reviews', rid, 'notes'));
-    return q.docs.map(d => ({ id: d.id, ...d.data() }));
+    return q.docs.map(d => { const n = { id: d.id, ...d.data() }; if (Array.isArray(n.stroke) && typeof n.stroke[0] === 'number') { const s = []; for (let i = 0; i + 1 < n.stroke.length; i += 2) s.push([n.stroke[i], n.stroke[i + 1]]); n.stroke = s; } return n; });
   },
   async putNote(rid, n) {
     if (!FBX) { const a = JSON.parse(localStorage.getItem('rv-notes-' + rid) || '[]').filter(x => x.id !== n.id); a.push(n); localStorage.setItem('rv-notes-' + rid, JSON.stringify(a)); return; }
-    const { id, ...d } = n; await FBX.F.setDoc(FBX.F.doc(FBX.db, 'reviews', rid, 'notes', id), d);
+    const { id, ...d } = n; d.stroke = (n.stroke || []).flat();
+    await FBX.F.setDoc(FBX.F.doc(FBX.db, 'reviews', rid, 'notes', id), d);
   },
   async delNote(rid, id) {
     if (!FBX) { localStorage.setItem('rv-notes-' + rid, JSON.stringify(JSON.parse(localStorage.getItem('rv-notes-' + rid) || '[]').filter(x => x.id !== id))); return; }
@@ -378,9 +380,16 @@ async function saveNew(text) {
   const n = { id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ver: CUR.ver, file: CUR.file, t: pending.t, stroke: pending.stroke, end: pending.end,
               text, status: 'open', by: FBX?.user?.email || '', at: Date.now(), vw: vid.videoWidth, vh: vid.videoHeight };
   n.thumb = thumbOf(n);
+  const keep = pending;
   closeBox(); pending = null;
   NOTES.push(n); SEL = n.id; renderList(); draw();
-  try { await store.putNote(CUR.rid, n); await saveReviewMeta(); } catch (e) { alert('저장하지 못했습니다 — ' + e.message); }
+  try { await store.putNote(CUR.rid, n); await saveReviewMeta(); }
+  catch (e) {
+    // 저장 실패 — 목록에서 빼고, 적은 글을 그대로 상자에 되돌려 다시 [저장]할 수 있게
+    NOTES = NOTES.filter(x => x !== n); SEL = null; renderList();
+    pending = keep; openBox(keep.end, text); draw();
+    alert('저장하지 못했습니다 — ' + e.message + '\n적은 글은 상자에 그대로 남아 있습니다.');
+  }
 }
 
 // ── 목록 ──
