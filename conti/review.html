@@ -53,13 +53,24 @@ button{cursor:pointer}
 .notebox .acts span{font-size:11.5px;color:var(--muted)}
 .ctrl{display:flex;align-items:center;gap:8px;width:100%}
 .ctrl .time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-2);min-width:92px;text-align:center}
-.bar{position:relative;flex:1;height:30px;cursor:pointer}
-.bar .track{position:absolute;left:0;right:0;top:13px;height:5px;border-radius:3px;background:#e2dccf}
-.bar .fill{position:absolute;left:0;top:13px;height:5px;border-radius:3px;background:var(--brand)}
-.bar .mk{position:absolute;top:5px;width:4px;height:20px;margin-left:-2px;border-radius:2px;background:var(--warn)}
+/* 재생 막대 — 화면 전체 폭, 두껍게 (11.6 사용자: 짧아서 섬세하게 못 맞춤·반응 느림) */
+.timeline{grid-column:1 / -1;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 18px 4px}
+.bar{position:relative;height:50px;cursor:pointer;touch-action:none;user-select:none}
+.bar .track{position:absolute;left:0;right:0;top:20px;height:10px;border-radius:5px;background:#e2dccf}
+.bar .fill{position:absolute;left:0;top:20px;height:10px;border-radius:5px;background:var(--brand)}
+.bar .mk{position:absolute;top:7px;width:8px;height:36px;margin-left:-4px;border-radius:4px;background:var(--warn);box-shadow:0 0 0 2px #fff}
 .bar .mk.done{background:#b8b1a5}
-.bar .head{position:absolute;top:8px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#fff;border:2px solid var(--brand)}
+.bar .head{position:absolute;top:13px;width:24px;height:24px;margin-left:-12px;border-radius:50%;background:#fff;border:3px solid var(--brand);box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.bar .hov{position:absolute;bottom:52px;transform:translateX(-50%);background:#1f1e1d;color:#fff;font-size:12px;padding:4px 8px;border-radius:6px;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.ticks{position:relative;height:18px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;transform:translateX(-50%)}
 .sub{font-size:12px;color:var(--muted);text-align:center}
+/* 다 적은 뒤 할 일 */
+.flow{padding:12px 14px;border-bottom:1px solid var(--line);background:#fffaf0;font-size:13px;line-height:1.5}
+.flow .step{color:var(--ink-2)}
+.flow .btn{margin-top:8px}
+.flow.sent{background:var(--ok-soft)}
+.flow .say{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:7px;background:#fff;border:1px dashed var(--ok);font-weight:700}
 
 .side{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .side .hd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -86,6 +97,7 @@ button{cursor:pointer}
 #lgMsg{font-size:12.5px;color:var(--warn);min-height:18px}
 @media (max-width:900px){
   .main{grid-template-columns:1fr}
+  .timeline{order:1}.side{order:2}
   .list{max-height:none}
   .topbar{position:static}
 }
@@ -127,8 +139,7 @@ button{cursor:pointer}
       <button class="btn small" id="bPlay">▶</button>
       <button class="btn small" id="bPrev" title="한 프레임 뒤로 (,)">◀︎|</button>
       <button class="btn small" id="bNext" title="한 프레임 앞으로 (.)">|▶︎</button>
-      <div class="bar" id="bar"><div class="track"></div><div class="fill" id="fill"></div><div id="mks"></div><div class="head" id="head"></div></div>
-      <div class="time" id="time">0:00.0 / 0:00.0</div>
+      <div class="time" id="time" style="flex:1">0:00.0 / 0:00.0</div>
       <select class="btn small" id="spd" title="재생 속도"><option value="0.5">0.5배</option><option value="1" selected>1배</option></select>
     </div>
     <div class="sub">스페이스 = 재생/멈춤 · ← → = 1초 · , . = 한 프레임 · 화면을 한 번 누르면 재생/멈춤</div>
@@ -137,7 +148,12 @@ button{cursor:pointer}
     <div class="hd"><b id="listTitle">수정 요청</b>
       <select id="filt"><option value="ver">이 버전만</option><option value="all">모든 버전</option><option value="open">안 고친 것만</option></select>
     </div>
+    <div class="flow" id="flow"></div>
     <div class="list" id="list"></div>
+  </div>
+  <div class="timeline">
+    <div class="bar" id="bar"><div class="track"></div><div class="fill" id="fill"></div><div id="mks"></div><div class="head" id="head"></div><div class="hov" id="hov" hidden></div></div>
+    <div class="ticks" id="ticks"></div>
   </div>
 </div>
 
@@ -272,7 +288,7 @@ async function saveReviewMeta() {
 function layout() {
   if (!vid.videoWidth) return;
   const ar = vid.videoWidth / vid.videoHeight;
-  const maxH = Math.max(320, window.innerHeight - 190), maxW = Math.min(stage.parentElement.clientWidth, 640);
+  const maxH = Math.max(320, window.innerHeight - (window.innerWidth > 900 ? 300 : 190)), maxW = Math.min(stage.parentElement.clientWidth, 640);   // 아래 재생 막대가 한 화면에 보이게
   let h = maxH, w = h * ar; if (w > maxW) { w = maxW; h = w / ar; }
   stage.style.width = w + 'px'; stage.style.height = h + 'px';
   const dpr = window.devicePixelRatio || 1; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
@@ -406,9 +422,50 @@ function renderList() {
         ${n.reply ? `<div class="reply">↳ ${esc(n.reply)}</div>` : ''}
         <div class="na"><button class="btn small" data-a="done">${n.status === 'done' ? '다시 열기' : '반영 완료'}</button><button class="btn small" data-a="edit">고치기</button><button class="btn small" data-a="del">삭제</button></div></div></div>`).join('')
     : '<div class="empty">아직 수정 요청이 없습니다.<br>영상을 멈추고 화면에 동그라미를 그린 뒤, 밖으로 끌어서 떼면 글을 적을 수 있습니다.</div>';
-  marks(); tick();
+  marks(); tick(); renderFlow();
 }
 $('#filt').onchange = renderList;
+
+// ── 다 적은 뒤 할 일: [다 적었어요] → 클로드 대화창에 붙여 넣을 문장 복사 → 반영 상황 표시 ──
+const shortName = k => k.replace(/^\(\d{4}\.\d{1,2}\.\d{1,2}\)\s*/, '').replace(/^\[[^\]]*\]\s*/, '').replace(/\(릴스\)/, '').replace(/\s*\[[^\]]*\]\s*$/, '').trim();
+const sayText = () => `${shortName(CUR.key)} ${CUR.ver} 검토 반영해줘`;
+async function copySay() { try { await navigator.clipboard.writeText(sayText()); return true; } catch (e) { return false; } }
+function renderFlow() {
+  const el = $('#flow'); if (!CUR) return;
+  const vn = NOTES.filter(n => n.ver === CUR.ver), open = vn.filter(n => n.status !== 'done').length;
+  const sub = CUR.review.submit && CUR.review.submit.ver === CUR.ver ? CUR.review.submit : null;
+  const fresh = sub ? vn.filter(n => (n.at || 0) > sub.at && n.status !== 'done').length : 0;
+  el.className = 'flow';
+  if (!vn.length) { el.innerHTML = '<div class="step">① 영상을 멈추고 고칠 곳에 동그라미 → 밖으로 끌어서 떼고 글 적기<br>② 다 적으면 여기에 <b>[다 적었어요]</b> 버튼이 생깁니다</div>'; return; }
+  if (!sub || fresh) {
+    el.innerHTML = `<div class="step">수정 요청 ${vn.length}개${sub ? ` — 넘긴 뒤 새로 적은 것 ${fresh}개` : ''}. 다 적으셨으면 눌러 주세요.</div><button class="btn primary" id="bSubmit">✅ 다 적었어요 · 클로드에게 넘기기</button>`;
+    $('#bSubmit').onclick = submitReview; return;
+  }
+  el.classList.add('sent');
+  const when = new Date(sub.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  if (!open) { el.innerHTML = `<div class="step"><b>모두 반영됐습니다.</b> 새 버전(v${parseInt(CUR.ver.slice(1)) + 1})이 드롭박스 폴더에 들어오면 그 파일을 열어 확인해 주세요.</div>`; return; }
+  el.innerHTML = `<div class="step"><b>클로드에게 넘김</b> · ${when} · ${vn.length}개 중 반영 ${vn.length - open}개<br>클로드 대화창에 이 문장을 붙여 넣어 주세요 (Ctrl+V)</div>
+    <span class="say">${esc(sayText())}</span> <button class="btn small" id="bCopy">문장 복사</button>`;
+  $('#bCopy').onclick = async () => { $('#bCopy').textContent = (await copySay()) ? '복사됨 ✓' : '복사 실패 — 직접 적어 주세요'; };
+}
+async function submitReview() {
+  CUR.review.submit = { ver: CUR.ver, at: Date.now(), n: NOTES.filter(n => n.ver === CUR.ver).length, by: FBX?.user?.email || '' };
+  await saveReviewMeta();
+  const ok = await copySay();
+  renderList();
+  alert(`클로드에게 넘길 준비가 됐습니다.\n\n클로드 대화창에 붙여 넣어 주세요${ok ? ' (이미 복사됨, Ctrl+V)' : ''}:\n「${sayText()}」\n\n클로드가 반영하면 여기 목록에 '반영함'과 답글이 달립니다.`);
+}
+// 클로드가 반영하는 동안 목록을 20초마다 새로 읽는다(그리는 중·글 쓰는 중엔 건너뜀)
+setInterval(async () => {
+  if (!FBX || !CUR || pending || drawing || $('#nb') || document.hidden) return;
+  try {
+    const ns = await store.listNotes(CUR.rid), r = await store.getReview(CUR.rid, CUR.key);
+    const sig = a => JSON.stringify(a.map(n => [n.id, n.status, n.reply || '', n.text]).sort());
+    if (sig(ns) !== sig(NOTES) || JSON.stringify(r.submit || null) !== JSON.stringify(CUR.review.submit || null)) {
+      NOTES = ns; CUR.review.submit = r.submit; renderList(); draw();
+    }
+  } catch (e) {}
+}, 20000);
 $('#list').addEventListener('click', async e => {
   const el = e.target.closest('.note'); if (!el) return;
   const n = NOTES.find(x => x.id === el.dataset.id); if (!n) return;
@@ -416,36 +473,66 @@ $('#list').addEventListener('click', async e => {
   if (a === 'del') { if (!confirm('이 수정 요청을 지울까요?')) return; NOTES = NOTES.filter(x => x !== n); if (SEL === n.id) SEL = null; renderList(); draw(); await store.delNote(CUR.rid, n.id).catch(err => alert(err.message)); await saveReviewMeta(); return; }
   if (a === 'done') { n.status = n.status === 'done' ? 'open' : 'done'; renderList(); draw(); await store.putNote(CUR.rid, n).catch(err => alert(err.message)); await saveReviewMeta(); return; }
   SEL = n.id;
-  if (n.ver === CUR.ver) { vid.pause(); vid.currentTime = n.t; }
+  if (n.ver === CUR.ver) { vid.pause(); seekTo(n.t); }
   renderList(); draw();
   if (a === 'edit') { pending = null; openBox(n.end || [0.5, 0.5], n.text, async txt => { closeBox(); if (!txt) return; n.text = txt; renderList(); draw(); await store.putNote(CUR.rid, n).catch(err => alert(err.message)); }); }
 });
 
 // ── 재생 막대 ──
 function marks() {
-  const d = vid.duration || 0; if (!d || !CUR) { $('#mks').innerHTML = ''; return; }
-  $('#mks').innerHTML = NOTES.filter(n => n.ver === CUR.ver).map(n => `<div class="mk ${n.status === 'done' ? 'done' : ''}" style="left:${(n.t / d * 100).toFixed(2)}%" title="${fmt(n.t)} ${esc(n.text)}"></div>`).join('');
+  const d = vid.duration || 0; if (!d || !CUR) { $('#mks').innerHTML = ''; $('#ticks').innerHTML = ''; return; }
+  $('#mks').innerHTML = NOTES.filter(n => n.ver === CUR.ver).map(n => `<div class="mk ${n.status === 'done' ? 'done' : ''}" style="left:${(n.t / d * 100).toFixed(2)}%"></div>`).join('');
+  const st = d > 90 ? 10 : d > 40 ? 5 : 2; let h = '';
+  for (let s = 0; s <= d + 0.01; s += st) h += `<span style="left:${(s / d * 100).toFixed(2)}%">${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}</span>`;
+  $('#ticks').innerHTML = h;
 }
-function tick() {
-  const d = vid.duration || 0, t = vid.currentTime;
-  $('#fill').style.width = $('#head').style.left = (d ? t / d * 100 : 0) + '%';
+// 막대를 누르면 표시는 바로 옮기고, 영상은 마지막으로 가리킨 곳을 따라간다(찾는 중에 쌓인 요청은 건너뜀)
+let seekTarget = null, seeking = false;
+function setUI(t) {
+  const d = vid.duration || 0;
+  $('#fill').style.width = $('#head').style.left = (d ? Math.min(1, t / d) * 100 : 0) + '%';
   $('#time').textContent = fmt(t) + ' / ' + fmt(d);
+}
+function seekTo(t) {
+  t = Math.min(vid.duration || 0, Math.max(0, t)); seekTarget = t; setUI(t);
+  if (!seeking) { seeking = true; vid.currentTime = t; }
+}
+vid.addEventListener('seeked', () => {
+  seeking = false;
+  if (seekTarget != null && Math.abs(vid.currentTime - seekTarget) > 0.02) { seeking = true; vid.currentTime = seekTarget; return; }
+  seekTarget = null; tick();
+});
+function tick() {
+  const d = vid.duration || 0, t = seekTarget ?? vid.currentTime;
+  setUI(t);
   $('#bPlay').textContent = vid.paused ? '▶' : '❚❚';
   $('#tip').hidden = !vid.paused || NOTES.some(n => n.ver === CUR?.ver);
   draw();
 }
-vid.addEventListener('timeupdate', tick); vid.addEventListener('play', tick); vid.addEventListener('pause', tick); vid.addEventListener('seeked', tick);
+vid.addEventListener('timeupdate', tick); vid.addEventListener('play', tick); vid.addEventListener('pause', tick);
 vid.addEventListener('durationchange', marks);
 (function loop() { if (!vid.paused) tick(); requestAnimationFrame(loop); })();
 function play() { closeBox(); pending = null; SEL = null; renderList(); vid.play(); }
 $('#bPlay').onclick = () => vid.paused ? play() : vid.pause();
-const step = dt => { vid.pause(); vid.currentTime = Math.min(vid.duration || 0, Math.max(0, vid.currentTime + dt)); };
+const step = dt => { vid.pause(); seekTo((seekTarget ?? vid.currentTime) + dt); };
 $('#bPrev').onclick = () => step(-1 / FPS); $('#bNext').onclick = () => step(1 / FPS);
 $('#spd').onchange = e => vid.playbackRate = +e.target.value;
-const bar = $('#bar');
-function seekAt(e) { const r = bar.getBoundingClientRect(); vid.currentTime = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (vid.duration || 0); }
-bar.addEventListener('pointerdown', e => { vid.pause(); bar.setPointerCapture(e.pointerId); seekAt(e); bar.onpointermove = seekAt; });
-bar.addEventListener('pointerup', () => bar.onpointermove = null);
+const bar = $('#bar'), hov = $('#hov');
+const tAt = e => { const r = bar.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (vid.duration || 0); };
+let dragging = false;
+bar.addEventListener('pointerdown', e => { vid.pause(); closeBox(); pending = null; dragging = true; try { bar.setPointerCapture(e.pointerId); } catch (err) {} seekTo(tAt(e)); });
+bar.addEventListener('pointermove', e => {
+  const t = tAt(e), d = vid.duration || 0;
+  if (dragging) seekTo(t);
+  // 마우스를 올린 곳 시간 + 가까운 수정 요청 내용
+  const near = CUR && d ? NOTES.filter(n => n.ver === CUR.ver).find(n => Math.abs(n.t - t) / d * bar.clientWidth < 8) : null;
+  hov.hidden = !d; hov.style.left = (t / d * 100) + '%'; hov.textContent = near ? fmt(near.t) + ' · ' + near.text : fmt(t);
+});
+bar.addEventListener('pointerleave', () => { if (!dragging) hov.hidden = true; });
+bar.addEventListener('pointerup', e => { dragging = false; const d = vid.duration || 0, t = tAt(e);
+  const near = CUR && d ? NOTES.filter(n => n.ver === CUR.ver).find(n => Math.abs(n.t - t) / d * bar.clientWidth < 8) : null;
+  if (near) { SEL = near.id; seekTo(near.t); renderList(); }   // 표시를 누르면 그 수정 요청으로
+});
 document.addEventListener('keydown', e => {
   if (!CUR || $('#nb') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
   if (e.code === 'Space') { e.preventDefault(); vid.paused ? play() : vid.pause(); }
