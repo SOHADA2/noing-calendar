@@ -491,8 +491,13 @@
     .resv-add { white-space: nowrap; }
     .chip-ch-short { display: none; }
     /* 일정이 많은 날: 칸을 늘리지 않고 위아래로 천천히 밀어 나머지를 보여줌 */
-    .chips-wrap { position: relative; }
-    .chips-wrap.cs-scroll { overflow: hidden; }
+    .chips-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .chips-wrap .chips { overscroll-behavior: contain; }   /* 칸 안에서 스크롤할 때 페이지가 같이 밀리지 않게 */
+    /* 아래에 더 있으면 끝을 흐리게 → 스크롤할 게 있다는 표시 (맨 아래까지 내리면 사라짐) */
+    .chips-wrap.has-more:not(.at-end) .chips {
+      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+              mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+    }
     .chips-wrap.cs-scroll { overflow: hidden; }
     @media (prefers-reduced-motion: reduce) {
       .chips-wrap.cs-scroll .chips { animation: none; }
@@ -1938,7 +1943,8 @@
       .chip-channel { display: none; }
       .chip-ch-short { display: inline-block; font-size: 9px; font-weight: 800; padding: 0 3px; border-radius: 3px; }
       .cal-cell { min-height: 62px; max-height: 62px; overflow: hidden; }
-      .chips-wrap { max-height: 38px; }   /* 2줄까지 보이고 나머지는 밀려서 표시 */
+      .chips-wrap { max-height: 38px; }
+      .chips-wrap .chips { overflow: visible; flex: none; }   /* 2줄까지 보이고 나머지는 밀려서 표시 */
       .day-header .add-btn { display: none; }   /* 날짜 눌러 상세에서 추가 */
       /* ── 달력 네비/타이틀 (모바일: 한 줄에 모두) ── */
       .cal-nav { flex-wrap: nowrap; gap: 4px; align-items: center; }
@@ -3028,7 +3034,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.44.0';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.44.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
@@ -4833,12 +4839,26 @@ function renderOrderStats(filtered) {
 
 // 일정이 많은 날: 칸 높이를 유지한 채 위아래로 밀어서 나머지를 보여준다
 function applyChipsMarquee() {
+  const mobile = isMobileView();
   document.querySelectorAll('.chips-wrap').forEach(wrap => {
     const inner = wrap.querySelector('.chips');
     if (!inner) return;
     inner.querySelectorAll('.cs-dup').forEach(d => d.remove());   // 이전 복제본 제거
     const originals = [...inner.children];
     const oneH = inner.scrollHeight;
+    if (!mobile) {
+      // PC: 마우스를 올리고 휠로 스크롤. 아래에 더 있으면 끝을 흐리게
+      wrap.classList.remove('cs-scroll');
+      if (inner._csAnim) { inner._csAnim.cancel(); inner._csAnim = null; }
+      const more = inner.scrollHeight - inner.clientHeight > 2;
+      wrap.classList.toggle('has-more', more);
+      const mark = () => wrap.classList.toggle('at-end', inner.scrollTop + inner.clientHeight >= inner.scrollHeight - 2);
+      mark();
+      inner.onscroll = more ? mark : null;
+      return;
+    }
+    wrap.classList.remove('has-more', 'at-end');
+    inner.onscroll = null;
     if (oneH - wrap.clientHeight <= 2) {                          // 안 넘치면 그대로
       wrap.classList.remove('cs-scroll');
       if (inner._csAnim) { inner._csAnim.cancel(); inner._csAnim = null; }
