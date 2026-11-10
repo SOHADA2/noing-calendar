@@ -492,7 +492,6 @@
     .chip-ch-short { display: none; }
     /* 일정이 많은 날: 칸을 늘리지 않고 위아래로 천천히 밀어 나머지를 보여줌 */
     .chips-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    .chips-wrap .chips { overscroll-behavior: contain; }   /* 칸 안에서 스크롤할 때 페이지가 같이 밀리지 않게 */
     /* 아래에 더 있으면 끝을 흐리게 → 스크롤할 게 있다는 표시 (맨 아래까지 내리면 사라짐) */
     .chips-wrap.has-more:not(.at-end) .chips {
       -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
@@ -3034,7 +3033,7 @@
 
 <script>
 // ── Constants ──
-const APP_VERSION = '2.44.1';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
+const APP_VERSION = '2.44.2';  // 새 HTML 배포 시 이 숫자를 올리세요 (SemVer: MAJOR.MINOR.PATCH)
 const STORAGE_DATA = 'cc-data-v2';
 const STORAGE_API  = 'cc-api-url';
 
